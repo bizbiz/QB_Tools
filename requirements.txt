@@ -1,0 +1,12 @@
+# Bibliothèques de base
+python-dateutil==2.9.0
+PyYAML==6.0
+
+# upload
+Flask==3.1.0
+Flask-SQLAlchemy==3.0.5
+psycopg2-binary==2.9.10
+Flask-WTF==1.2.2
+Flask-Migrate==4.1.0
+Flask-Login==0.6.3
+inflection==0.5.1

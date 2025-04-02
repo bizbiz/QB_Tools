@@ -1,0 +1,18 @@
+# Ignore node_modules directory
+migrations/
+__pycache__/
+
+# Ignore log files
+*.log
+
+# Ignore compiled files
+*.class
+
+# Ignore MacOS-specific files
+.DS_Store
+
+# Ignore environment variables
+.env
+
+# Ignore notes 
+.txt
