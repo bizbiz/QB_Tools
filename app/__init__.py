@@ -71,17 +71,21 @@ def create_app(config_name='default'):
     # Initialisation des extensions
     db.init_app(app)
     migrate.init_app(app, db)
+    
     @app.template_filter('datetimeformat')
     def datetimeformat(value, format='%d/%m/%Y'):
         """Filtre personnalisé pour formater les dates"""
         if value is None:
             return ""
         return value.strftime(format)
+    
     # Enregistrement des blueprints
-    # register_blueprints(app)
+    register_blueprints(app)
     return app
 
-# def register_blueprints(app):
-    # from app.routes.clients import clients_bp
-
-    # app.register_blueprint(clients_bp)
+def register_blueprints(app):
+    from app.routes.main import main_bp
+    from app.routes.teamplanning import teamplanning_bp
+    
+    app.register_blueprint(main_bp)
+    app.register_blueprint(teamplanning_bp)

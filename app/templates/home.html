@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}QB Tools - Accueil{% endblock %}
+
+{% block content %}
+<div class="container text-center py-5">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <h1 class="display-4 mb-4">Bienvenue sur QB Tools</h1>
+            <p class="lead mb-5">Plateforme d'outils intégrés pour optimiser votre travail quotidien</p>
+            
+            <div class="row mt-5">
+                <div class="col-md-6 mx-auto">
+                    <div class="card shadow-sm">
+                        <div class="card-body p-4">
+                            <h3 class="card-title">Teamplanning v2</h3>
+                            <p class="card-text mb-4">Gérez efficacement la planification de votre équipe avec notre outil spécialisé.</p>
+                            <a href="{{ url_for('teamplanning.index') }}" class="btn btn-primary btn-lg btn-block">Accéder au Teamplanning</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

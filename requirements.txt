@@ -10,3 +10,7 @@ Flask-WTF==1.2.2
 Flask-Migrate==4.1.0
 Flask-Login==0.6.3
 inflection==0.5.1
+
+# Dépendances teamplanning
+requests==2.31.0
+beautifulsoup4==4.12.2
