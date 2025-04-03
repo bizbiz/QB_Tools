@@ -37,9 +37,10 @@ class NetplanningExtractor:
             person_td = tbody.find('td', class_='nom_ress')
             
             if person_td:
-                # Trouver l'élément contenant le nom (souvent dans un élément avec class="ressource")
-                ress_element = person_td.find('ress', class_='ressource')
+                full_name = None
                 
+                # Méthode 1: Élément standard avec class="ressource"
+                ress_element = person_td.find('ress', class_='ressource')
                 if ress_element:
                     # Extraire le nom et prénom
                     name_text = ress_element.get_text(strip=True)
@@ -55,10 +56,25 @@ class NetplanningExtractor:
                     else:
                         # Si on ne trouve pas la structure attendue, utiliser le texte complet
                         full_name = name_text
-                    
-                    # Ajouter à la liste s'il n'est pas déjà présent
-                    if full_name and full_name not in users:
-                        users.append(full_name)
+                
+                # Méthode 2: Format alternatif avec <p class="rouge">
+                if not full_name:
+                    p_rouge_element = person_td.find('p', class_='rouge')
+                    if p_rouge_element:
+                        # Extraire le nom depuis le format <p class="rouge">&nbsp;<b>NOM</b>&nbsp;Prénom</p>
+                        full_name = p_rouge_element.get_text(strip=True)
+                
+                # Méthode 3: Dernier recours, juste prendre tout le texte de la cellule
+                if not full_name:
+                    # Prendre tout le texte de la cellule et essayer de le nettoyer
+                    raw_text = person_td.get_text(strip=True)
+                    # Nettoyer au besoin (éliminer les textes non pertinents comme "Coordinateur", etc.)
+                    # Version simplifiée, à ajuster si nécessaire
+                    full_name = raw_text.split('\n')[0] if '\n' in raw_text else raw_text
+                
+                # Ajouter à la liste s'il n'est pas déjà présent et non vide
+                if full_name and full_name.strip() and full_name not in users:
+                    users.append(full_name.strip())
         
         return sorted(users)  # Trier par ordre alphabétique
     

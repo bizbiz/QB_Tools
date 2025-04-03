@@ -131,13 +131,13 @@ class UI {
         `;
     }
     
-    /**
+/**
      * Affiche un spinner de chargement
      * @param {HTMLElement} spinner - Élément spinner à afficher
      */
     static showSpinner(spinner) {
         if (spinner) {
-            spinner.style.display = 'block';
+            spinner.classList.remove('d-none');
         }
     }
     
@@ -147,7 +147,7 @@ class UI {
      */
     static hideSpinner(spinner) {
         if (spinner) {
-            spinner.style.display = 'none';
+            spinner.classList.add('d-none');
         }
     }
 }
