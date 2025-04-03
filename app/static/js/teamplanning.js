@@ -481,6 +481,13 @@ class Teamplanning {
                         if (eventsData.events_log) {
                             this.displayEventsLog(eventsData.events_log);
                         }
+
+                        // Afficher des informations de débogage supplémentaires
+                        if (eventsData.summary && eventsData.summary.extracted_days) {
+                            console.log("Jours extraits:", eventsData.summary.extracted_days);
+                            console.log("Nombre d'événements par jour:", eventsData.summary.events_by_day);
+                            console.log("Événements jour 3:", eventsData.summary.day_3_events);
+                        }
                                                 
                         UI.updateStepStatus('extract-events', 'completed', eventsStatusMessage);
                         
@@ -526,6 +533,9 @@ class Teamplanning {
     displayEventsLog(eventsLog) {
         const eventsLogContainer = document.getElementById('events-log');
         if (!eventsLogContainer) return;
+        
+        // Débogage - afficher tous les événements reçus
+        console.log("Événements reçus pour affichage:", eventsLog);
         
         if (!eventsLog || eventsLog.length === 0) {
             eventsLogContainer.innerHTML = `

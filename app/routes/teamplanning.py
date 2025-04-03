@@ -212,9 +212,6 @@ def extract_dates():
             'error': f'Erreur lors de l\'extraction des dates: {str(e)}'
         }), 500
 
-
-# app/routes/teamplanning.py - Mise à jour de la route extract-events
-
 @teamplanning_bp.route('/extract-events', methods=['POST'])
 def extract_events():
     """Extrait les événements du planning pour la première ligne du premier utilisateur"""
@@ -228,14 +225,14 @@ def extract_events():
         }), 404
     
     try:
-        # Extraire les événements
+        # Forcer extract_first_line_only=True pour éviter les problèmes avec les jours hors limite
         first_user_only = request.json.get('first_user_only', True) if request.json else True
-        first_line_only = request.json.get('first_line_only', True) if request.json else True
+        extract_first_line_only = True
         
         events_data = NetplanningExtractor.extract_planning_events(
             latest_raw_planning.raw_content,
             limit_to_first_user=first_user_only,
-            extract_first_line_only=first_line_only
+            extract_first_line_only=extract_first_line_only
         )
         
         if 'error' in events_data:
@@ -253,22 +250,40 @@ def extract_events():
         }
         
         # Préparer un journal détaillé des événements pour l'affichage
+        # Sans aucun filtrage supplémentaire
         events_log = []
         for user, user_data in events_data['users'].items():
-            for day, day_data in user_data.get('days', {}).items():
-                for time_slot, event in day_data.items():
-                    # Inclure tous les événements, même vides, pour une visualisation complète
-                    events_log.append({
-                        'user': user,
-                        'day': day,
-                        'time_slot': time_slot,
-                        'content': event.get('content', ''),
-                        'type': event.get('type', 'unknown'),
-                        'is_weekend': event.get('is_weekend', False),
-                        'comment': event.get('comment', ''),
-                        'last_modified': event.get('last_modified', ''),
-                        'author': event.get('author', '')
-                    })
+            for day_str, day_data in user_data.get('days', {}).items():
+                # Ne prendre que les événements du matin
+                if 'morning' not in day_data:
+                    continue
+                
+                event = day_data['morning']
+                events_log.append({
+                    'user': user,
+                    'day': day_str,
+                    'time_slot': 'morning',
+                    'content': event.get('content', ''),
+                    'type': event.get('type', 'unknown'),
+                    'is_weekend': event.get('is_weekend', False),
+                    'comment': event.get('comment', ''),
+                    'last_modified': event.get('last_modified', ''),
+                    'author': event.get('author', '')
+                })
+        
+        # Ajouter des informations de débogage supplémentaires
+        summary['extracted_days'] = list(sorted([int(day) for day in list(
+            set([day for user in events_data['users'] for day in events_data['users'][user].get('days', {})]))
+            if day.isdigit()
+        ]))
+        summary['events_by_day'] = {str(day): 0 for day in range(1, 31)}
+        for event in events_log:
+            day = event['day']
+            if day.isdigit() and int(day) >= 1 and int(day) <= 30:
+                summary['events_by_day'][day] = summary['events_by_day'].get(day, 0) + 1
+        
+        # Ajouter un indicateur spécifique pour le jour 3
+        summary['day_3_events'] = [e for e in events_log if e['day'] == '3']
         
         return jsonify({
             'success': True,

@@ -131,6 +131,9 @@ class EventExtractor(ExtractorBase):
                         time_slot = time_slots[row_idx] if row_idx < len(time_slots) else f"extra_{row_idx}"
                         
                         debug_info['rows_processed'] += 1
+
+                        if extract_first_line_only and time_slot != 'morning':
+                            continue
                         
                         # Déterminer quelles cellules contiennent des événements
                         cells = row.find_all('td')
@@ -392,7 +395,7 @@ class EventExtractor(ExtractorBase):
         Returns:
             int|str: Numéro du jour (ou chaîne de caractères)
         """
-        # Fonction helper pour valider un jour
+        # Fonction helper pour valider un jour - accepte tous les jours de 1 à 31
         def is_valid_day(day):
             try:
                 return isinstance(day, int) and 1 <= day <= 31
@@ -420,6 +423,7 @@ class EventExtractor(ExtractorBase):
             # Essayer d'extraire depuis l'attribut href
             href = a_tag.get('href', '')
             if 'jour=' in href:
+                import re
                 match = re.search(r'jour=(\d+)', href)
                 if match:
                     day = int(match.group(1))
