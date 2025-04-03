@@ -82,8 +82,18 @@
                         Cliquez sur "Traiter les dernières données" pour extraire les utilisateurs.
                     </div>
                 </div>
+                
+                <!-- Nouveau bloc pour afficher les logs d'événements -->
+                <hr>
+                <h5>Log des événements extraits</h5>
+                <div id="events-log" class="mt-3">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Les événements extraits s'afficheront ici.
+                    </div>
+                </div>
             {% endset %}
-            
+
             {{ ui.card('Données extraites', extract_content) }}
         </div>
     </div>

@@ -212,6 +212,9 @@ def extract_dates():
             'error': f'Erreur lors de l\'extraction des dates: {str(e)}'
         }), 500
 
+
+# app/routes/teamplanning.py - Mise à jour de la route extract-events
+
 @teamplanning_bp.route('/extract-events', methods=['POST'])
 def extract_events():
     """Extrait les événements du planning pour la première ligne du premier utilisateur"""
@@ -245,19 +248,41 @@ def extract_events():
         summary = {
             'users_count': events_data['summary'].get('users_count', 0),
             'events_count': events_data['summary'].get('total_events', 0),
-            'event_types': events_data['summary'].get('events_by_type', {})
+            'event_types': events_data['summary'].get('events_by_type', {}),
+            'debug_info': events_data.get('debug', {})
         }
+        
+        # Préparer un journal détaillé des événements pour l'affichage
+        events_log = []
+        for user, user_data in events_data['users'].items():
+            for day, day_data in user_data.get('days', {}).items():
+                for time_slot, event in day_data.items():
+                    # Inclure tous les événements, même vides, pour une visualisation complète
+                    events_log.append({
+                        'user': user,
+                        'day': day,
+                        'time_slot': time_slot,
+                        'content': event.get('content', ''),
+                        'type': event.get('type', 'unknown'),
+                        'is_weekend': event.get('is_weekend', False),
+                        'comment': event.get('comment', ''),
+                        'last_modified': event.get('last_modified', ''),
+                        'author': event.get('author', '')
+                    })
         
         return jsonify({
             'success': True,
             'events': events_data,
-            'summary': summary
+            'summary': summary,
+            'events_log': events_log
         })
         
     except Exception as e:
+        import traceback
         return jsonify({
             'success': False,
-            'error': f'Erreur lors de l\'extraction des événements: {str(e)}'
+            'error': f'Erreur lors de l\'extraction des événements: {str(e)}',
+            'traceback': traceback.format_exc()
         }), 500
 
 @teamplanning_bp.route('/event-results')

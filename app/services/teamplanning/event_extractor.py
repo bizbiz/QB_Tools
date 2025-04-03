@@ -41,7 +41,9 @@ class EventExtractor(ExtractorBase):
             'users_processed': 0,
             'rows_processed': 0,
             'cells_processed': 0,
-            'events_found': 0
+            'events_found': 0,
+            'skipped_days': 0,  # Nouveau compteur pour les jours ignorés
+            'processed_days': []  # Liste des jours traités pour débogage
         }
         
         try:
@@ -159,6 +161,14 @@ class EventExtractor(ExtractorBase):
                             # Nous utilisons maintenant day comme clé, qu'il soit un entier ou une chaîne
                             day_key = str(day)
                             
+                            # Enregistrer le jour pour débogage
+                            debug_info['processed_days'].append(day)
+                            
+                            # Éviter les doublons en vérifiant si ce jour existe déjà pour cet utilisateur
+                            if day_key in events_data['users'][user_name]['days'] and time_slot in events_data['users'][user_name]['days'][day_key]:
+                                debug_info['skipped_days'] += 1
+                                continue
+                            
                             # Extraire les informations de l'événement
                             event_info = cls._extract_event_info(cell)
                             
@@ -239,6 +249,14 @@ class EventExtractor(ExtractorBase):
                             # Nous utilisons maintenant day comme clé, qu'il soit un entier ou une chaîne
                             day_key = str(day)
                             
+                            # Enregistrer le jour pour débogage
+                            debug_info['processed_days'].append(day)
+                            
+                            # Éviter les doublons en vérifiant si ce jour existe déjà pour cet utilisateur
+                            if day_key in events_data['users'][user_name]['days'] and time_slot in events_data['users'][user_name]['days'][day_key]:
+                                debug_info['skipped_days'] += 1
+                                continue
+                            
                             # Extraire les informations de l'événement
                             event_info = cls._extract_event_info(cell)
                             
@@ -278,86 +296,57 @@ class EventExtractor(ExtractorBase):
         Returns:
             int|str: Numéro du jour (ou chaîne de caractères)
         """
-        # 1. Essayer d'extraire à partir de l'ID de la cellule
-        cell_id = cell.get('id', '')
-        if cell_id:
-            # Plusieurs formats possibles: 'jour_X', 'j_X', etc.
-            id_patterns = [r'jour_(\d+)', r'j_(\d+)', r'day_(\d+)', r'td_(\d+)', r'cell_(\d+)']
-            for pattern in id_patterns:
-                match = re.search(pattern, cell_id)
-                if match:
-                    try:
-                        return int(match.group(1))
-                    except (ValueError, IndexError):
-                        pass
+        # Fonction helper pour valider un jour
+        def is_valid_day(day):
+            try:
+                return isinstance(day, int) and 1 <= day <= 31
+            except (TypeError, ValueError):
+                return False
         
-        # 2. Essayer d'extraire à partir des classes
-        for cls in cell.get('class', []):
-            # Si la classe est un nombre, c'est probablement le jour
-            if cls.isdigit():
-                return int(cls)
-            # Ou si la classe contient "jour_X", "day_X", etc.
-            patterns = [r'jour_(\d+)', r'day_(\d+)', r'j(\d+)', r'd(\d+)']
-            for pattern in patterns:
-                match = re.search(pattern, cls)
-                if match:
-                    try:
-                        return int(match.group(1))
-                    except (ValueError, IndexError):
-                        pass
-        
-        # 3. Essayer d'extraire à partir des attributs data-*
-        for attr_name, attr_value in cell.attrs.items():
-            if attr_name.startswith('data-') and 'day' in attr_name.lower() and attr_value.isdigit():
-                return int(attr_value)
-            if attr_name.startswith('data-') and 'jour' in attr_name.lower() and attr_value.isdigit():
-                return int(attr_value)
-        
-        # 4. Essayer d'extraire à partir du lien à l'intérieur
-        a_elem = cell.find('a')
-        if a_elem:
-            # Extraire le jour du paramètre dans l'attribut href
-            href = a_elem.get('href', '')
-            day_patterns = [r'jour=(\d+)', r'day=(\d+)', r'j=(\d+)', r'd=(\d+)']
-            for pattern in day_patterns:
-                match = re.search(pattern, href)
-                if match:
-                    try:
-                        return int(match.group(1))
-                    except (ValueError, IndexError):
-                        pass
-            
-            # Essayer d'extraire depuis la classe ou l'ID du lien
-            for cls in a_elem.get('class', []):
-                if cls.isdigit():
-                    return int(cls)
-            
-            a_id = a_elem.get('id', '')
+        # 1. Essayer d'extraire à partir des attributs <a id="X"> ou <a class="X">
+        a_tag = cell.find('a')
+        if a_tag:
+            # Essayer l'ID d'abord
+            a_id = a_tag.get('id')
             if a_id and a_id.isdigit():
-                return int(a_id)
+                day = int(a_id)
+                if is_valid_day(day):
+                    return day
+            
+            # Essayer les classes
+            a_classes = a_tag.get('class', [])
+            for cls in a_classes:
+                if cls.isdigit():
+                    day = int(cls)
+                    if is_valid_day(day):
+                        return day
+            
+            # Essayer d'extraire depuis l'attribut href
+            href = a_tag.get('href', '')
+            if 'jour=' in href:
+                match = re.search(r'jour=(\d+)', href)
+                if match:
+                    day = int(match.group(1))
+                    if is_valid_day(day):
+                        return day
         
-        # 5. Chercher un élément avec une classe ou un id contenant le jour
-        day_elements = cell.select('[class*="day"], [id*="day"], [class*="jour"], [id*="jour"]')
-        for elem in day_elements:
-            # Vérifier le texte de l'élément
-            day_text = elem.get_text(strip=True)
-            if day_text.isdigit():
-                return int(day_text)
+        # 2. Essayer d'extraire à partir des classes de la cellule
+        for cls in cell.get('class', []):
+            if cls.isdigit():
+                day = int(cls)
+                if is_valid_day(day):
+                    return day
         
-        # 6. En dernier recours, chercher un texte numérique dans la cellule
-        # qui pourrait représenter le jour
-        cell_text = cell.get_text(strip=True)
-        digits = re.findall(r'\b(\d{1,2})\b', cell_text)
-        if digits and 1 <= int(digits[0]) <= 31:  # Un jour du mois valide
-            return int(digits[0])
-        
-        # 7. Si tout échoue, utiliser l'indice comme dernier recours
+        # 3. Si tout échoue, utiliser l'indice fourni
         if day_index is not None:
-            return day_index
+            if is_valid_day(day_index):
+                return day_index
+            else:
+                # Fallback vers un jour valide (le premier)
+                return 1
         
-        # 8. Si vraiment rien ne marche, retourner une chaîne plutôt que None
-        # pour éviter de sauter cet événement
-        return f"day_{id(cell)}"  # Utiliser l'ID mémoire de la cellule pour un identifiant unique
+        # Si vraiment rien ne marche, retourner une chaîne avec l'identifiant unique
+        return f"day_unknown_{id(cell)}"
     
     @staticmethod
     def _extract_event_info(cell):
@@ -383,147 +372,114 @@ class EventExtractor(ExtractorBase):
         
         # Vérifier s'il s'agit d'un weekend (classes contenant WE ou weekend)
         for cls in cell.get('class', []):
-            if 'we' in cls.lower() or 'weekend' in cls.lower():
+            if cls.lower() == 'we' or 'weekend' in cls.lower():
                 event_info['is_weekend'] = True
                 event_info['type'] = 'weekend'
                 # On continue quand même pour extraire d'éventuels contenus
                 break
         
-        # Extraire le contenu principal de l'événement - plus souple
-        # 1. Essayer d'abord avec un div class="href"
-        href_div = cell.find('div', class_='href')
+        # Extraire les informations de modification (date, auteur)
+        mod_p = cell.find('p', style=lambda s: s and 'background: blue' in s)
+        if mod_p:
+            mod_text = mod_p.get_text(strip=True)
+            match = re.match(r'(\d{2}/\d{2}/\d{4} - \d{2}:\d{2}) \((.*?)\)', mod_text)
+            if match:
+                event_info['last_modified'] = match.group(1)
+                event_info['author'] = match.group(2)
+        
+        # Extraire le commentaire (chercher dans les spans avec classe contenant 'arrondi')
+        comment_span = cell.find('span', attrs={'class': lambda c: c and 'arrondi' in c.split()})
+        if comment_span:
+            comment_text = comment_span.get_text(strip=True)
+            if comment_text:
+                event_info['comment'] = comment_text
+                event_info['is_empty'] = False
+        
+        # Extraire le contenu principal (div avec classe href)
+        href_div = cell.select_one('a div.href')
         if href_div:
             content = href_div.get_text(strip=True)
-            if content:
+            # Ignorer le contenu des menus (Couper, Coller, etc.)
+            if content and content not in ['Couper', 'Copier', 'Coller', 'Annuler', 'La cible sera ecrasée']:
                 event_info['content'] = content
                 event_info['is_empty'] = False
         
-        # 2. Si rien n'est trouvé, chercher dans n'importe quel div
-        if not event_info['content']:
-            for div in cell.find_all('div'):
+        # Si pas trouvé, essayer d'autres éléments
+        if not event_info['content'] and not event_info['is_empty']:
+            # Si on a un commentaire mais pas de contenu, chercher dans d'autres endroits
+            for div in cell.find_all('div', class_=lambda c: c and 'copycel' not in c and 'survol' not in c):
                 content = div.get_text(strip=True)
-                if content and not event_info['content']:
+                if content and not event_info['content'] and content not in ['Couper', 'Copier', 'Coller', 'Annuler', 'La cible sera ecrasée']:
                     event_info['content'] = content
                     event_info['is_empty'] = False
-        
-        # 3. En dernier recours, prendre tout le texte de la cellule
-        if not event_info['content']:
-            content = cell.get_text(strip=True)
-            if content:
-                event_info['content'] = content
-                event_info['is_empty'] = False
-        
-        # Extraire le commentaire éventuel - plus souple
-        # 1. Chercher dans un span avec 'arrondi'
-        comment_span = cell.find('span', class_=lambda c: c and 'arrondi' in c.split())
-        if comment_span:
-            comment = comment_span.get_text(strip=True)
-            if comment:
-                event_info['comment'] = comment
-                event_info['is_empty'] = False
-        
-        # 2. Si rien n'est trouvé, chercher dans n'importe quel span
-        if not event_info['comment']:
-            for span in cell.find_all('span'):
-                # Éviter de prendre le span qui contient les infos de modification
-                if 'background: blue' not in span.get('style', ''):
-                    comment = span.get_text(strip=True)
-                    if comment and not event_info['comment']:
-                        event_info['comment'] = comment
-                        event_info['is_empty'] = False
-        
-        # Extraire l'auteur et la date de dernière modification
-        # Recherche plus souple ici aussi
-        modified_elements = [
-            cell.find('p', style=lambda s: s and 'background: blue' in s),
-            cell.find('span', style=lambda s: s and 'background: blue' in s),
-            cell.find('div', style=lambda s: s and 'background: blue' in s)
-        ]
-        
-        for modified_elem in modified_elements:
-            if modified_elem:
-                modified_text = modified_elem.get_text(strip=True)
-                # Format: "26/03/2025 - 08:43 (Benjamin SEBILE)"
-                match = re.match(r'(\d{2}/\d{2}/\d{4} - \d{2}:\d{2}) \((.*?)\)', modified_text)
-                if match:
-                    event_info['last_modified'] = match.group(1)
-                    event_info['author'] = match.group(2)
                     break
         
-        # Extraire la couleur/type de l'événement
-        # Liste étendue de classes de couleur possibles
-        color_classes = [
-            'greenyellow', 'b_greenyellow',       # Télétravail
-            'maroon', 'b_maroon',                 # Réunion
-            'redyellow',                          # RTE
-            'tomato', 'b_tomato',                 # Congés
-            'gold', 'b_gold',                     # Permanence
-            'orange', 'b_orange',                 # Permanence matin
-            'teal', 'b_teal',                     # Garde sur site
-            'blackwhite', 'b_blackwhite',         # Congés posés
-            'limegreen', 'b_limegreen',           # Jour férié
-            'blue', 'b_blue', 'lightblue',        # Autres types possibles
-            'red', 'b_red',
-            'green', 'b_green',
-            'yellow', 'b_yellow',
-            'purple', 'b_purple',
-            'pink', 'b_pink'
-        ]
-        
-        # Chercher dans toutes les classes de l'élément et des éléments enfants
-        all_elements = [cell] + cell.find_all()
-        for element in all_elements:
-            for cls in element.get('class', []):
-                if cls in color_classes:
-                    event_info['color'] = cls
-                    break
-            if event_info['color']:
+        # Extraire la couleur/type à partir des classes de cellules
+        for cls in cell.get('class', []):
+            # Liste de classes indicatives de types d'événements
+            color_map = {
+                'greenyellow': 'telework',       # Télétravail
+                'b_greenyellow': 'telework',     # Télétravail
+                'maroon': 'meeting',             # Réunion
+                'b_maroon': 'meeting',           # Réunion  
+                'redyellow': 'rte',              # RTE
+                'tomato': 'vacation',            # Congés
+                'b_tomato': 'vacation',          # Congés
+                'gold': 'duty',                  # Permanence
+                'b_gold': 'duty',                # Permanence
+                'orange': 'morning_duty',        # Permanence matin
+                'b_orange': 'morning_duty',      # Permanence matin
+                'teal': 'onsite',                # Garde sur site
+                'b_teal': 'onsite',              # Garde sur site
+                'blackwhite': 'leave',           # Congés posés
+                'b_blackwhite': 'leave',         # Congés posés
+                'limegreen': 'holiday',          # Jour férié
+                'b_limegreen': 'holiday',        # Jour férié
+            }
+            
+            if cls in color_map:
+                event_info['color'] = cls
+                if not event_info['type']:  # Ne pas écraser le type weekend
+                    event_info['type'] = color_map[cls]
                 break
         
-        # Si pas de couleur trouvée mais style directement dans l'attribut style
-        if not event_info['color']:
-            for element in all_elements:
-                style = element.get('style', '')
-                if 'background' in style and ':' in style:
-                    bg_color = style.split('background')[1].split(':')[1].strip().split(';')[0]
-                    event_info['color'] = f"style_{bg_color.replace(' ', '_')}"
-        
-        # Déterminer le type d'événement - logique plus souple
-        content = event_info['content'] or ''
-        
-        # Extraire l'initiale dans le cas où le contenu est plus long
-        initial = content[0].upper() if content else ''
-        
-        # Logique de détection améliorée
-        if ('TL' in content or 'teletravail' in content.lower() or 'télétravail' in content.lower()) and not event_info['type']:
-            event_info['type'] = 'telework'
-        elif (initial == 'R' or 'reunion' in content.lower() or 'réunion' in content.lower()) and not event_info['type']:
-            event_info['type'] = 'meeting'
-        elif 'RTE' in content and not event_info['type']:
-            event_info['type'] = 'rte'
-        elif (initial == 'C' or 'conge' in content.lower() or 'congé' in content.lower()) and not event_info['type']:
-            event_info['type'] = 'vacation'
-        elif (initial == 'P' or 'permanence' in content.lower()) and not event_info['type']:
-            event_info['type'] = 'duty'
-        elif ('Pm' in content or 'permanence matin' in content.lower()) and not event_info['type']:
-            event_info['type'] = 'morning_duty'
-        elif ('GS' in content or 'garde' in content.lower() or 'site' in content.lower()) and not event_info['type']:
-            event_info['type'] = 'onsite'
-        elif ('CP' in content or 'conge pose' in content.lower() or 'congé posé' in content.lower()) and not event_info['type']:
-            event_info['type'] = 'leave'
-        elif (('JF' in content or 'jour ferie' in content.lower() or 'férié' in content.lower()) or 
-              (not content and event_info['color'] in ['b_greenyellow', 'limegreen', 'b_limegreen'])) and not event_info['type']:
-            event_info['type'] = 'holiday'
-        elif event_info['is_weekend'] and not event_info['type']:
-            event_info['type'] = 'weekend'
-        elif event_info['is_empty'] and not event_info['type']:
-            event_info['type'] = 'empty'
-        elif not event_info['type']:
-            # Si aucun type n'a été déterminé mais que la cellule n'est pas vide
-            if not event_info['is_empty']:
-                event_info['type'] = 'other'
+        # Déterminer le type d'événement à partir du contenu si pas déjà défini
+        if not event_info['type'] and event_info['content']:
+            content = event_info['content']
+            
+            if content == 'TL':
+                event_info['type'] = 'telework'
+            elif content == 'R':
+                event_info['type'] = 'meeting'
+            elif content == 'RTE':
+                event_info['type'] = 'rte'
+            elif content == 'C':
+                event_info['type'] = 'vacation'
+            elif content == 'P':
+                event_info['type'] = 'duty'
+            elif content == 'Pm':
+                event_info['type'] = 'morning_duty'
+            elif content == 'GS':
+                event_info['type'] = 'onsite'
+            elif content == 'CP':
+                event_info['type'] = 'leave'
+            elif content == 'JF':
+                event_info['type'] = 'holiday'
             else:
-                event_info['type'] = 'unknown'
+                event_info['type'] = 'other'
+        
+        # Cas spécial : si la cellule a la classe b_greenyellow sans contenu, c'est probablement un jour férié
+        if not event_info['type'] and 'b_greenyellow' in cell.get('class', []):
+            event_info['type'] = 'holiday'
+            event_info['is_empty'] = False
+        
+        # Si toujours pas de type mais cellule non vide, utiliser "other"
+        if not event_info['type'] and not event_info['is_empty']:
+            event_info['type'] = 'other'
+        
+        # Si la cellule est vide (pas de contenu ni commentaire), marquer comme telle
+        if event_info['is_empty'] and not event_info['type']:
+            event_info['type'] = 'empty'
         
         return event_info
     

@@ -477,7 +477,11 @@ class Teamplanning {
                                 .join(', ');
                             eventsStatusMessage += ` (${typesText})`;
                         }
-                        
+
+                        if (eventsData.events_log) {
+                            this.displayEventsLog(eventsData.events_log);
+                        }
+                                                
                         UI.updateStepStatus('extract-events', 'completed', eventsStatusMessage);
                         
                         // Stocker les données d'événements pour utilisation ultérieure
@@ -513,6 +517,134 @@ class Teamplanning {
             // Toujours cacher le spinner global à la fin
             UI.hideSpinner(this.processSpinner);
         }
+    }
+
+    /**
+     * Affiche le journal des événements extraits
+     * @param {Array} eventsLog - Liste des événements
+     */
+    displayEventsLog(eventsLog) {
+        const eventsLogContainer = document.getElementById('events-log');
+        if (!eventsLogContainer) return;
+        
+        if (!eventsLog || eventsLog.length === 0) {
+            eventsLogContainer.innerHTML = `
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Aucun événement extrait.
+                </div>
+            `;
+            return;
+        }
+        
+        // Créer un tableau pour afficher les événements
+        let logHtml = `
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>Utilisateur</th>
+                            <th>Jour</th>
+                            <th>Moment</th>
+                            <th>Contenu</th>
+                            <th>Type</th>
+                            <th>Commentaire</th>
+                            <th>Dernière modif.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        // Définir les noms français des créneaux horaires
+        const timeSlotNames = {
+            'morning': 'Matin',
+            'day': 'Journée',
+            'evening': 'Soir'
+        };
+        
+        // Définir les noms français des types d'événements
+        const eventTypeNames = {
+            'telework': 'Télétravail',
+            'meeting': 'Réunion',
+            'rte': 'RTE',
+            'vacation': 'Congés',
+            'duty': 'Permanence',
+            'morning_duty': 'Permanence matin',
+            'onsite': 'Sur site',
+            'leave': 'Congés posés',
+            'holiday': 'Jour férié',
+            'weekend': 'Week-end',
+            'empty': 'Vide',
+            'unknown': 'Inconnu',
+            'other': 'Autre'
+        };
+        
+        // Mapper les types aux classes Bootstrap
+        const typeClasses = {
+            'telework': 'success',
+            'meeting': 'primary',
+            'rte': 'warning',
+            'vacation': 'danger',
+            'duty': 'info',
+            'morning_duty': 'info',
+            'onsite': 'secondary',
+            'leave': 'danger',
+            'holiday': 'success',
+            'weekend': 'secondary',
+            'empty': 'light',
+            'unknown': 'light',
+            'other': 'dark'
+        };
+        
+        // Trier les événements par jour et créneau
+        eventsLog.sort((a, b) => {
+            const dayA = parseInt(a.day) || 0;
+            const dayB = parseInt(b.day) || 0;
+            if (dayA !== dayB) return dayA - dayB;
+            
+            const slotOrder = { 'morning': 0, 'day': 1, 'evening': 2 };
+            return slotOrder[a.time_slot] - slotOrder[b.time_slot];
+        });
+        
+        // Limiter à 100 événements maximum pour éviter de surcharger l'interface
+        const maxEvents = 100;
+        const displayedEvents = eventsLog.slice(0, maxEvents);
+        
+        // Ajouter chaque événement au tableau
+        displayedEvents.forEach(event => {
+            const rowClass = event.is_weekend ? 'table-secondary' : '';
+            const typeClass = typeClasses[event.type] || 'secondary';
+            
+            logHtml += `
+                <tr class="${rowClass}">
+                    <td>${event.user}</td>
+                    <td>${event.day}</td>
+                    <td>${timeSlotNames[event.time_slot] || event.time_slot}</td>
+                    <td>${event.content || '-'}</td>
+                    <td><span class="badge bg-${typeClass}">${eventTypeNames[event.type] || event.type}</span></td>
+                    <td>${event.comment || '-'}</td>
+                    <td>${event.last_modified ? `${event.last_modified}<br>${event.author || ''}` : '-'}</td>
+                </tr>
+            `;
+        });
+        
+        logHtml += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        // Ajouter un message si tous les événements ne sont pas affichés
+        if (eventsLog.length > maxEvents) {
+            logHtml += `
+                <div class="alert alert-info mt-2">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Affichage limité à ${maxEvents} événements sur ${eventsLog.length} au total.
+                </div>
+            `;
+        }
+        
+        eventsLogContainer.innerHTML = logHtml;
     }
 }
 
