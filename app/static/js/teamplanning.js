@@ -248,6 +248,22 @@ class API {
             body: JSON.stringify({ cookie: cookie })
         }).then(response => response.json());
     }
+
+        /**
+     * Extrait les événements du planning
+     * @param {Object} options - Options de l'extraction
+     * @returns {Promise} Promesse contenant la réponse de l'API
+     */
+    static async extractEvents(options = {}) {
+        return fetch('/teamplanning/extract-events', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(options)
+        }).then(response => response.json());
+    }
+
     
     /**
      * Extrait les utilisateurs du dernier planning récupéré
@@ -374,7 +390,8 @@ class Teamplanning {
         // Définir les étapes du traitement
         const processSteps = [
             { id: 'extract-users', name: 'Extraction des utilisateurs' },
-            { id: 'extract-dates', name: 'Analyse des métadonnées' },
+            { id: 'extract-dates', name: 'Extraction des dates & vérifications' },
+            { id: 'extract-events', name: 'Extraction des événements' },
             // Ajouter d'autres étapes au fur et à mesure du développement
             // Par exemple: { id: 'analyze-schedule', name: 'Analyse des plannings' },
         ];
@@ -433,9 +450,45 @@ class Teamplanning {
                     
                     // Marquer l'étape comme complétée
                     UI.updateStepStatus('extract-dates', statusType, statusMessage);
+                    
+                    // Étape 3: Extraction des événements
+                    UI.updateStepStatus('extract-events', 'active');
+                    
+                    // Options pour limiter l'extraction au premier utilisateur, première ligne
+                    const eventOptions = {
+                        first_user_only: true,
+                        first_line_only: true
+                    };
+                    
+                    const eventsData = await API.extractEvents(eventOptions);
+                    
+                    if (eventsData.success) {
+                        // Déterminer le message de statut
+                        const eventsCount = eventsData.summary?.events_count || 0;
+                        const usersCount = eventsData.summary?.users_count || 0;
+                        
+                        let eventsStatusMessage = `${eventsCount} événements extraits pour ${usersCount} utilisateur`;
+                        
+                        // Afficher les types d'événements extraits
+                        const eventTypes = eventsData.summary?.event_types || {};
+                        if (Object.keys(eventTypes).length > 0) {
+                            const typesText = Object.entries(eventTypes)
+                                .map(([type, count]) => `${count} ${type}`)
+                                .join(', ');
+                            eventsStatusMessage += ` (${typesText})`;
+                        }
+                        
+                        UI.updateStepStatus('extract-events', 'completed', eventsStatusMessage);
+                        
+                        // Stocker les données d'événements pour utilisation ultérieure
+                        this.eventsData = eventsData.events;
+                    } else {
+                        UI.updateStepStatus('extract-events', 'error', 'Échec de l\'extraction');
+                    }
                 } else {
                     // En cas d'erreur dans cette étape
                     UI.updateStepStatus('extract-dates', 'error', 'Échec de l\'extraction');
+                    UI.updateStepStatus('extract-events', 'pending');
                 }
                 
                 // Message de succès global

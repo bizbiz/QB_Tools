@@ -3,9 +3,8 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from app.extensions import db
 import requests
 from app.services.planning_parser import PlanningParser
-from app.services.html_extractor import NetplanningExtractor
+from app.services.teamplanning import NetplanningExtractor
 from app.models.planning import RawPlanning, ParsedPlanning, PlanningEntry
-from app.utils.date_helpers import calculate_time_ago
 from datetime import datetime, timedelta
 
 teamplanning_bp = Blueprint('teamplanning', __name__, url_prefix='/teamplanning')
@@ -213,6 +212,99 @@ def extract_dates():
             'error': f'Erreur lors de l\'extraction des dates: {str(e)}'
         }), 500
 
+@teamplanning_bp.route('/extract-events', methods=['POST'])
+def extract_events():
+    """Extrait les événements du planning pour la première ligne du premier utilisateur"""
+    # Récupérer le dernier planning brut
+    latest_raw_planning = RawPlanning.query.order_by(RawPlanning.created_at.desc()).first()
+    
+    if not latest_raw_planning:
+        return jsonify({
+            'success': False,
+            'error': 'Aucun planning n\'a été récupéré. Veuillez d\'abord récupérer des données Netplanning.'
+        }), 404
+    
+    try:
+        # Extraire les événements
+        first_user_only = request.json.get('first_user_only', True) if request.json else True
+        first_line_only = request.json.get('first_line_only', True) if request.json else True
+        
+        events_data = NetplanningExtractor.extract_planning_events(
+            latest_raw_planning.raw_content,
+            limit_to_first_user=first_user_only,
+            extract_first_line_only=first_line_only
+        )
+        
+        if 'error' in events_data:
+            return jsonify({
+                'success': False,
+                'error': f'Erreur lors de l\'extraction des événements: {events_data["error"]}'
+            }), 500
+        
+        # Créer un résumé pour le front-end
+        summary = {
+            'users_count': events_data['summary'].get('users_count', 0),
+            'events_count': events_data['summary'].get('total_events', 0),
+            'event_types': events_data['summary'].get('events_by_type', {})
+        }
+        
+        return jsonify({
+            'success': True,
+            'events': events_data,
+            'summary': summary
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Erreur lors de l\'extraction des événements: {str(e)}'
+        }), 500
+
+@teamplanning_bp.route('/event-results')
+def event_results():
+    """Affiche les résultats de l'extraction d'événements"""
+    # Récupérer le dernier planning brut
+    latest_raw_planning = RawPlanning.query.order_by(RawPlanning.created_at.desc()).first()
+    
+    if not latest_raw_planning:
+        flash("Aucun planning n'a encore été récupéré.", "warning")
+        return redirect(url_for('teamplanning.index'))
+    
+    # Extraire tous les événements (tous les utilisateurs, toutes les lignes)
+    events_data = NetplanningExtractor.extract_planning_events(
+        latest_raw_planning.raw_content,
+        limit_to_first_user=False,
+        extract_first_line_only=False
+    )
+    
+    # Calculer quelques statistiques
+    events_count = 0
+    users = []
+    
+    for user, user_data in events_data['users'].items():
+        users.append(user)
+        for day, day_data in user_data.get('days', {}).items():
+            for time_slot, event in day_data.items():
+                if not event.get('is_empty', True) or event.get('is_weekend', False):
+                    events_count += 1
+    
+    # Obtenir le mois et l'année du planning
+    latest_parsed_planning = ParsedPlanning.query.filter_by(raw_planning_id=latest_raw_planning.id).first()
+    month = "Inconnu"
+    year = datetime.now().year
+    
+    if latest_parsed_planning:
+        month = latest_parsed_planning.month
+        year = latest_parsed_planning.year
+    
+    return render_template(
+        'teamplanning/event_results.html',
+        events=events_data['users'],
+        events_count=events_count,
+        users=users,
+        month=month,
+        year=year
+    )
 
 @teamplanning_bp.route('/monthly-view')
 def monthly_view():
@@ -271,3 +363,5 @@ def monthly_view():
         month_name=start_date.strftime('%B'),
         planning=latest_planning
     )
+
+

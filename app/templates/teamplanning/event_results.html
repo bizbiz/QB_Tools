@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+{% import "macros/ui_components.html" as ui %}
+
+{% block title %}QB Tools - Résultats d'extraction{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/teamplanning.css') }}">
+<style>
+    .event-card {
+        margin-bottom: 15px;
+        border-left: 5px solid #ccc;
+    }
+    
+    .event-card.telework {
+        border-left-color: #9ACD32; /* greenyellow */
+    }
+    
+    .event-card.meeting {
+        border-left-color: #800000; /* maroon */
+    }
+    
+    .event-card.rte {
+        border-left-color: #FF4500; /* orangered */
+    }
+    
+    .event-card.vacation {
+        border-left-color: #FF6347; /* tomato */
+    }
+    
+    .event-card.holiday {
+        border-left-color: #32CD32; /* limegreen */
+    }
+    
+    .event-card.weekend {
+        border-left-color: #A9A9A9; /* darkgray */
+        background-color: #f9f9f9;
+    }
+    
+    .event-card.duty {
+        border-left-color: #FFD700; /* gold */
+    }
+    
+    .event-card.morning_duty {
+        border-left-color: #FFA500; /* orange */
+    }
+    
+    .event-card.empty {
+        border-left-color: #FFFFFF; /* white */
+    }
+    
+    .event-badge {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+    }
+    
+    .event-date {
+        font-weight: bold;
+        font-size: 1.1rem;
+    }
+    
+    .event-time {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    
+    .event-comment {
+        font-style: italic;
+        margin-top: 5px;
+        color: #495057;
+    }
+    
+    .event-author {
+        font-size: 0.8rem;
+        color: #6c757d;
+        text-align: right;
+    }
+    
+    /* Filtres */
+    .filter-container {
+        margin-bottom: 20px;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+    }
+    
+    .filter-title {
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+    
+    .filter-group {
+        margin-bottom: 10px;
+    }
+    
+    .time-slot-morning {
+        background-color: #ffecb3;
+    }
+    
+    .time-slot-day {
+        background-color: #bbdefb;
+    }
+    
+    .time-slot-evening {
+        background-color: #d1c4e9;
+    }
+    
+    .slot-indicator {
+        display: inline-block;
+        width: 15px;
+        height: 15px;
+        border-radius: 3px;
+        margin-right: 5px;
+        vertical-align: middle;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('teamplanning.index') }}">Teamplanning</a></li>
+                    <li class="breadcrumb-item active">Résultats d'extraction</li>
+                </ol>
+            </nav>
+            
+            <h1>Événements extraits</h1>
+            <p class="lead">
+                {{ events_count }} événements trouvés pour {{ users|length }} utilisateurs
+                dans le planning de {{ month }} {{ year }}
+            </p>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Filtres -->
+        <div class="col-md-3">
+            <div class="filter-container shadow-sm">
+                <div class="filter-title">Filtres</div>
+                
+                <div class="filter-group">
+                    <label for="user-filter" class="form-label">Utilisateur</label>
+                    <select id="user-filter" class="form-select">
+                        <option value="all">Tous</option>
+                        {% for user in users %}
+                            <option value="{{ user }}">{{ user }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label class="form-label">Type d'événement</label>
+                    <div class="form-check">
+                        <input class="form-check-input event-type-filter" type="checkbox" value="telework" id="filter-telework" checked>
+                        <label class="form-check-label" for="filter-telework">Télétravail</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input event-type-filter" type="checkbox" value="meeting" id="filter-meeting" checked>
+                        <label class="form-check-label" for="filter-meeting">Réunion</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input event-type-filter" type="checkbox" value="rte" id="filter-rte" checked>
+                        <label class="form-check-label" for="filter-rte">RTE</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input event-type-filter" type="checkbox" value="vacation" id="filter-vacation" checked>
+                        <label class="form-check-label" for="filter-vacation">Congés</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input event-type-filter" type="checkbox" value="holiday" id="filter-holiday" checked>
+                        <label class="form-check-label" for="filter-holiday">Jour férié</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input event-type-filter" type="checkbox" value="weekend" id="filter-weekend" checked>
+                        <label class="form-check-label" for="filter-weekend">Week-end</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input event-type-filter" type="checkbox" value="duty" id="filter-duty" checked>
+                        <label class="form-check-label" for="filter-duty">Permanence</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input event-type-filter" type="checkbox" value="empty" id="filter-empty">
+                        <label class="form-check-label" for="filter-empty">Vide</label>
+                    </div>
+                </div>
+                
+                <div class="filter-group">
+                    <label class="form-label">Moment de la journée</label>
+                    <div class="form-check">
+                        <input class="form-check-input time-slot-filter" type="checkbox" value="morning" id="filter-morning" checked>
+                        <label class="form-check-label" for="filter-morning">
+                            <span class="slot-indicator time-slot-morning"></span>Matin
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input time-slot-filter" type="checkbox" value="day" id="filter-day" checked>
+                        <label class="form-check-label" for="filter-day">
+                            <span class="slot-indicator time-slot-day"></span>Journée
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input time-slot-filter" type="checkbox" value="evening" id="filter-evening" checked>
+                        <label class="form-check-label" for="filter-evening">
+                            <span class="slot-indicator time-slot-evening"></span>Soir
+                        </label>
+                    </div>
+                </div>
+                
+                <button id="reset-filters" class="btn btn-outline-secondary w-100 mt-3">
+                    <i class="fas fa-undo-alt me-2"></i>Réinitialiser les filtres
+                </button>
+            </div>
+        </div>
+        
+        <!-- Liste des événements -->
+        <div class="col-md-9">
+            <div id="events-list">
+                {% for user, user_data in events.items() %}
+                    <h3 class="mt-4 user-header" data-user="{{ user }}">{{ user }}</h3>
+                    
+                    {% for day, day_data in user_data.days.items() %}
+                        {% for time_slot, event in day_data.items() %}
+                            {% if not event.is_empty or event.is_weekend %}
+                                {% set day_date = get_date(year, month, day|int) %}
+                                {% set weekday = day_date.strftime('%A') %}
+                                {% set display_date = day_date.strftime('%d %B %Y') %}
+                                
+                                {% set event_type = event.type %}
+                                {% set time_slot_text = {
+                                    'morning': 'Matin',
+                                    'day': 'Journée',
+                                    'evening': 'Soir'
+                                } %}
+                                
+                                {% set type_text = {
+                                    'telework': 'Télétravail',
+                                    'meeting': 'Réunion',
+                                    'rte': 'RTE',
+                                    'vacation': 'Congés',
+                                    'duty': 'Permanence',
+                                    'morning_duty': 'Permanence matin',
+                                    'onsite': 'Garde sur site',
+                                    'leave': 'Congés posés',
+                                    'holiday': 'Jour férié',
+                                    'weekend': 'Week-end',
+                                    'empty': 'Vide'
+                                } %}
+                                
+                                <div class="card event-card {{ event_type }} shadow-sm" 
+                                     data-user="{{ user }}" 
+                                     data-day="{{ day }}" 
+                                     data-time-slot="{{ time_slot }}" 
+                                     data-event-type="{{ event_type }}">
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-8">
+                                                <span class="badge bg-primary mb-2 event-badge">{{ type_text.get(event_type, 'Inconnu') }}</span>
+                                                <div class="event-date">
+                                                    {{ weekday|capitalize }} {{ display_date }}
+                                                </div>
+                                                <div class="event-time">
+                                                    <span class="slot-indicator time-slot-{{ time_slot }}"></span>
+                                                    {{ time_slot_text.get(time_slot, time_slot) }}
+                                                </div>
+                                                {% if event.content %}
+                                                    <div class="mt-2">
+                                                        <strong>Contenu:</strong> {{ event.content }}
+                                                    </div>
+                                                {% endif %}
+                                                {% if event.comment %}
+                                                    <div class="event-comment">{{ event.comment }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-4">
+                                                {% if event.last_modified and event.author %}
+                                                    <div class="event-author">
+                                                        Modifié le {{ event.last_modified }} par {{ event.author }}
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% endfor %}
+                {% endfor %}
+                
+                {% if events_count == 0 %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Aucun événement n'a été trouvé. Essayez de modifier les filtres ou d'extraire à nouveau les données.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Filtrage des événements
+        const userFilter = document.getElementById('user-filter');
+        const eventTypeFilters = document.querySelectorAll('.event-type-filter');
+        const timeSlotFilters = document.querySelectorAll('.time-slot-filter');
+        const resetFiltersBtn = document.getElementById('reset-filters');
+        const eventCards = document.querySelectorAll('.event-card');
+        const userHeaders = document.querySelectorAll('.user-header');
+        
+        // Fonction pour filtrer les événements
+        function filterEvents() {
+            const selectedUser = userFilter.value;
+            const selectedEventTypes = Array.from(eventTypeFilters)
+                .filter(filter => filter.checked)
+                .map(filter => filter.value);
+            const selectedTimeSlots = Array.from(timeSlotFilters)
+                .filter(filter => filter.checked)
+                .map(filter => filter.value);
+            
+            // Filtrer les événements
+            eventCards.forEach(card => {
+                const cardUser = card.dataset.user;
+                const cardEventType = card.dataset.eventType;
+                const cardTimeSlot = card.dataset.timeSlot;
+                
+                const userMatch = selectedUser === 'all' || cardUser === selectedUser;
+                const eventTypeMatch = selectedEventTypes.includes(cardEventType);
+                const timeSlotMatch = selectedTimeSlots.includes(cardTimeSlot);
+                
+                if (userMatch && eventTypeMatch && timeSlotMatch) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+            
+            // Afficher/masquer les en-têtes d'utilisateurs
+            userHeaders.forEach(header => {
+                const headerUser = header.dataset.user;
+                
+                if (selectedUser === 'all' || headerUser === selectedUser) {
+                    header.style.display = '';
+                } else {
+                    header.style.display = 'none';
+                }
+            });
+        }
+        
+        // Initialiser les filtres
+        userFilter.addEventListener('change', filterEvents);
+        eventTypeFilters.forEach(filter => filter.addEventListener('change', filterEvents));
+        timeSlotFilters.forEach(filter => filter.addEventListener('change', filterEvents));
+        
+        // Réinitialiser les filtres
+        resetFiltersBtn.addEventListener('click', function() {
+            userFilter.value = 'all';
+            eventTypeFilters.forEach(filter => filter.checked = true);
+            timeSlotFilters.forEach(filter => filter.checked = true);
+            
+            // L'événement "vide" est désactivé par défaut
+            document.getElementById('filter-empty').checked = false;
+            
+            filterEvents();
+        });
+        
+        // Appliquer les filtres au chargement
+        filterEvents();
+    });
+</script>
+{% endblock %}

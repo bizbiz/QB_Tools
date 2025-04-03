@@ -53,9 +53,49 @@ def format_datetime(value, format='%d/%m/%Y'):
         return ""
     return value.strftime(format)
 
+def get_date(year, month, day):
+    """
+    Crée un objet date à partir de l'année, du mois et du jour
+    
+    Args:
+        year (int): Année
+        month (int|str): Mois (numéro ou nom)
+        day (int): Jour
+        
+    Returns:
+        datetime: Objet datetime correspondant à la date
+    """
+    from datetime import datetime
+    
+    # Si month est une chaîne, convertir en numéro
+    if isinstance(month, str):
+        month_names_fr = {
+            'janvier': 1, 'février': 2, 'mars': 3, 'avril': 4, 'mai': 5, 'juin': 6,
+            'juillet': 7, 'août': 8, 'septembre': 9, 'octobre': 10, 'novembre': 11, 'décembre': 12
+        }
+        month_lower = month.lower()
+        
+        # Chercher par nom complet
+        if month_lower in month_names_fr:
+            month_num = month_names_fr[month_lower]
+        else:
+            # Recherche partielle
+            for name, num in month_names_fr.items():
+                if name.startswith(month_lower):
+                    month_num = num
+                    break
+            else:
+                # Valeur par défaut si non trouvé
+                month_num = datetime.now().month
+    else:
+        month_num = month
+    
+    return datetime(year, month_num, day)
+
 def register_date_utilities(app):
     """Enregistre toutes les fonctions de date pour Jinja"""
     app.jinja_env.globals['calculate_time_ago'] = calculate_time_ago
+    app.jinja_env.globals['get_date'] = get_date
     
     @app.template_filter('datetimeformat')
     def datetimeformat(value, format='%d/%m/%Y'):

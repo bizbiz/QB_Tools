@@ -9,6 +9,117 @@ class NetplanningExtractor:
     """
     Classe utilitaire pour extraire des informations du HTML de Netplanning.
     """
+
+    @staticmethod
+    def extract_planning_events(html_content, limit_to_first_user=True, extract_first_line_only=True):
+        """
+        Extrait les événements du planning HTML
+        
+        Args:
+            html_content (str): Contenu HTML brut
+            limit_to_first_user (bool): Si True, extrait seulement pour le premier utilisateur
+            extract_first_line_only (bool): Si True, extrait seulement les événements du matin
+            
+        Returns:
+            dict: Informations sur les événements par utilisateur et par jour
+        """
+        soup = BeautifulSoup(html_content, 'html.parser')
+        
+        # Structure pour stocker les résultats
+        events_data = {
+            'users': {},  # Dictionnaire où les clés sont les noms d'utilisateurs
+            'period': {},  # Infos sur la période (mois, année)
+            'summary': {}  # Statistiques globales
+        }
+        
+        try:
+            # Trouver le premier tbody avec la classe "bress"
+            first_tbody = soup.find('tbody', class_='bress')
+            
+            if not first_tbody:
+                return events_data
+            
+            # Trouver toutes les lignes (tr) dans ce tbody
+            rows = first_tbody.find_all('tr')
+            
+            if not rows:
+                return events_data
+            
+            # Indice pour suivre quelle ligne du planning on traite (0=matin, 1=après-midi, 2=soir)
+            line_index = 0
+            current_user = None
+            
+            # Parcourir les lignes (matin seulement si extract_first_line_only=True)
+            for i, row in enumerate(rows):
+                # Si on a déjà traité une ligne et qu'on veut uniquement la première, passer à l'utilisateur suivant
+                if line_index > 0 and extract_first_line_only:
+                    line_index = 0
+                    continue
+                
+                # Trouver tous les td dans cette ligne
+                cells = row.find_all('td')
+                
+                # S'il n'y a pas assez de cellules, passer à la ligne suivante
+                if len(cells) < 3:  # Au moins le td vide, le td avec nom, et un td événement
+                    continue
+                
+                # Déterminer l'utilisateur associé à cette ligne
+                user_td = None
+                
+                # Si c'est la première ligne pour cet utilisateur
+                if line_index == 0:
+                    # Le 2e td contient le nom de l'utilisateur
+                    user_td = cells[1] if len(cells) > 1 else None
+                    
+                    if user_td and 'nom_ress' in user_td.get('class', []):
+                        # Extraire le nom de l'utilisateur
+                        user_name = NetplanningExtractor._extract_user_name(user_td)
+                        current_user = user_name
+                        
+                        # Initialiser les données pour cet utilisateur
+                        if user_name and user_name not in events_data['users']:
+                            events_data['users'][user_name] = {
+                                'days': {}  # Dictionnaire où les clés sont les numéros de jours
+                            }
+                
+                # Si on n'a pas pu déterminer l'utilisateur, passer à la ligne suivante
+                if not current_user:
+                    continue
+                
+                # Déterminer le créneau horaire (matin, journée, soir)
+                time_slot = ['morning', 'day', 'evening'][line_index]
+                
+                # Parcourir les cellules d'événements (à partir de la 3e cellule)
+                for j, event_td in enumerate(cells[2:], start=1):
+                    # Extraire le jour depuis la classe ou l'ID de la cellule
+                    day = NetplanningExtractor._extract_day_from_cell(event_td)
+                    
+                    if not day:
+                        continue
+                    
+                    # Extraire les informations de l'événement
+                    event_info = NetplanningExtractor._extract_event_info(event_td)
+                    
+                    # Ajouter les informations pour ce jour et ce créneau
+                    if day not in events_data['users'][current_user]['days']:
+                        events_data['users'][current_user]['days'][day] = {}
+                    
+                    events_data['users'][current_user]['days'][day][time_slot] = event_info
+                
+                # Incrémenter l'indice de ligne
+                line_index = (line_index + 1) % 3
+                
+                # Si on a traité un utilisateur complet et qu'on veut limiter au premier
+                if line_index == 0 and limit_to_first_user:
+                    break
+            
+            # Calculer des statistiques globales
+            events_data['summary'] = NetplanningExtractor._calculate_events_summary(events_data['users'])
+            
+        except Exception as e:
+            events_data['error'] = str(e)
+        
+        return events_data
     
     @staticmethod
     def extract_users(html_content):
@@ -279,7 +390,9 @@ class NetplanningExtractor:
                 
             # Correspondance entre les abréviations des jours et les numéros (0=lundi, 6=dimanche)
             weekday_map = {
-                'lun': 0, 'mar': 1, 'mer': 2, 'jeu': 3, 'ven': 4, 'sam': 5, 'dim': 6
+                'lun': 0, 'mar': 1, 'mer': 2, 'jeu': 3, 'ven': 4, 'sam': 5, 'dim': 6,
+                'lu': 0, 'ma': 1, 'me': 2, 'je': 3, 've': 4, 'sa': 5, 'di': 6,
+                'l': 0, 'm': 1, 'me': 2, 'j': 3, 'v': 4, 's': 5, 'd': 6
             }
             
             # Vérifier le premier jour du mois
