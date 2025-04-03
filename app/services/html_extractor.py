@@ -62,7 +62,25 @@ class NetplanningExtractor:
                     p_rouge_element = person_td.find('p', class_='rouge')
                     if p_rouge_element:
                         # Extraire le nom depuis le format <p class="rouge">&nbsp;<b>NOM</b>&nbsp;Prénom</p>
-                        full_name = p_rouge_element.get_text(strip=True)
+                        raw_text = p_rouge_element.get_text(strip=True)
+                        
+                        # Rechercher si le nom est dans un élément <b>
+                        b_element = p_rouge_element.find('b')
+                        if b_element:
+                            lastname = b_element.get_text(strip=True)
+                            # Extraire le prénom en supprimant le nom du texte complet
+                            firstname = raw_text.replace(lastname, '').strip()
+                            full_name = f"{lastname} {firstname}".strip()
+                        else:
+                            # Si pas d'élément <b>, essayer de séparer par les espaces
+                            parts = raw_text.split()
+                            if len(parts) >= 2:
+                                # Supposer que le premier élément est le nom et le reste est le prénom
+                                lastname = parts[0]
+                                firstname = ' '.join(parts[1:])
+                                full_name = f"{lastname} {firstname}"
+                            else:
+                                full_name = raw_text
                 
                 # Méthode 3: Dernier recours, juste prendre tout le texte de la cellule
                 if not full_name:

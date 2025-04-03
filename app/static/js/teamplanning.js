@@ -131,13 +131,13 @@ class UI {
         `;
     }
     
-/**
+    /**
      * Affiche un spinner de chargement
      * @param {HTMLElement} spinner - Élément spinner à afficher
      */
     static showSpinner(spinner) {
         if (spinner) {
-            spinner.classList.remove('d-none');
+            spinner.style.display = 'block';
         }
     }
     
@@ -147,7 +147,85 @@ class UI {
      */
     static hideSpinner(spinner) {
         if (spinner) {
-            spinner.classList.add('d-none');
+            spinner.style.display = 'none';
+        }
+    }
+    
+    /**
+     * Initialise et affiche le conteneur des étapes du processus
+     * @param {string} containerId - ID du conteneur des étapes
+     * @param {Array} steps - Tableau des étapes à afficher
+     */
+    static initProcessSteps(containerId, steps) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        
+        // Afficher le conteneur
+        container.style.display = 'block';
+        
+        // Récupérer la liste des étapes
+        const stepsList = container.querySelector('.steps-list');
+        if (!stepsList) return;
+        
+        // Vider la liste existante
+        stepsList.innerHTML = '';
+        
+        // Ajouter chaque étape
+        steps.forEach(step => {
+            const stepElement = document.createElement('div');
+            stepElement.id = `step-${step.id}`;
+            stepElement.className = 'process-step process-step-pending';
+            stepElement.innerHTML = `
+                <span class="step-name">${step.name}</span>
+                <div class="step-status">
+                    <span class="badge bg-secondary">En attente</span>
+                </div>
+            `;
+            stepsList.appendChild(stepElement);
+        });
+    }
+    
+    /**
+     * Met à jour le statut d'une étape du processus
+     * @param {string} stepId - ID de l'étape à mettre à jour
+     * @param {string} status - Statut ('pending', 'active', 'completed', 'error')
+     * @param {string} message - Message à afficher (optionnel)
+     */
+    static updateStepStatus(stepId, status, message = '') {
+        const stepElement = document.getElementById(`step-${stepId}`);
+        if (!stepElement) return;
+        
+        // Mettre à jour la classe CSS
+        stepElement.className = `process-step process-step-${status}`;
+        
+        // Mettre à jour le contenu selon le statut
+        const statusElement = stepElement.querySelector('.step-status');
+        if (!statusElement) return;
+        
+        switch (status) {
+            case 'pending':
+                statusElement.innerHTML = `<span class="badge bg-secondary">En attente</span>`;
+                break;
+            case 'active':
+                statusElement.innerHTML = `
+                    <span class="me-2">${message || 'En cours...'}</span>
+                    <div class="spinner-border spinner-border-sm step-spinner text-primary" role="status">
+                        <span class="visually-hidden">Chargement...</span>
+                    </div>
+                `;
+                break;
+            case 'completed':
+                statusElement.innerHTML = `
+                    <span class="me-2">${message || 'Terminé'}</span>
+                    <i class="fas fa-check-circle text-success step-icon"></i>
+                `;
+                break;
+            case 'error':
+                statusElement.innerHTML = `
+                    <span class="me-2">${message || 'Erreur'}</span>
+                    <i class="fas fa-times-circle text-danger step-icon"></i>
+                `;
+                break;
         }
     }
 }

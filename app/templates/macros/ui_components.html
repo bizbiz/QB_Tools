@@ -9,8 +9,15 @@
     </div>
 {% endmacro %}
 
+{% macro process_steps_container(id='process-steps') %}
+    <div id="{{ id }}" class="process-steps-container my-3" style="display: none;">
+        <h5 class="mb-3">Progression du traitement</h5>
+        <div class="steps-list"></div>
+    </div>
+{% endmacro %}
+
 {% macro loading_spinner(id='loading-spinner', text='Chargement...') %}
-    <div id="{{ id }}" class="d-none">
+    <div id="{{ id }}" style="display: none; text-align: center; margin: 20px 0;">
         <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">{{ text }}</span>
         </div>

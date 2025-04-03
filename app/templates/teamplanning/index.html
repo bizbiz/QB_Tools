@@ -30,8 +30,10 @@
                 </div>
                 
                 {{ ui.loading_spinner(id='loading-spinner', text='Récupération des données en cours...') }}
+
+                {{ ui.process_steps_container(id='process-steps') }}
                 
-                <div id="status-message"></div>
+                <div id="process-status-message"></div>
                 
                 <div id="netplanning-content" class="d-none">
                     <h4 class="mb-3">Contenu brut récupéré:</h4>
