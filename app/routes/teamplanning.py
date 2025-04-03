@@ -3,7 +3,9 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from app.extensions import db
 import requests
 from app.services.planning_parser import PlanningParser
+from app.services.html_extractor import NetplanningExtractor
 from app.models.planning import RawPlanning, ParsedPlanning, PlanningEntry
+from app.utils.date_helpers import calculate_time_ago
 from datetime import datetime, timedelta
 
 teamplanning_bp = Blueprint('teamplanning', __name__, url_prefix='/teamplanning')
@@ -94,6 +96,34 @@ def fetch_netplanning():
             
     except requests.exceptions.RequestException as e:
         return jsonify({'success': False, 'error': f'Erreur de connexion: {str(e)}'}), 500
+
+@teamplanning_bp.route('/extract-users', methods=['POST'])
+def extract_users():
+    """Extrait les noms des utilisateurs à partir du dernier planning brut"""
+    # Récupérer le dernier planning brut
+    latest_raw_planning = RawPlanning.query.order_by(RawPlanning.created_at.desc()).first()
+    
+    if not latest_raw_planning:
+        return jsonify({
+            'success': False,
+            'error': 'Aucun planning n\'a été récupéré. Veuillez d\'abord récupérer des données Netplanning.'
+        }), 404
+    
+    try:
+        # Utiliser notre service d'extraction HTML
+        users = NetplanningExtractor.extract_users(latest_raw_planning.raw_content)
+        
+        return jsonify({
+            'success': True,
+            'users': users,
+            'count': len(users)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Erreur lors de l\'extraction des utilisateurs: {str(e)}'
+        }), 500
 
 @teamplanning_bp.route('/view-planning/<int:parsed_planning_id>')
 def view_planning(parsed_planning_id):

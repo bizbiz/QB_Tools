@@ -1,0 +1,125 @@
+{# app/templates/macros/ui_components.html #}
+
+{% macro display_status_message(message, type='info', dismissible=True) %}
+    <div class="alert alert-{{ type }} {% if dismissible %}alert-dismissible fade show{% endif %}" role="alert">
+        {{ message|safe }}
+        {% if dismissible %}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        {% endif %}
+    </div>
+{% endmacro %}
+
+{% macro loading_spinner(id='loading-spinner', text='Chargement...') %}
+    <div id="{{ id }}" class="d-none">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">{{ text }}</span>
+        </div>
+        <p class="mt-2">{{ text }}</p>
+    </div>
+{% endmacro %}
+
+{% macro breadcrumb(items) %}
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            {% for item in items %}
+                {% if loop.last %}
+                    <li class="breadcrumb-item active">{{ item.text }}</li>
+                {% else %}
+                    <li class="breadcrumb-item"><a href="{{ item.url }}">{{ item.text }}</a></li>
+                {% endif %}
+            {% endfor %}
+        </ol>
+    </nav>
+{% endmacro %}
+
+{% macro card(title, content, extra_classes='', header_content=None, footer_content=None) %}
+    <div class="card shadow-sm {{ extra_classes }}">
+        {% if title or header_content %}
+            <div class="card-header">
+                {% if title %}
+                    <h3 class="card-title">{{ title }}</h3>
+                {% endif %}
+                {% if header_content %}
+                    {{ header_content|safe }}
+                {% endif %}
+            </div>
+        {% endif %}
+        
+        <div class="card-body">
+            {{ content|safe }}
+        </div>
+        
+        {% if footer_content %}
+            <div class="card-footer">
+                {{ footer_content|safe }}
+            </div>
+        {% endif %}
+    </div>
+{% endmacro %}
+
+{% macro legend_item(color_class, text) %}
+    <div class="legend-item">
+        <div class="legend-color {{ color_class }}"></div>
+        <span>{{ text }}</span>
+    </div>
+{% endmacro %}
+
+{% macro planning_legend() %}
+    <div class="legend">
+        {{ legend_item('shift-morning', 'Matin') }}
+        {{ legend_item('shift-day', 'Journée') }}
+        {{ legend_item('shift-evening', 'Soir') }}
+        {{ legend_item('', 'Weekend') }}
+        
+        {# Style inline pour les items qui n'ont pas de classe CSS spécifique #}
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: rgba(0, 0, 0, 0.05);"></div>
+            <span>Weekend</span>
+        </div>
+        
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #e8f5e9;"></div>
+            <span>Aujourd'hui</span>
+        </div>
+    </div>
+{% endmacro %}
+
+{% macro button(text, icon=None, type='button', btn_class='btn-primary', extra_classes='', id=None, attrs='') %}
+    <button 
+        type="{{ type }}" 
+        class="btn {{ btn_class }} {{ extra_classes }}" 
+        {% if id %}id="{{ id }}"{% endif %}
+        {{ attrs|safe }}
+    >
+        {% if icon %}
+            <i class="{{ icon }} me-2"></i>
+        {% endif %}
+        {{ text }}
+    </button>
+{% endmacro %}
+
+{% macro link_button(url, text, icon=None, btn_class='btn-primary', extra_classes='', new_tab=False, id=None, attrs='') %}
+    <a 
+        href="{{ url }}" 
+        class="btn {{ btn_class }} {{ extra_classes }}" 
+        {% if new_tab %}target="_blank" rel="noopener"{% endif %}
+        {% if id %}id="{{ id }}"{% endif %}
+        {{ attrs|safe }}
+    >
+        {% if icon %}
+            <i class="{{ icon }} me-2"></i>
+        {% endif %}
+        {{ text }}
+    </a>
+{% endmacro %}
+
+{% macro last_update_info(timestamp) %}
+    {% if timestamp %}
+        <p class="text-muted">
+            Dernière mise à jour : {{ timestamp|datetimeformat('%d/%m/%Y à %H:%M') }}
+            <span class="time-ago">({{ calculate_time_ago(timestamp) }})</span>
+        </p>
+    {% else %}
+        <p class="text-muted">Aucune mise à jour récente</p>
+    {% endif %}
+{% endmacro %}

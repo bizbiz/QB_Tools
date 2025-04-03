@@ -1,0 +1,234 @@
+/* app/static/css/teamplanning.css */
+
+/* Styles pour la page principale du teamplanning */
+#netplanning-content {
+    max-height: 500px;
+    overflow-y: auto;
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+    margin-top: 20px;
+    border: 1px solid #dee2e6;
+}
+
+.cookie-modal {
+    display: none;
+    position: fixed;
+    z-index: 1050;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+}
+
+.cookie-modal-content {
+    background-color: #fefefe;
+    margin: 10% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 50%;
+    border-radius: 5px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+#loading-spinner, #process-spinner {
+    display: none;
+    text-align: center;
+    margin: 20px 0;
+}
+
+#users-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.time-ago {
+    font-style: italic;
+    color: #6c757d;
+}
+
+/* Styles pour la vue du planning */
+.planning-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.planning-table th, .planning-table td {
+    border: 1px solid #dee2e6;
+    padding: a8px;
+    text-align: center;
+}
+
+.planning-table th {
+    background-color: #f8f9fa;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.planning-table tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+.person-name {
+    position: sticky;
+    left: 0;
+    background-color: #f8f9fa;
+    z-index: 5;
+    font-weight: bold;
+    text-align: left !important;
+    min-width: 150px;
+}
+
+.header-person {
+    position: sticky;
+    left: 0;
+    top: 0;
+    z-index: 15;
+    background-color: #e9ecef;
+}
+
+.shift-cell {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 2px;
+}
+
+.shift-morning, .shift-day, .shift-evening {
+    padding: 2px 5px;
+    margin: 1px 0;
+    border-radius: 3px;
+}
+
+.shift-morning {
+    background-color: #ffecb3;
+}
+
+.shift-day {
+    background-color: #bbdefb;
+}
+
+.shift-evening {
+    background-color: #d1c4e9;
+}
+
+.planning-container {
+    overflow-x: auto;
+    max-height: 70vh;
+    position: relative;
+}
+
+.legend {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+}
+
+.legend-color {
+    width: 20px;
+    height: 20px;
+    margin-right: 5px;
+    border-radius: 3px;
+}
+
+.weekend {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Styles pour la vue mensuelle */
+.calendar-container {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.calendar {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.calendar th, .calendar td {
+    border: 1px solid #dee2e6;
+    padding: 5px;
+    text-align: center;
+    height: 100px;
+    width: 14.28%;
+}
+
+.calendar th {
+    background-color: #f8f9fa;
+    height: auto;
+    padding: 10px;
+}
+
+.day-header {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.day-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.person-entry {
+    margin: 2px 0;
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.today {
+    background-color: #e8f5e9;
+}
+
+.month-nav {
+    margin-bottom: 20px;
+}
+
+.person-modal-content {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+/* Media queries */
+@media (max-width: 768px) {
+    .calendar th, .calendar td {
+        padding: 2px;
+        height: 80px;
+        font-size: 0.8rem;
+    }
+    
+    .person-entry {
+        font-size: 0.7rem;
+        padding: 1px 3px;
+    }
+    
+    .cookie-modal-content {
+        width: 90%;
+    }
+}
+
+@media print {
+    .planning-container {
+        max-height: none;
+        overflow: visible;
+    }
+    
+    .planning-table th, .planning-table td {
+        border: 1px solid #000;
+    }
+}
