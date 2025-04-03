@@ -35,20 +35,16 @@ class EventExtractor(ExtractorBase):
         }
         
         try:
-            # Nous prenons tous les tbody sauf le premier (qui contient les en-têtes)
+            # Trouver tous les tbody avec la classe "bress"
             table, _, tbodies = cls.find_table_and_sections(soup)
             if not table or not tbodies:
                 return events_data
-                            
+                
+            # Nous ne cherchons plus spécifiquement la classe "bress" car elle peut ne pas être présente
+            # Nous prenons tous les tbody sauf le premier (qui contient les en-têtes)
             user_tbodies = tbodies[1:] if tbodies else []
             
             if not user_tbodies:
-                return events_data
-                
-            # Filtrer pour garder uniquement les tbodies avec la classe "bress"
-            bress_tbodies = [tbody for tbody in tbodies if 'bress' in tbody.get('class', [])]
-            
-            if not bress_tbodies:
                 return events_data
             
             for tbody_index, tbody in enumerate(user_tbodies):
