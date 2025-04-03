@@ -2,6 +2,48 @@
 
 {% block title %}QB Tools - Teamplanning v2{% endblock %}
 
+{% block extra_css %}
+<style>
+    #netplanning-content {
+        max-height: 500px;
+        overflow-y: auto;
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 20px;
+        border: 1px solid #dee2e6;
+    }
+    
+    .cookie-modal {
+        display: none;
+        position: fixed;
+        z-index: 1050;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.4);
+    }
+    
+    .cookie-modal-content {
+        background-color: #fefefe;
+        margin: 10% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 50%;
+        border-radius: 5px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    #loading-spinner {
+        display: none;
+        text-align: center;
+        margin: 20px 0;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container py-5">
     <div class="row mb-4">
@@ -13,22 +55,220 @@
     
     <div class="row">
         <div class="col-md-12">
-            <div class="card shadow-sm">
+            <div class="card shadow-sm mb-4">
                 <div class="card-body">
-                    <h2 class="card-title">Bienvenue dans Teamplanning v2</h2>
+                    <h2 class="card-title">Récupération des données Netplanning</h2>
                     <p class="card-text">
-                        Cette page servira de point d'entrée pour le module de planification d'équipe.
-                        Ici vous pourrez gérer les horaires, les absences et la disponibilité de votre équipe.
+                        Cette fonctionnalité vous permet de récupérer les données de votre planning depuis Netplanning.
                     </p>
                     
-                    <!-- Contenu à compléter selon les besoins spécifiques -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <button id="fetch-netplanning" class="btn btn-primary">
+                            <i class="fas fa-sync-alt me-2"></i>Récupérer les données Netplanning
+                        </button>
+                        
+                        <button id="manage-cookie" class="btn btn-outline-secondary">
+                            <i class="fas fa-cookie-bite me-2"></i>Gérer mon cookie
+                        </button>
+                    </div>
+                    
+                    <div id="loading-spinner">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Chargement...</span>
+                        </div>
+                        <p class="mt-2">Récupération des données en cours...</p>
+                    </div>
+                    
+                    <div id="status-message"></div>
+                    
+                    <div id="netplanning-content" class="d-none">
+                        <h4 class="mb-3">Contenu brut récupéré:</h4>
+                        <pre id="raw-content" class="p-3 bg-light"></pre>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Informations supplémentaires -->
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h3 class="card-title">Fonctionnement</h3>
+                    <p class="card-text">
+                        Pour récupérer vos données de planning, vous devez être connecté à Netplanning. 
+                        Votre cookie d'authentification est stocké localement sur votre navigateur et 
+                        n'est jamais envoyé à notre serveur pour préserver votre confidentialité.
+                    </p>
+                    
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
-                        Module en cours de développement. Plus de fonctionnalités seront disponibles prochainement.
+                        Si vous rencontrez des problèmes de connexion, vous devrez peut-être mettre à jour 
+                        votre cookie d'authentification en utilisant le bouton "Gérer mon cookie".
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Modal pour le cookie -->
+<div id="cookie-modal" class="cookie-modal">
+    <div class="cookie-modal-content">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4>Gestion du cookie d'authentification</h4>
+            <button type="button" class="btn-close" id="close-modal"></button>
+        </div>
+        
+        <p>Pour vous connecter à Netplanning, vous devez fournir votre cookie d'authentification.</p>
+        <p>Pour l'obtenir:</p>
+        <ol>
+            <li>Connectez-vous à <a href="https://www.netplanning.fr/" target="_blank">Netplanning</a></li>
+            <li>Ouvrez les outils de développement (F12 ou clic droit > Inspecter)</li>
+            <li>Allez à l'onglet "Application" puis "Cookies"</li>
+            <li>Recherchez et copiez la valeur du cookie nommé "PHPSESSID" ou similaire</li>
+        </ol>
+        
+        <div class="form-group mb-3">
+            <label for="cookie-value" class="form-label">Votre cookie d'authentification:</label>
+            <input type="text" class="form-control" id="cookie-value" placeholder="Coller votre cookie ici">
+        </div>
+        
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+            <button type="button" class="btn btn-secondary" id="cancel-cookie">Annuler</button>
+            <button type="button" class="btn btn-primary" id="save-cookie">Sauvegarder</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const fetchButton = document.getElementById('fetch-netplanning');
+        const manageCookieButton = document.getElementById('manage-cookie');
+        const cookieModal = document.getElementById('cookie-modal');
+        const closeModal = document.getElementById('close-modal');
+        const cancelCookie = document.getElementById('cancel-cookie');
+        const saveCookie = document.getElementById('save-cookie');
+        const cookieInput = document.getElementById('cookie-value');
+        const statusMessage = document.getElementById('status-message');
+        const netplanningContent = document.getElementById('netplanning-content');
+        const rawContent = document.getElementById('raw-content');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        
+        // Cookie management
+        const COOKIE_NAME = 'netplanning_auth';
+        
+        function getCookie() {
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                const [name, value] = cookie.trim().split('=');
+                if (name === COOKIE_NAME) {
+                    return decodeURIComponent(value);
+                }
+            }
+            return null;
+        }
+        
+        function setCookie(value) {
+            // Set cookie with a very long expiration (1 year)
+            const expiryDate = new Date();
+            expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+            document.cookie = `${COOKIE_NAME}=${encodeURIComponent(value)};expires=${expiryDate.toUTCString()};path=/;SameSite=Strict`;
+        }
+        
+        // Modal functions
+        function showModal() {
+            const currentCookie = getCookie();
+            if (currentCookie) {
+                cookieInput.value = currentCookie;
+            }
+            cookieModal.style.display = 'block';
+        }
+        
+        function hideModal() {
+            cookieModal.style.display = 'none';
+        }
+        
+        // Event listeners for modal
+        manageCookieButton.addEventListener('click', showModal);
+        closeModal.addEventListener('click', hideModal);
+        cancelCookie.addEventListener('click', hideModal);
+        
+        saveCookie.addEventListener('click', function() {
+            const cookieValue = cookieInput.value.trim();
+            if (cookieValue) {
+                setCookie(cookieValue);
+                hideModal();
+                showStatusMessage('success', 'Cookie sauvegardé avec succès.');
+            } else {
+                showStatusMessage('error', 'Veuillez entrer un cookie valide.');
+            }
+        });
+        
+        // Status message function
+        function showStatusMessage(type, message) {
+            statusMessage.innerHTML = `
+                <div class="alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show mt-3" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+        }
+        
+        // Fetch Netplanning data
+        fetchButton.addEventListener('click', async function() {
+            const cookieValue = getCookie();
+            
+            if (!cookieValue) {
+                showStatusMessage('error', 'Cookie d\'authentification non trouvé. Veuillez configurer votre cookie.');
+                showModal();
+                return;
+            }
+            
+            // Show loading spinner
+            loadingSpinner.style.display = 'block';
+            netplanningContent.classList.add('d-none');
+            
+            try {
+                const response = await fetch('/teamplanning/fetch-netplanning', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ cookie: cookieValue })
+                });
+                
+                const data = await response.json();
+                
+                // Hide loading spinner
+                loadingSpinner.style.display = 'none';
+                
+                if (data.success) {
+                    // Check if the content seems to be a login page
+                    if (data.content.includes('connexion') && data.content.includes('mot de passe')) {
+                        showStatusMessage('error', 'Le cookie semble être expiré. Veuillez mettre à jour votre cookie.');
+                        showModal();
+                    } else {
+                        // Show the content
+                        rawContent.textContent = data.content.substring(0, 5000) + '...'; // Limiter l'affichage
+                        netplanningContent.classList.remove('d-none');
+                        
+                        if (data.parsed) {
+                            showStatusMessage('success', `Données récupérées et analysées avec succès! <a href="${window.location.pathname}view-planning/${data.parsed_planning_id}" class="alert-link">Voir le planning</a>`);
+                        } else if (data.is_new) {
+                            showStatusMessage('success', 'Nouvelles données récupérées avec succès!');
+                        } else {
+                            showStatusMessage('success', 'Données récupérées avec succès (aucun changement détecté).');
+                        }
+                    }
+                } else {
+                    showStatusMessage('error', data.error || 'Erreur lors de la récupération des données.');
+                }
+            } catch (error) {
+                loadingSpinner.style.display = 'none';
+                showStatusMessage('error', 'Erreur de connexion au serveur.');
+                console.error('Fetch error:', error);
+            }
+        });
+    });
+</script>
 {% endblock %}

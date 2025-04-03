@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+
+{% block title %}QB Tools - Visualisation du Planning{% endblock %}
+
+{% block extra_css %}
+<style>
+    .planning-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .planning-table th, .planning-table td {
+        border: 1px solid #dee2e6;
+        padding: 8px;
+        text-align: center;
+    }
+    
+    .planning-table th {
+        background-color: #f8f9fa;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    
+    .planning-table tr:nth-child(even) {
+        background-color: #f2f2f2;
+    }
+    
+    .person-name {
+        position: sticky;
+        left: 0;
+        background-color: #f8f9fa;
+        z-index: 5;
+        font-weight: bold;
+        text-align: left !important;
+        min-width: 150px;
+    }
+    
+    .header-person {
+        position: sticky;
+        left: 0;
+        top: 0;
+        z-index: 15;
+        background-color: #e9ecef;
+    }
+    
+    .shift-cell {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        padding: 2px;
+    }
+    
+    .shift-morning, .shift-day, .shift-evening {
+        padding: 2px 5px;
+        margin: 1px 0;
+        border-radius: 3px;
+    }
+    
+    .shift-morning {
+        background-color: #ffecb3;
+    }
+    
+    .shift-day {
+        background-color: #bbdefb;
+    }
+    
+    .shift-evening {
+        background-color: #d1c4e9;
+    }
+    
+    .planning-container {
+        overflow-x: auto;
+        max-height: 70vh;
+        position: relative;
+    }
+    
+    .legend {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+    }
+    
+    .legend-color {
+        width: 20px;
+        height: 20px;
+        margin-right: 5px;
+        border-radius: 3px;
+    }
+    
+    .weekend {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+    
+    @media print {
+        .planning-container {
+            max-height: none;
+            overflow: visible;
+        }
+        
+        .planning-table th, .planning-table td {
+            border: 1px solid #000;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('teamplanning.index') }}">Teamplanning</a></li>
+                    <li class="breadcrumb-item active">Visualisation du Planning</li>
+                </ol>
+            </nav>
+            
+            <h1>Planning - {{ planning.month }} {{ planning.year }}</h1>
+            <p class="text-muted">Dernière mise à jour : {{ planning.created_at|datetimeformat('%d/%m/%Y à %H:%M') }}</p>
+        </div>
+    </div>
+    
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color shift-morning"></div>
+                    <span>Matin</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color shift-day"></div>
+                    <span>Journée</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color shift-evening"></div>
+                    <span>Soir</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: rgba(0, 0, 0, 0.05);"></div>
+                    <span>Weekend</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 text-end">
+            <button class="btn btn-outline-primary me-2" onclick="window.print()">
+                <i class="fas fa-print me-2"></i>Imprimer
+            </button>
+            <a href="{{ url_for('teamplanning.monthly_view') }}" class="btn btn-primary">
+                <i class="fas fa-calendar-alt me-2"></i>Vue Mensuelle
+            </a>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="planning-container">
+                        <table class="planning-table">
+                            <thead>
+                                <tr>
+                                    <th class="header-person">Nom</th>
+                                    {% for day in planning_data.days %}
+                                        {% set day_date = day | string %}
+                                        {% set is_weekend = day % 7 in [0, 6] %}
+                                        {% if is_weekend %}
+                                            <th class="weekend">{{ day }}</th>
+                                        {% else %}
+                                            <th>{{ day }}</th>
+                                        {% endif %}
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for person in planning_data.people %}
+                                    <tr>
+                                        <td class="person-name">{{ person }}</td>
+                                        {% for day in planning_data.days %}
+                                            {% set day_data = planning_data.entries.get(person, {}).get(day|string, {}) %}
+                                            {% set is_weekend = day % 7 in [0, 6] %}
+                                            
+                                            {% if is_weekend %}
+                                                <td class="weekend">
+                                            {% else %}
+                                                <td>
+                                            {% endif %}
+                                                <div class="shift-cell">
+                                                    {% if day_data.morning %}
+                                                        <div class="shift-morning">{{ day_data.morning }}</div>
+                                                    {% endif %}
+                                                    
+                                                    {% if day_data.day %}
+                                                        <div class="shift-day">{{ day_data.day }}</div>
+                                                    {% endif %}
+                                                    
+                                                    {% if day_data.evening %}
+                                                        <div class="shift-evening">{{ day_data.evening }}</div>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                        {% endfor %}
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Script pour améliorer la navigation dans le tableau
+        const personNameCells = document.querySelectorAll('.person-name');
+        
+        personNameCells.forEach(cell => {
+            cell.addEventListener('mouseover', function() {
+                const rowIndex = this.parentElement.rowIndex;
+                const rows = document.querySelectorAll('.planning-table tr');
+                rows[rowIndex].classList.add('highlight-row');
+            });
+            
+            cell.addEventListener('mouseout', function() {
+                const rowIndex = this.parentElement.rowIndex;
+                const rows = document.querySelectorAll('.planning-table tr');
+                rows[rowIndex].classList.remove('highlight-row');
+            });
+        });
+        
+        // Fonctionnalité pour filtrer les personnes
+        const searchInput = document.getElementById('person-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                const rows = document.querySelectorAll('.planning-table tbody tr');
+                
+                rows.forEach(row => {
+                    const personName = row.querySelector('.person-name').textContent.toLowerCase();
+                    if (personName.includes(searchTerm)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}
+
+{% endblock %}

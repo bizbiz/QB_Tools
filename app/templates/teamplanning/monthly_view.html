@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+
+{% block title %}QB Tools - Planning Mensuel{% endblock %}
+
+{% block extra_css %}
+<style>
+    .calendar-container {
+        max-width: 100%;
+        overflow-x: auto;
+    }
+    
+    .calendar {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .calendar th, .calendar td {
+        border: 1px solid #dee2e6;
+        padding: 5px;
+        text-align: center;
+        height: 100px;
+        width: 14.28%;
+    }
+    
+    .calendar th {
+        background-color: #f8f9fa;
+        height: auto;
+        padding: 10px;
+    }
+    
+    .day-header {
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    
+    .day-content {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+    }
+    
+    .person-entry {
+        margin: 2px 0;
+        padding: 2px 5px;
+        border-radius: 3px;
+        font-size: 0.8rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .weekend {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+    
+    .today {
+        background-color: #e8f5e9;
+    }
+    
+    .shift-morning {
+        background-color: #ffecb3;
+    }
+    
+    .shift-day {
+        background-color: #bbdefb;
+    }
+    
+    .shift-evening {
+        background-color: #d1c4e9;
+    }
+    
+    .month-nav {
+        margin-bottom: 20px;
+    }
+    
+    .person-modal-content {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+    
+    .legend {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+    }
+    
+    .legend-color {
+        width: 20px;
+        height: 20px;
+        margin-right: 5px;
+        border-radius: 3px;
+    }
+    
+    @media (max-width: 768px) {
+        .calendar th, .calendar td {
+            padding: 2px;
+            height: 80px;
+            font-size: 0.8rem;
+        }
+        
+        .person-entry {
+            font-size: 0.7rem;
+            padding: 1px 3px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('teamplanning.index') }}">Teamplanning</a></li>
+                    <li class="breadcrumb-item active">Planning Mensuel</li>
+                </ol>
+            </nav>
+            
+            <h1>Planning Mensuel - {{ month_name }} {{ year }}</h1>
+            <p class="text-muted">Vue d'ensemble des horaires de l'équipe</p>
+        </div>
+    </div>
+    
+    <div class="row mb-3">
+        <div class="col-md-8">
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color shift-morning"></div>
+                    <span>Matin</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color shift-day"></div>
+                    <span>Journée</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color shift-evening"></div>
+                    <span>Soir</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: rgba(0, 0, 0, 0.05);"></div>
+                    <span>Weekend</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #e8f5e9;"></div>
+                    <span>Aujourd'hui</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 text-end">
+            <div class="month-nav">
+                {% set prev_month = month - 1 if month > 1 else 12 %}
+                {% set prev_year = year if month > 1 else year - 1 %}
+                {% set next_month = month + 1 if month < 12 else 1 %}
+                {% set next_year = year if month < 12 else year + 1 %}
+                
+                <a href="{{ url_for('teamplanning.monthly_view', month=prev_month, year=prev_year) }}" class="btn btn-outline-primary">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+                
+                <a href="{{ url_for('teamplanning.monthly_view') }}" class="btn btn-outline-primary mx-2">
+                    Aujourd'hui
+                </a>
+                
+                <a href="{{ url_for('teamplanning.monthly_view', month=next_month, year=next_year) }}" class="btn btn-outline-primary">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+                
+                <a href="{{ url_for('teamplanning.view_planning', parsed_planning_id=planning.id) }}" class="btn btn-primary ms-2">
+                    <i class="fas fa-table me-1"></i> Vue Détaillée
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="calendar-container">
+                        <table class="calendar">
+                            <thead>
+                                <tr>
+                                    <th>Lundi</th>
+                                    <th>Mardi</th>
+                                    <th>Mercredi</th>
+                                    <th>Jeudi</th>
+                                    <th>Vendredi</th>
+                                    <th class="weekend">Samedi</th>
+                                    <th class="weekend">Dimanche</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set today = now().day if now().month == month and now().year == year else 0 %}
+                                {% set first_day_weekday = datetime(year, month, 1).weekday() %}
+                                {% set days_in_month = days|length %}
+                                
+                                {% set day_counter = 0 %}
+                                
+                                {% for week_idx in range((days_in_month + first_day_weekday + 6) // 7) %}
+                                    <tr>
+                                        {% for weekday in range(7) %}
+                                            {% set current_day = day_counter - first_day_weekday + 1 %}
+                                            
+                                            {% if current_day > 0 and current_day <= days_in_month %}
+                                                {% set is_weekend = weekday >= 5 %}
+                                                {% set is_today = current_day == today %}
+                                                
+                                                {% if is_today %}
+                                                    <td class="today">
+                                                {% elif is_weekend %}
+                                                    <td class="weekend">
+                                                {% else %}
+                                                    <td>
+                                                {% endif %}
+                                                    <div class="day-header">{{ current_day }}</div>
+                                                    <div class="day-content">
+                                                        {% for person_name, days_data in people.items() %}
+                                                            {% if current_day in days_data %}
+                                                                {% set shifts = days_data[current_day] %}
+                                                                
+                                                                {% if shifts.morning %}
+                                                                    <div class="person-entry shift-morning" title="{{ person_name }} - Matin: {{ shifts.morning }}">
+                                                                        {{ person_name }} (M)
+                                                                    </div>
+                                                                {% endif %}
+                                                                
+                                                                {% if shifts.day %}
+                                                                    <div class="person-entry shift-day" title="{{ person_name }} - Jour: {{ shifts.day }}">
+                                                                        {{ person_name }} (J)
+                                                                    </div>
+                                                                {% endif %}
+                                                                
+                                                                {% if shifts.evening %}
+                                                                    <div class="person-entry shift-evening" title="{{ person_name }} - Soir: {{ shifts.evening }}">
+                                                                        {{ person_name }} (S)
+                                                                    </div>
+                                                                {% endif %}
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </div>
+                                                </td>
+                                            {% else %}
+                                                <td></td>
+                                            {% endif %}
+                                            
+                                            {% set day_counter = day_counter + 1 %}
+                                        {% endfor %}
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal pour voir les détails d'une journée -->
+<div class="modal fade" id="dayDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Détails du <span id="modal-date"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body person-modal-content" id="modal-content">
+                <!-- Contenu dynamique -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Fonction pour obtenir la date actuelle
+        function now() {
+            return new Date();
+        }
+        
+        // Ajouter des événements de clic pour les entrées de personne
+        const personEntries = document.querySelectorAll('.person-entry');
+        personEntries.forEach(entry => {
+            entry.addEventListener('click', function() {
+                const title = this.getAttribute('title');
+                const dayHeader = this.closest('td').querySelector('.day-header').textContent;
+                
+                const modalTitle = document.getElementById('modal-date');
+                modalTitle.textContent = `${dayHeader} {{ month_name }} {{ year }}`;
+                
+                const modalContent = document.getElementById('modal-content');
+                modalContent.innerHTML = `<p>${title}</p>`;
+                
+                // Afficher la modale
+                const modal = new bootstrap.Modal(document.getElementById('dayDetailsModal'));
+                modal.show();
+            });
+        });
+    });
+</script>
+{% endblock %}

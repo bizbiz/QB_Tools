@@ -2,13 +2,19 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from app.extensions import db
 import requests
+from app.services.planning_parser import PlanningParser
+from app.models.planning import RawPlanning, ParsedPlanning, PlanningEntry
+from datetime import datetime, timedelta
 
 teamplanning_bp = Blueprint('teamplanning', __name__, url_prefix='/teamplanning')
 
 @teamplanning_bp.route('/')
 def index():
     """Page principale du module Teamplanning"""
-    return render_template('teamplanning/index.html')
+    # Récupérer le dernier planning analysé s'il existe
+    latest_planning = ParsedPlanning.query.order_by(ParsedPlanning.created_at.desc()).first()
+    
+    return render_template('teamplanning/index.html', latest_planning=latest_planning)
 
 @teamplanning_bp.route('/fetch-netplanning', methods=['POST'])
 def fetch_netplanning():
@@ -43,10 +49,43 @@ def fetch_netplanning():
         
         # Vérifier si la requête a réussi
         if response.status_code == 200:
-            return jsonify({
+            content = response.text
+            
+            # Vérifier si c'est la page de login
+            if 'connexion' in content.lower() and 'mot de passe' in content.lower():
+                return jsonify({
+                    'success': False,
+                    'error': 'Session expirée - connexion requise',
+                    'requires_login': True
+                })
+            
+            # Stocker le contenu dans la base de données s'il a changé
+            raw_planning, is_new = PlanningParser.save_raw_content(content)
+            
+            result = {
                 'success': True,
-                'content': response.text
-            })
+                'content': content,  # Toujours renvoyer le contenu brut pour l'affichage
+                'is_new': is_new,
+                'raw_planning_id': raw_planning.id
+            }
+            
+            # Si c'est un nouveau contenu, l'analyser
+            if is_new:
+                try:
+                    parsed_planning = PlanningParser.parse_planning(raw_planning.id)
+                    result['parsed'] = True
+                    result['parsed_planning_id'] = parsed_planning.id
+                except Exception as e:
+                    # En cas d'erreur d'analyse, on continue quand même
+                    result['parsed'] = False
+                    result['parse_error'] = str(e)
+            else:
+                # Si le contenu existe déjà, récupérer le planning analysé associé
+                result['parsed'] = raw_planning.parsed
+                if raw_planning.parsed and hasattr(raw_planning, 'parsed_planning'):
+                    result['parsed_planning_id'] = raw_planning.parsed_planning.id
+            
+            return jsonify(result)
         else:
             return jsonify({
                 'success': False, 
@@ -55,3 +94,79 @@ def fetch_netplanning():
             
     except requests.exceptions.RequestException as e:
         return jsonify({'success': False, 'error': f'Erreur de connexion: {str(e)}'}), 500
+
+@teamplanning_bp.route('/view-planning/<int:parsed_planning_id>')
+def view_planning(parsed_planning_id):
+    """Affiche le planning analysé"""
+    parsed_planning = ParsedPlanning.query.get_or_404(parsed_planning_id)
+    
+    # Récupérer toutes les entrées pour ce planning
+    entries = PlanningEntry.query.filter_by(parsed_planning_id=parsed_planning_id).all()
+    
+    # Organiser les données pour l'affichage
+    planning_data = parsed_planning.get_planning_data()
+    
+    return render_template(
+        'teamplanning/view_planning.html',
+        planning=parsed_planning,
+        planning_data=planning_data,
+        entries=entries
+    )
+
+@teamplanning_bp.route('/monthly-view')
+def monthly_view():
+    """Affiche la vue mensuelle du planning"""
+    # Récupérer le dernier planning analysé
+    latest_planning = ParsedPlanning.query.order_by(ParsedPlanning.created_at.desc()).first()
+    
+    if not latest_planning:
+        flash("Aucun planning n'a encore été récupéré.", "warning")
+        return redirect(url_for('teamplanning.index'))
+    
+    # Obtenir le mois et l'année actuels si nécessaire
+    month = request.args.get('month', datetime.now().month, type=int)
+    year = request.args.get('year', datetime.now().year, type=int)
+    
+    # Récupérer les entrées pour ce mois
+    start_date = datetime(year, month, 1)
+    if month == 12:
+        end_date = datetime(year + 1, 1, 1)
+    else:
+        end_date = datetime(year, month + 1, 1)
+    
+    entries = PlanningEntry.query.filter(
+        PlanningEntry.parsed_planning_id == latest_planning.id,
+        PlanningEntry.date >= start_date,
+        PlanningEntry.date < end_date
+    ).all()
+    
+    # Organiser les données par personne et par jour
+    people = {}
+    days = []
+    
+    # Créer une liste de tous les jours du mois
+    current_date = start_date
+    while current_date < end_date:
+        days.append(current_date.day)
+        current_date += timedelta(days=1)
+    
+    # Organiser les entrées par personne et par jour
+    for entry in entries:
+        if entry.person_name not in people:
+            people[entry.person_name] = {}
+        
+        people[entry.person_name][entry.date.day] = {
+            'morning': entry.morning,
+            'day': entry.day,
+            'evening': entry.evening
+        }
+    
+    return render_template(
+        'teamplanning/monthly_view.html',
+        people=people,
+        days=days,
+        month=month,
+        year=year,
+        month_name=start_date.strftime('%B'),
+        planning=latest_planning
+    )
