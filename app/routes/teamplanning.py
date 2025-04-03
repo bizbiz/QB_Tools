@@ -390,3 +390,25 @@ def monthly_view():
     )
 
 
+@teamplanning_bp.route('/debug-day/<int:day>', methods=['GET'])
+def debug_day(day):
+    """Route de débogage pour analyser un jour spécifique"""
+    latest_raw_planning = RawPlanning.query.order_by(RawPlanning.created_at.desc()).first()
+    
+    if not latest_raw_planning:
+        return jsonify({
+            'success': False,
+            'error': 'Aucun planning n\'a été récupéré.'
+        }), 404
+    
+    try:
+        debug_info = NetplanningExtractor.debug_day(latest_raw_planning.raw_content, day)
+        return jsonify({
+            'success': True,
+            'debug_info': debug_info
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500

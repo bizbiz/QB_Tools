@@ -58,3 +58,32 @@ class NetplanningExtractor:
             limit_to_first_user, 
             extract_first_line_only
         )
+    
+    @staticmethod
+    def debug_day(html_content, day_to_debug, user_index=0):
+        """
+        Fonction de débogage pour analyser un jour spécifique
+        
+        Args:
+            html_content (str): Contenu HTML brut
+            day_to_debug (int): Jour à déboguer
+            user_index (int): Indice de l'utilisateur (0 par défaut)
+            
+        Returns:
+            dict: Informations détaillées sur le jour
+        """
+        return EventExtractor.debug_day(html_content, day_to_debug, user_index)
+    
+    @staticmethod
+    def debug_cell(cell, day_index=None):
+        """
+        Fonction de débogage pour analyser une cellule en détail
+        
+        Args:
+            cell (Tag): Cellule HTML à analyser
+            day_index (int): Indice du jour pour référence
+            
+        Returns:
+            dict: Informations détaillées sur la cellule
+        """
+        return EventExtractor.debug_cell(cell, day_index)

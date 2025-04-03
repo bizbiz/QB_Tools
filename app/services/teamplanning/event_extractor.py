@@ -284,6 +284,102 @@ class EventExtractor(ExtractorBase):
         
         return events_data
     
+    @classmethod
+    def debug_cell(cls, cell, day_index=None):
+        """
+        Fonction de débogage pour analyser une cellule en détail
+        
+        Args:
+            cell (Tag): Cellule HTML à analyser
+            day_index (int): Indice du jour pour référence
+            
+        Returns:
+            dict: Informations détaillées sur la cellule
+        """
+        debug_info = {
+            'classes': cell.get('class', []),
+            'has_a_tag': cell.find('a') is not None,
+            'has_href_div': cell.select_one('a div.href') is not None,
+            'href_div_text': cell.select_one('a div.href').get_text(strip=True) if cell.select_one('a div.href') else None,
+            'has_mod_p': cell.find('p', style=lambda s: s and 'background: blue' in s) is not None,
+            'mod_p_text': cell.find('p', style=lambda s: s and 'background: blue' in s).get_text(strip=True) if cell.find('p', style=lambda s: s and 'background: blue' in s) else None,
+            'has_comment_span': cell.find('span', attrs={'class': lambda c: c and 'arrondi' in (c.split() if c else [])}) is not None,
+            'comment_span_text': cell.find('span', attrs={'class': lambda c: c and 'arrondi' in (c.split() if c else [])}).get_text(strip=True) if cell.find('span', attrs={'class': lambda c: c and 'arrondi' in (c.split() if c else [])}) else None,
+            'all_spans': [{'class': span.get('class', []), 'text': span.get_text(strip=True)} for span in cell.find_all('span')],
+            'all_divs': [{'class': div.get('class', []), 'text': div.get_text(strip=True)} for div in cell.find_all('div')],
+            'all_text': cell.get_text(strip=True),
+            'is_weekend': 'WE' in cell.get('class', []) or any('weekend' in cls.lower() for cls in cell.get('class', [])),
+            'day': cls._extract_day_from_cell(cell, day_index),
+            'event_info': cls._extract_event_info(cell)
+        }
+        
+        return debug_info
+
+    @classmethod
+    def debug_day(cls, html_content, day_to_debug, user_index=0):
+        """
+        Fonction de débogage pour analyser un jour spécifique
+        
+        Args:
+            html_content (str): Contenu HTML brut
+            day_to_debug (int): Jour à déboguer
+            user_index (int): Indice de l'utilisateur (0 par défaut)
+            
+        Returns:
+            dict: Informations détaillées sur le jour
+        """
+        soup = cls.create_soup(html_content)
+        debug_info = {'day': day_to_debug, 'cells_found': 0, 'cell_details': []}
+        
+        try:
+            # Trouver la table principale
+            main_table = soup.find('table', id='tableau')
+            if not main_table:
+                tables = soup.find_all('table')
+                if tables:
+                    main_table = max(tables, key=lambda t: len(t.find_all('tr')), default=None)
+            
+            if not main_table:
+                debug_info['error'] = "Aucune table principale trouvée"
+                return debug_info
+            
+            # Trouver les cellules correspondant au jour spécifié
+            cells = []
+            
+            # Chercher par id et class
+            cells_by_id = main_table.find_all('a', id=str(day_to_debug))
+            for a_tag in cells_by_id:
+                cell = a_tag.parent  # La cellule td qui contient l'élément a
+                if cell and cell.name == 'td':
+                    cells.append(cell)
+            
+            # Chercher par classe
+            cells_by_class = main_table.find_all('td', class_=lambda c: str(day_to_debug) in c.split() if c else False)
+            for cell in cells_by_class:
+                if cell not in cells:
+                    cells.append(cell)
+            
+            # Prendre l'utilisateur spécifié
+            if cells and len(cells) > user_index * 3:  # Multiplier par 3 pour les 3 créneaux horaires
+                debug_info['cells_found'] = len(cells)
+                
+                # Analyser les cellules pour l'utilisateur spécifié
+                for i in range(3):  # Matin, jour, soir
+                    idx = user_index * 3 + i
+                    if idx < len(cells):
+                        cell = cells[idx]
+                        time_slot = ['morning', 'day', 'evening'][i]
+                        cell_debug = cls.debug_cell(cell, day_to_debug)
+                        cell_debug['time_slot'] = time_slot
+                        debug_info['cell_details'].append(cell_debug)
+            else:
+                debug_info['error'] = f"Pas assez de cellules trouvées pour l'utilisateur {user_index}"
+        
+        except Exception as e:
+            debug_info['error'] = str(e)
+        
+        return debug_info
+    
     @staticmethod
     def _extract_day_from_cell(cell, day_index=None):
         """
@@ -370,13 +466,11 @@ class EventExtractor(ExtractorBase):
             'is_weekend': False     # Indique si c'est un weekend
         }
         
-        # Vérifier s'il s'agit d'un weekend (classes contenant WE ou weekend)
-        for cls in cell.get('class', []):
-            if cls.lower() == 'we' or 'weekend' in cls.lower():
-                event_info['is_weekend'] = True
-                event_info['type'] = 'weekend'
-                # On continue quand même pour extraire d'éventuels contenus
-                break
+        # Vérifier s'il s'agit d'un weekend (exactement la classe "WE")
+        if 'WE' in cell.get('class', []):
+            event_info['is_weekend'] = True
+            event_info['type'] = 'weekend'
+            # Le type est déjà défini, mais on continue pour extraire d'autres infos
         
         # Extraire les informations de modification (date, auteur)
         mod_p = cell.find('p', style=lambda s: s and 'background: blue' in s)
@@ -387,61 +481,63 @@ class EventExtractor(ExtractorBase):
                 event_info['last_modified'] = match.group(1)
                 event_info['author'] = match.group(2)
         
-        # Extraire le commentaire (chercher dans les spans avec classe contenant 'arrondi')
-        comment_span = cell.find('span', attrs={'class': lambda c: c and 'arrondi' in c.split()})
-        if comment_span:
-            comment_text = comment_span.get_text(strip=True)
-            if comment_text:
-                event_info['comment'] = comment_text
-                event_info['is_empty'] = False
+        # Extraire le commentaire - chercher dans <noclick><span>
+        noclick = cell.find('noclick')
+        if noclick:
+            span = noclick.find('span')
+            if span:
+                comment_text = span.get_text(strip=True)
+                if comment_text:
+                    event_info['comment'] = comment_text
+                    event_info['is_empty'] = False
         
-        # Extraire le contenu principal (div avec classe href)
+        # Si pas trouvé dans noclick, chercher dans tous les spans avec class arrondi
+        if not event_info['comment']:
+            spans = cell.find_all('span', class_='arrondi')
+            for span in spans:
+                comment_text = span.get_text(strip=True)
+                if comment_text:
+                    event_info['comment'] = comment_text
+                    event_info['is_empty'] = False
+                    break
+        
+        # Extraire le contenu principal (div avec classe href dans un lien a)
         href_div = cell.select_one('a div.href')
         if href_div:
+            # Méthode 1: Obtenir le texte directement
             content = href_div.get_text(strip=True)
-            # Ignorer le contenu des menus (Couper, Coller, etc.)
+            # Ignorer les éléments du menu contextuel
             if content and content not in ['Couper', 'Copier', 'Coller', 'Annuler', 'La cible sera ecrasée']:
                 event_info['content'] = content
                 event_info['is_empty'] = False
         
-        # Si pas trouvé, essayer d'autres éléments
-        if not event_info['content'] and not event_info['is_empty']:
-            # Si on a un commentaire mais pas de contenu, chercher dans d'autres endroits
-            for div in cell.find_all('div', class_=lambda c: c and 'copycel' not in c and 'survol' not in c):
-                content = div.get_text(strip=True)
-                if content and not event_info['content'] and content not in ['Couper', 'Copier', 'Coller', 'Annuler', 'La cible sera ecrasée']:
-                    event_info['content'] = content
-                    event_info['is_empty'] = False
-                    break
-        
         # Extraire la couleur/type à partir des classes de cellules
+        color_map = {
+            'greenyellow': 'telework',       # Télétravail
+            'b_greenyellow': 'holiday',      # Jour férié
+            'maroon': 'meeting',             # Réunion
+            'b_maroon': 'meeting',           # Réunion  
+            'redyellow': 'rte',              # RTE
+            'tomato': 'vacation',            # Congés
+            'b_tomato': 'vacation',          # Congés
+            'gold': 'duty',                  # Permanence
+            'b_gold': 'duty',                # Permanence
+            'orange': 'morning_duty',        # Permanence matin
+            'b_orange': 'morning_duty',      # Permanence matin
+            'teal': 'onsite',                # Garde sur site
+            'b_teal': 'onsite',              # Garde sur site
+            'blackwhite': 'leave',           # Congés posés
+            'b_blackwhite': 'leave',         # Congés posés
+            'limegreen': 'holiday',          # Jour férié
+            'b_limegreen': 'holiday',        # Jour férié
+        }
+        
+        # Vérifier dans les classes de la cellule
         for cls in cell.get('class', []):
-            # Liste de classes indicatives de types d'événements
-            color_map = {
-                'greenyellow': 'telework',       # Télétravail
-                'b_greenyellow': 'telework',     # Télétravail
-                'maroon': 'meeting',             # Réunion
-                'b_maroon': 'meeting',           # Réunion  
-                'redyellow': 'rte',              # RTE
-                'tomato': 'vacation',            # Congés
-                'b_tomato': 'vacation',          # Congés
-                'gold': 'duty',                  # Permanence
-                'b_gold': 'duty',                # Permanence
-                'orange': 'morning_duty',        # Permanence matin
-                'b_orange': 'morning_duty',      # Permanence matin
-                'teal': 'onsite',                # Garde sur site
-                'b_teal': 'onsite',              # Garde sur site
-                'blackwhite': 'leave',           # Congés posés
-                'b_blackwhite': 'leave',         # Congés posés
-                'limegreen': 'holiday',          # Jour férié
-                'b_limegreen': 'holiday',        # Jour férié
-            }
-            
-            if cls in color_map:
+            if cls in color_map and not event_info['type']:  # Ne pas écraser weekend
                 event_info['color'] = cls
-                if not event_info['type']:  # Ne pas écraser le type weekend
-                    event_info['type'] = color_map[cls]
-                break
+                event_info['type'] = color_map[cls]
+                event_info['is_empty'] = False
         
         # Déterminer le type d'événement à partir du contenu si pas déjà défini
         if not event_info['type'] and event_info['content']:
@@ -468,16 +564,15 @@ class EventExtractor(ExtractorBase):
             else:
                 event_info['type'] = 'other'
         
-        # Cas spécial : si la cellule a la classe b_greenyellow sans contenu, c'est probablement un jour férié
-        if not event_info['type'] and 'b_greenyellow' in cell.get('class', []):
-            event_info['type'] = 'holiday'
-            event_info['is_empty'] = False
-        
-        # Si toujours pas de type mais cellule non vide, utiliser "other"
-        if not event_info['type'] and not event_info['is_empty']:
+        # Si on a un commentaire mais pas de type, mettre "other"
+        if not event_info['type'] and event_info['comment']:
             event_info['type'] = 'other'
         
-        # Si la cellule est vide (pas de contenu ni commentaire), marquer comme telle
+        # Si la cellule est vide mais que c'est un week-end, ne pas marquer comme empty
+        if event_info['is_empty'] and event_info['is_weekend']:
+            event_info['is_empty'] = False
+        
+        # Si la cellule est toujours vide (pas de contenu, ni commentaire, ni type), marquer comme empty
         if event_info['is_empty'] and not event_info['type']:
             event_info['type'] = 'empty'
         
