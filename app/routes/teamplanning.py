@@ -225,14 +225,15 @@ def extract_events():
         }), 404
     
     try:
-        # Forcer extract_first_line_only=True pour éviter les problèmes avec les jours hors limite
-        first_user_only = request.json.get('first_user_only', True) if request.json else True
-        extract_first_line_only = True
+        # Utiliser la nouvelle méthode qui correspond au debug
+        # Liste de tous les jours de 1 à 30 pour avril
+        days_to_extract = list(range(1, 31))
+        user_index = 0  # Premier utilisateur
         
-        events_data = NetplanningExtractor.extract_planning_events(
+        events_data = EventExtractor.extract_specific_days(
             latest_raw_planning.raw_content,
-            limit_to_first_user=first_user_only,
-            extract_first_line_only=extract_first_line_only
+            days_to_extract=days_to_extract,
+            user_index=user_index
         )
         
         if 'error' in events_data:
@@ -246,11 +247,9 @@ def extract_events():
             'users_count': events_data['summary'].get('users_count', 0),
             'events_count': events_data['summary'].get('total_events', 0),
             'event_types': events_data['summary'].get('events_by_type', {}),
-            'debug_info': events_data.get('debug', {})
         }
         
         # Préparer un journal détaillé des événements pour l'affichage
-        # Sans aucun filtrage supplémentaire
         events_log = []
         for user, user_data in events_data['users'].items():
             for day_str, day_data in user_data.get('days', {}).items():
@@ -271,16 +270,11 @@ def extract_events():
                     'author': event.get('author', '')
                 })
         
-        # Ajouter des informations de débogage supplémentaires
+        # Ajouter des informations de débogage
         summary['extracted_days'] = list(sorted([int(day) for day in list(
             set([day for user in events_data['users'] for day in events_data['users'][user].get('days', {})]))
             if day.isdigit()
         ]))
-        summary['events_by_day'] = {str(day): 0 for day in range(1, 31)}
-        for event in events_log:
-            day = event['day']
-            if day.isdigit() and int(day) >= 1 and int(day) <= 30:
-                summary['events_by_day'][day] = summary['events_by_day'].get(day, 0) + 1
         
         # Ajouter un indicateur spécifique pour le jour 3
         summary['day_3_events'] = [e for e in events_log if e['day'] == '3']

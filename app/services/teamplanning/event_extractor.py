@@ -11,7 +11,138 @@ class EventExtractor(ExtractorBase):
     """
     Classe pour extraire les événements du planning
     """
-    
+    @classmethod
+    def extract_specific_days(cls, html_content, days_to_extract=None, user_index=0):
+        """
+        Extrait des jours spécifiques en utilisant la même méthode que debug_day
+        
+        Args:
+            html_content (str): Contenu HTML brut
+            days_to_extract (list): Liste des jours à extraire, ou None pour tous
+            user_index (int): Indice de l'utilisateur à extraire
+            
+        Returns:
+            dict: Informations sur les événements
+        """
+        soup = cls.create_soup(html_content)
+        
+        # Structure pour stocker les résultats
+        events_data = {
+            'users': {},  # Dictionnaire où les clés sont les noms d'utilisateurs
+            'summary': {}  # Statistiques globales
+        }
+        
+        try:
+            # Trouver la table principale
+            main_table = soup.find('table', id='tableau')
+            if not main_table:
+                tables = soup.find_all('table')
+                if tables:
+                    main_table = max(tables, key=lambda t: len(t.find_all('tr')), default=None)
+            
+            if not main_table:
+                events_data['error'] = "Aucune table principale trouvée"
+                return events_data
+            
+            # Trouver les lignes pour identifier l'utilisateur
+            rows = main_table.find_all('tr')
+            user_rows = []
+            user_name = "Utilisateur inconnu"
+            
+            # Chercher toutes les cellules contenant le nom d'utilisateur
+            user_cells = main_table.find_all('td', class_='nom_ress')
+            
+            if user_cells and user_index < len(user_cells):
+                user_cell = user_cells[user_index]
+                user_name = UserExtractor._extract_user_name(user_cell)
+                
+                # Trouver la ligne parent qui contient cette cellule
+                parent_row = user_cell.parent
+                if parent_row and parent_row.name == 'tr':
+                    # Trouver ce parent_row dans rows
+                    for i, row in enumerate(rows):
+                        if row is parent_row:
+                            # Ce sont les 3 lignes pour cet utilisateur (matin, journée, soir)
+                            user_rows = [rows[i], rows[i+1] if i+1 < len(rows) else None, rows[i+2] if i+2 < len(rows) else None]
+                            break
+            
+            if not user_rows or not user_rows[0]:
+                events_data['error'] = f"Impossible de trouver les lignes pour l'utilisateur d'indice {user_index}"
+                return events_data
+            
+            # Initialiser les données pour cet utilisateur
+            events_data['users'][user_name] = {
+                'days': {}  # Dictionnaire où les clés sont les numéros de jours
+            }
+            
+            # Jours à extraire
+            if days_to_extract is None:
+                days_to_extract = list(range(1, 32))  # Par défaut, tous les jours de 1 à 31
+            
+            # Pour chaque jour à extraire
+            for day in days_to_extract:
+                # Trouver toutes les cellules pour ce jour
+                day_cells = []
+                
+                # Méthode 1: Chercher par attribut id des liens
+                for row_idx, row in enumerate(user_rows):
+                    if row is None:
+                        continue
+                        
+                    day_a_tags = row.find_all('a', id=str(day))
+                    for a_tag in day_a_tags:
+                        cell = a_tag.parent
+                        if cell and cell.name == 'td':
+                            day_cells.append((row_idx, cell))
+                
+                # Méthode 2: Chercher par classe des cellules
+                for row_idx, row in enumerate(user_rows):
+                    if row is None:
+                        continue
+                        
+                    day_cells_class = row.find_all('td', class_=lambda c: str(day) in (c.split() if c else []))
+                    for cell in day_cells_class:
+                        # Vérifier si on n'a pas déjà cette cellule
+                        if not any(existing_cell[1] is cell for existing_cell in day_cells):
+                            day_cells.append((row_idx, cell))
+                
+                # Traiter chaque cellule trouvée
+                for row_idx, cell in day_cells:
+                    # Déterminer le créneau horaire
+                    time_slot = ['morning', 'day', 'evening'][row_idx]
+                    
+                    # Extraire les informations de l'événement
+                    event_info = cls._extract_event_info(cell)
+                    
+                    # Stocker l'événement
+                    events_data['users'][user_name]['days'][str(day)] = events_data['users'][user_name]['days'].get(str(day), {})
+                    events_data['users'][user_name]['days'][str(day)][time_slot] = event_info
+            
+            # Calculer des statistiques
+            events_count = 0
+            events_by_type = {}
+            
+            for day_data in events_data['users'][user_name]['days'].values():
+                for time_slot, event in day_data.items():
+                    if not event.get('is_empty', True):
+                        events_count += 1
+                        event_type = event.get('type', 'unknown')
+                        events_by_type[event_type] = events_by_type.get(event_type, 0) + 1
+            
+            events_data['summary'] = {
+                'users_count': 1,
+                'events_count': events_count,
+                'events_by_type': events_by_type,
+                'days_count': len(events_data['users'][user_name]['days'])
+            }
+            
+        except Exception as e:
+            import traceback
+            events_data['error'] = str(e)
+            events_data['traceback'] = traceback.format_exc()
+        
+        return events_data
+
     @classmethod
     def extract_planning_events(cls, html_content, limit_to_first_user=True, extract_first_line_only=True):
         """

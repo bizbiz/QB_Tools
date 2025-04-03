@@ -13,6 +13,22 @@ class NetplanningExtractor:
     Façade unifiée pour toutes les fonctionnalités d'extraction Netplanning.
     Délègue aux classes spécialisées.
     """
+
+    # app/services/teamplanning/__init__.py - Ajout de la nouvelle méthode
+    @staticmethod
+    def extract_specific_days(html_content, days_to_extract=None, user_index=0):
+        """
+        Extrait des jours spécifiques en utilisant la même méthode que debug_day
+        
+        Args:
+            html_content (str): Contenu HTML brut
+            days_to_extract (list): Liste des jours à extraire, ou None pour tous
+            user_index (int): Indice de l'utilisateur à extraire
+            
+        Returns:
+            dict: Informations sur les événements
+        """
+        return EventExtractor.extract_specific_days(html_content, days_to_extract, user_index)
     
     @staticmethod
     def extract_users(html_content):
