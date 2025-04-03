@@ -418,12 +418,17 @@ class Teamplanning {
                 
                 if (datesData.success) {
                     // Vérifier la cohérence des dates
-                    let statusMessage = datesData.summary;
+                    let statusMessage = datesData.summary || "Analyse terminée";
                     let statusType = 'completed';
                     
                     if (datesData.verification && !datesData.verification.is_consistent) {
                         statusType = 'error';
                         statusMessage = datesData.verification.message;
+                    }
+                    
+                    // Afficher les informations de débogage dans la console
+                    if (datesData.debug) {
+                        console.log("Informations de débogage des dates:", datesData.debug);
                     }
                     
                     // Marquer l'étape comme complétée

@@ -187,12 +187,24 @@ def extract_dates():
         verification = {}
         if 'verification' in dates_info:
             verification = dates_info['verification']
+            
+        # Ajouter des informations de débogage
+        debug_info = {
+            'raw_data': {
+                'month': dates_info.get('month'),
+                'year': dates_info.get('year'),
+                'days_count': len(dates_info.get('days', [])),
+                'weekdays_count': len(dates_info.get('weekdays', [])),
+                'first_weekday': dates_info.get('weekdays', [{}])[0].get('weekday') if dates_info.get('weekdays') else None
+            }
+        }
         
         return jsonify({
             'success': True,
             'dates': dates_info,
             'summary': summary,
-            'verification': verification
+            'verification': verification,
+            'debug': debug_info
         })
         
     except Exception as e:

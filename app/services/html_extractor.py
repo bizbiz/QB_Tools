@@ -138,19 +138,20 @@ class NetplanningExtractor:
             if not first_td:
                 return dates_info
                 
-            # Extraire le mois (dans la première div avec la classe "bigtext")
-            month_div = first_td.find('div', class_='bigtext')
+            # Extraire le mois (dans la div avec class qui contient "bigtext")
+            month_div = first_td.find('div', class_=lambda x: x and 'bigtext' in x.split())
             if month_div:
                 dates_info['month'] = month_div.get_text(strip=True)
                 
-            # Extraire l'année (dans la deuxième div avec la classe "noir")
-            year_div = first_td.find('div', class_='noir')
+            # Extraire l'année (dans la div avec class qui contient "noir")
+            year_div = first_td.find('div', class_=lambda x: x and 'noir' in x.split())
             if year_div:
                 try:
-                    dates_info['year'] = int(year_div.get_text(strip=True))
+                    year_text = year_div.get_text(strip=True)
+                    dates_info['year'] = int(year_text)
                 except ValueError:
                     # Si la conversion en int échoue, garder la valeur sous forme de texte
-                    dates_info['year'] = year_div.get_text(strip=True)
+                    dates_info['year'] = year_text
             
             # Trouver le troisième tr dans thead (qui contient les jours)
             trs = thead.find_all('tr')
@@ -164,7 +165,7 @@ class NetplanningExtractor:
                     # Extraire le numéro du jour du mois
                     jhref_div = cell.find('div', class_='jhref')
                     if jhref_div:
-                        # Le texte contient la forme "Lun\n1" - on extrait le nombre
+                        # Le texte contient typiquement la forme "Lun\n1" - on extrait le jour et le nombre
                         day_text = jhref_div.get_text(strip=True)
                         
                         # Extraire le jour de la semaine (3 premières lettres)
@@ -173,16 +174,42 @@ class NetplanningExtractor:
                         
                         # Extraire le numéro du jour
                         day_number = None
-                        for part in day_text.split():
-                            if part.isdigit():
-                                day_number = int(part)
-                                break
+                        # Méthode 1: essayer d'extraire d'après les retours à la ligne
+                        if '\n' in day_text:
+                            parts = day_text.split('\n')
+                            for part in parts:
+                                if part.strip().isdigit():
+                                    day_number = int(part.strip())
+                                    break
                         
+                        # Méthode 2: si pas trouvé, chercher tous les chiffres dans le texte
+                        if day_number is None:
+                            import re
+                            digits = re.findall(r'\d+', day_text)
+                            if digits:
+                                day_number = int(digits[0])
+                        
+                        # Si on a trouvé un jour et un jour de semaine, les ajouter
                         if day_number:
                             dates_info['days'].append(day_number)
-                            if weekday:
+                            # S'assurer que weekday est non None avant de l'ajouter
+                            if weekday is not None:
                                 dates_info['weekdays'].append({'day': day_number, 'weekday': weekday})
-            
+                            # Si on n'a pas trouvé de jour de semaine mais qu'on a le jour du mois
+                            elif day_number == 1 and len(dates_info['weekdays']) == 0:
+                                # Comme c'est le premier jour, on essaie de déduire le jour de semaine
+                                # depuis le contenu HTML brut
+                                first_day_td = soup.find('td', id='tj1')
+                                if first_day_td:
+                                    # Chercher directement dans le premier td le jour de semaine
+                                    weekday_text = None
+                                    day_div = first_day_td.find('div', class_='jhref')
+                                    if day_div and day_div.find('div'):
+                                        weekday_text = day_div.find('div').get_text(strip=True)
+                                    
+                                    if weekday_text:
+                                        dates_info['weekdays'].append({'day': 1, 'weekday': weekday_text})
+
             # Trier les jours par ordre croissant
             dates_info['days'].sort()
             dates_info['weekdays'].sort(key=lambda x: x['day'])
@@ -221,8 +248,14 @@ class NetplanningExtractor:
         }
         
         # Vérifier que toutes les données nécessaires sont présentes
-        if not year or not month or not weekdays or len(weekdays) == 0:
-            result['message'] = "Données incomplètes pour la vérification"
+        if not year:
+            result['message'] = "Année non trouvée dans le document HTML"
+            return result
+        if not month:
+            result['message'] = "Mois non trouvé dans le document HTML"
+            return result
+        if not weekdays or len(weekdays) == 0:
+            result['message'] = "Jours de la semaine non trouvés dans le document HTML"
             return result
             
         try:
