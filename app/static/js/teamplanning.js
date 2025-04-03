@@ -261,6 +261,19 @@ class API {
             }
         }).then(response => response.json());
     }
+    
+    /**
+     * Extrait les informations de dates du planning
+     * @returns {Promise} Promesse contenant la réponse de l'API
+     */
+    static async extractDates() {
+        return fetch('/teamplanning/extract-dates', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        }).then(response => response.json());
+    }
 }
 
 /**
@@ -358,22 +371,34 @@ class Teamplanning {
      * Traite les données pour extraire les utilisateurs
      */
     async processData() {
-        // Afficher le spinner de traitement
+        // Définir les étapes du traitement
+        const processSteps = [
+            { id: 'extract-users', name: 'Extraction des utilisateurs' },
+            { id: 'extract-dates', name: 'Analyse des métadonnées' },
+            // Ajouter d'autres étapes au fur et à mesure du développement
+            // Par exemple: { id: 'analyze-schedule', name: 'Analyse des plannings' },
+        ];
+        
+        // Initialiser l'affichage des étapes
+        UI.initProcessSteps('process-steps', processSteps);
+        
+        // Afficher le spinner global
         UI.showSpinner(this.processSpinner);
         
         try {
-            const data = await API.extractUsers();
+            // Étape 1: Extraction des utilisateurs
+            UI.updateStepStatus('extract-users', 'active');
             
-            // Cacher le spinner de traitement
-            UI.hideSpinner(this.processSpinner);
+            const userData = await API.extractUsers();
             
-            if (data.success) {
-                UI.showStatusMessage('success', 'Données traitées avec succès!', document.getElementById('process-status-message'));
+            if (userData.success) {
+                // Marquer l'étape comme complétée
+                UI.updateStepStatus('extract-users', 'completed', `${userData.count} utilisateurs trouvés`);
                 
                 // Afficher la liste des utilisateurs
-                if (data.users && data.users.length > 0) {
+                if (userData.users && userData.users.length > 0) {
                     let usersHtml = '<ul class="list-group">';
-                    data.users.forEach(user => {
+                    userData.users.forEach(user => {
                         usersHtml += `<li class="list-group-item">${user}</li>`;
                     });
                     usersHtml += '</ul>';
@@ -385,13 +410,50 @@ class Teamplanning {
                         this.usersList.innerHTML = '<div class="alert alert-warning">Aucun utilisateur trouvé dans les données.</div>';
                     }
                 }
+                
+                // Étape 2: Extraction des dates
+                UI.updateStepStatus('extract-dates', 'active');
+                
+                const datesData = await API.extractDates();
+                
+                if (datesData.success) {
+                    // Vérifier la cohérence des dates
+                    let statusMessage = datesData.summary;
+                    let statusType = 'completed';
+                    
+                    if (datesData.verification && !datesData.verification.is_consistent) {
+                        statusType = 'error';
+                        statusMessage = datesData.verification.message;
+                    }
+                    
+                    // Marquer l'étape comme complétée
+                    UI.updateStepStatus('extract-dates', statusType, statusMessage);
+                } else {
+                    // En cas d'erreur dans cette étape
+                    UI.updateStepStatus('extract-dates', 'error', 'Échec de l\'extraction');
+                }
+                
+                // Message de succès global
+                UI.showStatusMessage('success', 'Traitement des données terminé avec succès!', document.getElementById('process-status-message'));
             } else {
-                UI.showStatusMessage('error', data.error || 'Erreur lors du traitement des données.', document.getElementById('process-status-message'));
+                // En cas d'erreur dans la première étape
+                UI.updateStepStatus('extract-users', 'error', 'Échec de l\'extraction');
+                UI.updateStepStatus('extract-dates', 'pending');
+                UI.showStatusMessage('error', userData.error || 'Erreur lors du traitement des données.', document.getElementById('process-status-message'));
             }
+            
+            // Ici, vous pourriez ajouter d'autres étapes au fur et à mesure du développement
+            // Par exemple: Analyse des plannings, génération de rapports, etc.
+            
         } catch (error) {
-            UI.hideSpinner(this.processSpinner);
+            // Gestion des erreurs générales
+            UI.updateStepStatus('extract-users', 'error', 'Erreur de connexion');
+            UI.updateStepStatus('extract-dates', 'error', 'Non exécuté');
             UI.showStatusMessage('error', 'Erreur de connexion au serveur.', document.getElementById('process-status-message'));
             console.error('Process error:', error);
+        } finally {
+            // Toujours cacher le spinner global à la fin
+            UI.hideSpinner(this.processSpinner);
         }
     }
 }

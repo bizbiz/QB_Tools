@@ -143,6 +143,65 @@ def view_planning(parsed_planning_id):
         entries=entries
     )
 
+@teamplanning_bp.route('/extract-dates', methods=['POST'])
+def extract_dates():
+    """Extrait les informations de dates (mois, année, jours) du planning"""
+    # Récupérer le dernier planning brut
+    latest_raw_planning = RawPlanning.query.order_by(RawPlanning.created_at.desc()).first()
+    
+    if not latest_raw_planning:
+        return jsonify({
+            'success': False,
+            'error': 'Aucun planning n\'a été récupéré. Veuillez d\'abord récupérer des données Netplanning.'
+        }), 404
+    
+    try:
+        # Utiliser notre service d'extraction HTML
+        dates_info = NetplanningExtractor.extract_planning_dates(latest_raw_planning.raw_content)
+        
+        if dates_info.get('error'):
+            return jsonify({
+                'success': False,
+                'error': f'Erreur lors de l\'extraction des dates: {dates_info["error"]}'
+            }), 500
+        
+        # Formater un message résumé
+        summary = ""
+        if dates_info['month'] and dates_info['year'] and dates_info['days']:
+            first_day = min(dates_info['days'])
+            last_day = max(dates_info['days'])
+            
+            # Trouver les jours de la semaine pour le premier et dernier jour
+            first_weekday = next((wd['weekday'] for wd in dates_info['weekdays'] if wd['day'] == first_day), "")
+            last_weekday = next((wd['weekday'] for wd in dates_info['weekdays'] if wd['day'] == last_day), "")
+            
+            # Formater les jours de la semaine avec une majuscule
+            if first_weekday:
+                first_weekday = first_weekday.capitalize()
+            if last_weekday:
+                last_weekday = last_weekday.capitalize()
+            
+            summary = f"{dates_info['month']} {dates_info['year']} du {first_weekday} {first_day} au {last_weekday} {last_day}"
+        
+        # Ajouter la vérification de cohérence
+        verification = {}
+        if 'verification' in dates_info:
+            verification = dates_info['verification']
+        
+        return jsonify({
+            'success': True,
+            'dates': dates_info,
+            'summary': summary,
+            'verification': verification
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Erreur lors de l\'extraction des dates: {str(e)}'
+        }), 500
+
+
 @teamplanning_bp.route('/monthly-view')
 def monthly_view():
     """Affiche la vue mensuelle du planning"""
