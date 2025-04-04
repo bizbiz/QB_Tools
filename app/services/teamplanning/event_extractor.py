@@ -33,18 +33,7 @@ class EventExtractor(ExtractorBase):
         }
         
         try:
-            # Trouver la table principale
-            main_table = soup.find('table', id='tableau')
-            if not main_table:
-                tables = soup.find_all('table')
-                if tables:
-                    main_table = max(tables, key=lambda t: len(t.find_all('tr')), default=None)
-            
-            if not main_table:
-                events_data['error'] = "Aucune table principale trouvée"
-                return events_data
-            
-            # Extraire tous les utilisateurs
+            # Extraire d'abord tous les utilisateurs
             all_users = UserExtractor.extract_users(html_content)
             if not all_users or user_index >= len(all_users):
                 events_data['error'] = f"Utilisateur à l'indice {user_index} non trouvé"
@@ -58,36 +47,21 @@ class EventExtractor(ExtractorBase):
                 'days': {}  # Dictionnaire où les clés sont les numéros de jours
             }
             
-            # Trouver tous les tr dans la table
-            rows = main_table.find_all('tr')
+            # Trouver tous les tbodies avec la classe "bress"
+            tbodies = soup.find_all('tbody', class_='bress')
             
-            # Chercher les rangées qui correspondent à l'utilisateur sélectionné
-            user_rows = []
-            user_cells = main_table.find_all('td', class_='nom_ress')
+            if not tbodies or len(tbodies) <= user_index:
+                events_data['error'] = f"Tbody pour l'utilisateur {user_name} non trouvé"
+                return events_data
             
-            # Pour chaque cellule de nom d'utilisateur
-            for idx, user_cell in enumerate(user_cells):
-                cell_user_name = UserExtractor._extract_user_name(user_cell)
-                
-                # Si c'est l'utilisateur qu'on cherche
-                if cell_user_name == user_name:
-                    # Trouver le parent tr
-                    parent_row = user_cell.find_parent('tr')
-                    if parent_row:
-                        # Trouver l'index de ce tr parmi tous les tr
-                        for i, row in enumerate(rows):
-                            if row is parent_row:
-                                # Les 3 rangées de cet utilisateur (matin, jour, soir)
-                                user_rows = [
-                                    rows[i],  # matin
-                                    rows[i+1] if i+1 < len(rows) else None,  # jour
-                                    rows[i+2] if i+2 < len(rows) else None   # soir
-                                ]
-                                break
-                    break
+            # Obtenir le tbody de l'utilisateur demandé - chaque tbody contient un utilisateur
+            user_tbody = tbodies[user_index]
             
-            if not user_rows or not user_rows[0]:
-                events_data['error'] = f"Impossible de trouver les lignes pour l'utilisateur {user_name}"
+            # Trouver toutes les lignes dans ce tbody - chaque utilisateur a 3 lignes (matin, jour, soir)
+            user_rows = user_tbody.find_all('tr')
+            
+            if len(user_rows) < 3:
+                events_data['error'] = f"Structure attendue de 3 lignes non trouvée pour {user_name}, seulement {len(user_rows)} trouvées"
                 return events_data
             
             # Jours à extraire
@@ -97,35 +71,33 @@ class EventExtractor(ExtractorBase):
             # Définir les noms des créneaux horaires
             time_slots = ['morning', 'day', 'evening']
             
-            # Pour chaque jour à extraire
-            for day in days_to_extract:
-                # Pour chaque créneau horaire (matin, jour, soir)
-                for slot_idx, row in enumerate(user_rows):
-                    if row is None:
-                        continue
-                    
-                    time_slot = time_slots[slot_idx]
-                    
-                    # Trouver les cellules pour ce jour
-                    cells = row.find_all('td')
-                    
-                    # Ignorer les premières cellules qui contiennent les noms d'utilisateur
-                    start_idx = 0
-                    if slot_idx == 0:  # Première ligne (matin)
-                        # Chercher la cellule avec la classe nom_ress
-                        for i, cell in enumerate(cells):
-                            if 'nom_ress' in cell.get('class', []):
-                                start_idx = i + 1
-                                break
-                        
-                        if start_idx == 0 and len(cells) > 2:
-                            # Par défaut, commencer à la 3e cellule
-                            start_idx = 2
-                    
-                    # Chercher les cellules qui correspondent à ce jour
-                    for cell_idx, cell in enumerate(cells[start_idx:], start=1):
+            # Pour chaque créneau horaire (matin, jour, soir)
+            for slot_idx, row in enumerate(user_rows):
+                time_slot = time_slots[slot_idx]
+                
+                # Obtenir toutes les cellules de cette ligne
+                cells = row.find_all('td')
+                
+                # Déterminer le décalage de début - important car les lignes 2 et 3 n'ont pas les premières cellules
+                # (elles sont partagées avec la ligne 1 via rowspan)
+                offset = 0
+                if slot_idx == 0:  # Première rangée (matin)
+                    # Chercher les cellules avec rowspan="3"
+                    for i, cell in enumerate(cells):
+                        if cell.get('rowspan') == '3':
+                            offset += 1
+                        else:
+                            break
+                else:
+                    # Pour les rangées jour/soir, on ignore les cellules qui ont été "rowspan" 
+                    # à partir de la première rangée (généralement 2 cellules)
+                    offset = 0  # Pas besoin de compter, ces cellules n'existent pas dans ces rangées
+                
+                # Pour chaque jour à extraire
+                for day in days_to_extract:
+                    for j, cell in enumerate(cells[offset:], start=1):
                         # Extraire le jour de cette cellule
-                        cell_day = cls._extract_day_from_cell(cell, cell_idx)
+                        cell_day = cls._extract_day_from_cell(cell, j)
                         
                         # Si cette cellule correspond au jour recherché
                         if cell_day == day or str(cell_day) == str(day):
@@ -133,8 +105,11 @@ class EventExtractor(ExtractorBase):
                             event_info = cls._extract_event_info(cell)
                             
                             # Stocker l'événement
-                            events_data['users'][user_name]['days'][str(day)] = events_data['users'][user_name]['days'].get(str(day), {})
-                            events_data['users'][user_name]['days'][str(day)][time_slot] = event_info
+                            day_str = str(day)
+                            if day_str not in events_data['users'][user_name]['days']:
+                                events_data['users'][user_name]['days'][day_str] = {}
+                            
+                            events_data['users'][user_name]['days'][day_str][time_slot] = event_info
             
             # Calculer des statistiques
             events_count = 0
