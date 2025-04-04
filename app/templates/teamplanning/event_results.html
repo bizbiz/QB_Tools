@@ -112,6 +112,21 @@
         margin-right: 5px;
         vertical-align: middle;
     }
+    .event-card.preventive_meditech {
+        border-left-color: #FFA500; /* orange */
+    }
+    
+    .event-card.preventive_meditech_fixed {
+        border-left-color: #FF8C00; /* darkorange */
+    }
+    
+    .event-card.compensatory_rest {
+        border-left-color: #A9A9A9; /* darkgray */
+    }
+    
+    .event-card.comment {
+        border-left-color: #4169E1; /* royalblue */
+    }
 </style>
 {% endblock %}
 
@@ -160,6 +175,22 @@
                     <div class="form-check">
                         <input class="form-check-input event-type-filter" type="checkbox" value="meeting" id="filter-meeting" checked>
                         <label class="form-check-label" for="filter-meeting">Réunion</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input event-type-filter" type="checkbox" value="preventive_meditech" id="filter-preventive-meditech" checked>
+                        <label class="form-check-label" for="filter-preventive-meditech">Préventive Meditech</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input event-type-filter" type="checkbox" value="preventive_meditech_fixed" id="filter-preventive-meditech-fixed" checked>
+                        <label class="form-check-label" for="filter-preventive-meditech-fixed">Préventive Meditech fixée</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input event-type-filter" type="checkbox" value="compensatory_rest" id="filter-compensatory-rest" checked>
+                        <label class="form-check-label" for="filter-compensatory-rest">Repos Compensateur</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input event-type-filter" type="checkbox" value="comment" id="filter-comment" checked>
+                        <label class="form-check-label" for="filter-comment">Commentaire</label>
                     </div>
                     <div class="form-check">
                         <input class="form-check-input event-type-filter" type="checkbox" value="rte" id="filter-rte" checked>
@@ -242,11 +273,17 @@
                                     'vacation': 'Congés',
                                     'duty': 'Permanence',
                                     'morning_duty': 'Permanence matin',
+                                    'preventive_meditech': 'Préventive Meditech',
+                                    'preventive_meditech_fixed': 'Préventive Meditech fixée',
+                                    'compensatory_rest': 'Repos Compensateur',
                                     'onsite': 'Garde sur site',
                                     'leave': 'Congés posés',
                                     'holiday': 'Jour férié',
                                     'weekend': 'Week-end',
-                                    'empty': 'Vide'
+                                    'comment': 'Commentaire',
+                                    'empty': 'Vide',
+                                    'unknown': 'Inconnu',
+                                    'other': 'Autre'
                                 } %}
                                 
                                 <div class="card event-card {{ event_type }} shadow-sm" 

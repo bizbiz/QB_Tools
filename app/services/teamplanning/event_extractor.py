@@ -14,7 +14,7 @@ class EventExtractor(ExtractorBase):
     @classmethod
     def extract_specific_days(cls, html_content, days_to_extract=None, user_index=0):
         """
-        Extrait des jours spécifiques en utilisant la même méthode que debug_day
+        Extrait des jours spécifiques pour un utilisateur donné
         
         Args:
             html_content (str): Contenu HTML brut
@@ -44,79 +44,97 @@ class EventExtractor(ExtractorBase):
                 events_data['error'] = "Aucune table principale trouvée"
                 return events_data
             
-            # Trouver les lignes pour identifier l'utilisateur
-            rows = main_table.find_all('tr')
-            user_rows = []
-            user_name = "Utilisateur inconnu"
-            
-            # Chercher toutes les cellules contenant le nom d'utilisateur
-            user_cells = main_table.find_all('td', class_='nom_ress')
-            
-            if user_cells and user_index < len(user_cells):
-                user_cell = user_cells[user_index]
-                user_name = UserExtractor._extract_user_name(user_cell)
-                
-                # Trouver la ligne parent qui contient cette cellule
-                parent_row = user_cell.parent
-                if parent_row and parent_row.name == 'tr':
-                    # Trouver ce parent_row dans rows
-                    for i, row in enumerate(rows):
-                        if row is parent_row:
-                            # Ce sont les 3 lignes pour cet utilisateur (matin, journée, soir)
-                            user_rows = [rows[i], rows[i+1] if i+1 < len(rows) else None, rows[i+2] if i+2 < len(rows) else None]
-                            break
-            
-            if not user_rows or not user_rows[0]:
-                events_data['error'] = f"Impossible de trouver les lignes pour l'utilisateur d'indice {user_index}"
+            # Extraire tous les utilisateurs
+            all_users = UserExtractor.extract_users(html_content)
+            if not all_users or user_index >= len(all_users):
+                events_data['error'] = f"Utilisateur à l'indice {user_index} non trouvé"
                 return events_data
+            
+            # Utilisateur cible
+            user_name = all_users[user_index]
             
             # Initialiser les données pour cet utilisateur
             events_data['users'][user_name] = {
                 'days': {}  # Dictionnaire où les clés sont les numéros de jours
             }
             
+            # Trouver tous les tr dans la table
+            rows = main_table.find_all('tr')
+            
+            # Chercher les rangées qui correspondent à l'utilisateur sélectionné
+            user_rows = []
+            user_cells = main_table.find_all('td', class_='nom_ress')
+            
+            # Pour chaque cellule de nom d'utilisateur
+            for idx, user_cell in enumerate(user_cells):
+                cell_user_name = UserExtractor._extract_user_name(user_cell)
+                
+                # Si c'est l'utilisateur qu'on cherche
+                if cell_user_name == user_name:
+                    # Trouver le parent tr
+                    parent_row = user_cell.find_parent('tr')
+                    if parent_row:
+                        # Trouver l'index de ce tr parmi tous les tr
+                        for i, row in enumerate(rows):
+                            if row is parent_row:
+                                # Les 3 rangées de cet utilisateur (matin, jour, soir)
+                                user_rows = [
+                                    rows[i],  # matin
+                                    rows[i+1] if i+1 < len(rows) else None,  # jour
+                                    rows[i+2] if i+2 < len(rows) else None   # soir
+                                ]
+                                break
+                    break
+            
+            if not user_rows or not user_rows[0]:
+                events_data['error'] = f"Impossible de trouver les lignes pour l'utilisateur {user_name}"
+                return events_data
+            
             # Jours à extraire
             if days_to_extract is None:
                 days_to_extract = list(range(1, 32))  # Par défaut, tous les jours de 1 à 31
             
+            # Définir les noms des créneaux horaires
+            time_slots = ['morning', 'day', 'evening']
+            
             # Pour chaque jour à extraire
             for day in days_to_extract:
-                # Trouver toutes les cellules pour ce jour
-                day_cells = []
-                
-                # Méthode 1: Chercher par attribut id des liens
-                for row_idx, row in enumerate(user_rows):
+                # Pour chaque créneau horaire (matin, jour, soir)
+                for slot_idx, row in enumerate(user_rows):
                     if row is None:
                         continue
-                        
-                    day_a_tags = row.find_all('a', id=str(day))
-                    for a_tag in day_a_tags:
-                        cell = a_tag.parent
-                        if cell and cell.name == 'td':
-                            day_cells.append((row_idx, cell))
-                
-                # Méthode 2: Chercher par classe des cellules
-                for row_idx, row in enumerate(user_rows):
-                    if row is None:
-                        continue
-                        
-                    day_cells_class = row.find_all('td', class_=lambda c: str(day) in (c.split() if c else []))
-                    for cell in day_cells_class:
-                        # Vérifier si on n'a pas déjà cette cellule
-                        if not any(existing_cell[1] is cell for existing_cell in day_cells):
-                            day_cells.append((row_idx, cell))
-                
-                # Traiter chaque cellule trouvée
-                for row_idx, cell in day_cells:
-                    # Déterminer le créneau horaire
-                    time_slot = ['morning', 'day', 'evening'][row_idx]
                     
-                    # Extraire les informations de l'événement
-                    event_info = cls._extract_event_info(cell)
+                    time_slot = time_slots[slot_idx]
                     
-                    # Stocker l'événement
-                    events_data['users'][user_name]['days'][str(day)] = events_data['users'][user_name]['days'].get(str(day), {})
-                    events_data['users'][user_name]['days'][str(day)][time_slot] = event_info
+                    # Trouver les cellules pour ce jour
+                    cells = row.find_all('td')
+                    
+                    # Ignorer les premières cellules qui contiennent les noms d'utilisateur
+                    start_idx = 0
+                    if slot_idx == 0:  # Première ligne (matin)
+                        # Chercher la cellule avec la classe nom_ress
+                        for i, cell in enumerate(cells):
+                            if 'nom_ress' in cell.get('class', []):
+                                start_idx = i + 1
+                                break
+                        
+                        if start_idx == 0 and len(cells) > 2:
+                            # Par défaut, commencer à la 3e cellule
+                            start_idx = 2
+                    
+                    # Chercher les cellules qui correspondent à ce jour
+                    for cell_idx, cell in enumerate(cells[start_idx:], start=1):
+                        # Extraire le jour de cette cellule
+                        cell_day = cls._extract_day_from_cell(cell, cell_idx)
+                        
+                        # Si cette cellule correspond au jour recherché
+                        if cell_day == day or str(cell_day) == str(day):
+                            # Extraire les informations
+                            event_info = cls._extract_event_info(cell)
+                            
+                            # Stocker l'événement
+                            events_data['users'][user_name]['days'][str(day)] = events_data['users'][user_name]['days'].get(str(day), {})
+                            events_data['users'][user_name]['days'][str(day)][time_slot] = event_info
             
             # Calculer des statistiques
             events_count = 0
@@ -131,7 +149,7 @@ class EventExtractor(ExtractorBase):
             
             events_data['summary'] = {
                 'users_count': 1,
-                'events_count': events_count,
+                'total_events': events_count,
                 'events_by_type': events_by_type,
                 'days_count': len(events_data['users'][user_name]['days'])
             }
@@ -146,7 +164,7 @@ class EventExtractor(ExtractorBase):
     @classmethod
     def extract_planning_events(cls, html_content, limit_to_first_user=True, extract_first_line_only=True):
         """
-        Extrait les événements du planning HTML
+        Extrait les événements du planning HTML pour tous les utilisateurs
         
         Args:
             html_content (str): Contenu HTML brut
@@ -165,259 +183,48 @@ class EventExtractor(ExtractorBase):
             'summary': {}  # Statistiques globales
         }
         
-        # Variable pour le débogage - à supprimer en production
-        debug_info = {
-            'tables_found': 0,
-            'tbodies_found': 0,
-            'users_processed': 0,
-            'rows_processed': 0,
-            'cells_processed': 0,
-            'events_found': 0,
-            'skipped_days': 0,  # Nouveau compteur pour les jours ignorés
-            'processed_days': []  # Liste des jours traités pour débogage
-        }
-        
         try:
-            # 1. Chercher toutes les tables possibles
-            tables = soup.find_all('table')
-            debug_info['tables_found'] = len(tables)
+            # Extraire d'abord la liste complète des utilisateurs
+            all_users = UserExtractor.extract_users(html_content)
             
-            main_table = None
+            # Limiter aux utilisateurs qu'on va traiter
+            target_users = all_users[:1] if limit_to_first_user else all_users
             
-            # Essayer d'abord de trouver la table avec id="tableau"
-            main_table = soup.find('table', id='tableau')
-            
-            # Si non trouvé, prendre la plus grande table (avec le plus de lignes)
-            if not main_table and tables:
-                # Trouver la table qui a le plus de lignes
-                main_table = max(tables, key=lambda t: len(t.find_all('tr')), default=None)
-            
-            if not main_table:
-                events_data['error'] = "Aucune table principale n'a été trouvée dans le HTML"
-                events_data['debug'] = debug_info
-                return events_data
+            # Pour chaque utilisateur cible
+            for user_idx, user_name in enumerate(target_users):
+                # Extraire les événements spécifiques à cet utilisateur
+                user_data = cls.extract_specific_days(
+                    html_content, 
+                    days_to_extract=None,  # Tous les jours
+                    user_index=user_idx
+                )
                 
-            # 2. Trouver tous les tbodies (sauf possiblement le premier qui contient les en-têtes)
-            tbodies = main_table.find_all('tbody')
-            debug_info['tbodies_found'] = len(tbodies)
-            
-            # Si aucun tbody explicite n'est trouvé, chercher directement les lignes tr
-            if not tbodies:
-                all_rows = main_table.find_all('tr')
-                # Les premières lignes sont probablement des en-têtes
-                user_rows = all_rows[2:] if len(all_rows) > 2 else all_rows
-                
-                # Grouper les lignes par utilisateur
-                # Supposons que chaque utilisateur a 3 lignes (matin, journée, soir)
-                user_groups = []
-                current_group = []
-                
-                for i, row in enumerate(user_rows):
-                    current_group.append(row)
-                    if (i + 1) % 3 == 0:  # Tous les 3 lignes
-                        user_groups.append(current_group)
-                        current_group = []
-                
-                # Ajouter le dernier groupe s'il est incomplet
-                if current_group:
-                    user_groups.append(current_group)
-                
-                # Traiter chaque groupe comme un "tbody"
-                for group_idx, group in enumerate(user_groups):
-                    if limit_to_first_user and group_idx > 0:
-                        break
+                # Si des erreurs, les reporter
+                if 'error' in user_data:
+                    events_data['error'] = user_data['error']
+                    continue
                     
-                    # Chercher le nom d'utilisateur dans la première ligne
-                    first_row = group[0]
-                    cells = first_row.find_all('td')
+                # Si réussite, copier les données de cet utilisateur
+                if user_name in user_data['users']:
+                    events_data['users'][user_name] = user_data['users'][user_name]
                     
-                    # Trouver la cellule qui contient le nom (généralement la 2e)
-                    user_td = None
-                    for i, cell in enumerate(cells):
-                        if 'nom_ress' in cell.get('class', []) or i == 1:  # Soit la classe spécifique, soit la 2e cellule
-                            user_td = cell
-                            break
-                    
-                    if not user_td:
-                        continue  # Impossible de déterminer l'utilisateur
-                    
-                    user_name = UserExtractor._extract_user_name(user_td)
-                    if not user_name:
-                        user_name = f"Utilisateur {group_idx + 1}"  # Fallback
-                    
-                    # Initialiser les données pour cet utilisateur
-                    events_data['users'][user_name] = {
-                        'days': {}  # Dictionnaire où les clés sont les numéros de jours
-                    }
-                    
-                    debug_info['users_processed'] += 1
-                    
-                    # Traiter chaque ligne (matin, journée, soir)
-                    for row_idx, row in enumerate(group):
-                        if extract_first_line_only and row_idx > 0:
-                            break
-                        
-                        # Déterminer le créneau horaire en fonction de l'index
-                        time_slots = ['morning', 'day', 'evening']
-                        time_slot = time_slots[row_idx] if row_idx < len(time_slots) else f"extra_{row_idx}"
-                        
-                        debug_info['rows_processed'] += 1
-
-                        if extract_first_line_only and time_slot != 'morning':
-                            continue
-                        
-                        # Déterminer quelles cellules contiennent des événements
-                        cells = row.find_all('td')
-                        
-                        # Ignorer les premières cellules non-événement (généralement 1 ou 2)
-                        # Le nombre peut varier, essayons d'être adaptatifs
-                        start_idx = 0
-                        
-                        # Si c'est la première ligne (matin), ça peut être différent
-                        if row_idx == 0:
-                            # Chercher la cellule avec le nom d'utilisateur ou similaire
-                            for i, cell in enumerate(cells):
-                                if 'nom_ress' in cell.get('class', []) or i == 1:
-                                    start_idx = i + 1  # Commencer après cette cellule
-                                    break
-                            
-                            if start_idx == 0 and len(cells) > 2:
-                                # Par défaut, commencer à la 3e cellule pour la première ligne
-                                start_idx = 2
-                        
-                        # Traiter chaque cellule d'événement
-                        for cell_idx, cell in enumerate(cells[start_idx:], start=1):
-                            debug_info['cells_processed'] += 1
-                            
-                            # Extraire le jour associé à cette cellule
-                            day = cls._extract_day_from_cell(cell, cell_idx)
-                            
-                            # Nous utilisons maintenant day comme clé, qu'il soit un entier ou une chaîne
-                            day_key = str(day)
-                            
-                            # Enregistrer le jour pour débogage
-                            debug_info['processed_days'].append(day)
-                            
-                            # Éviter les doublons en vérifiant si ce jour existe déjà pour cet utilisateur
-                            if day_key in events_data['users'][user_name]['days'] and time_slot in events_data['users'][user_name]['days'][day_key]:
-                                debug_info['skipped_days'] += 1
-                                continue
-                            
-                            # Extraire les informations de l'événement
-                            event_info = cls._extract_event_info(cell)
-                            
-                            # Si l'événement n'est pas vide, le comptabiliser
-                            if not event_info['is_empty'] or event_info['is_weekend']:
-                                debug_info['events_found'] += 1
-                            
-                            # Stocker l'événement
-                            if day_key not in events_data['users'][user_name]['days']:
-                                events_data['users'][user_name]['days'][day_key] = {}
-                            
-                            events_data['users'][user_name]['days'][day_key][time_slot] = event_info
-            else:
-                # Si nous avons trouvé des tbody explicites, les traiter normalement
-                # Ignorer le premier tbody qui contient généralement les en-têtes
-                user_tbodies = tbodies[1:] if len(tbodies) > 1 else tbodies
-                
-                for tbody_idx, tbody in enumerate(user_tbodies):
-                    if limit_to_first_user and tbody_idx > 0:
-                        break
-                    
-                    # Trouver toutes les lignes (tr) dans ce tbody
-                    rows = tbody.find_all('tr')
-                    
-                    if not rows:
-                        continue
-                    
-                    # Chercher le nom de l'utilisateur dans la première ligne
-                    first_row = rows[0]
-                    cells = first_row.find_all('td')
-                    
-                    # Il faut au moins deux cellules (la première est vide, la deuxième contient le nom)
-                    if len(cells) < 2:
-                        continue
-                    
-                    # Extraire le nom de l'utilisateur à partir du second td
-                    user_td = cells[1]
-                    if 'nom_ress' not in user_td.get('class', []) and len(cells) > 2:
-                        # Essayer la 3e cellule si la 2e n'a pas la bonne classe
-                        user_td = cells[2]
-                    
-                    user_name = UserExtractor._extract_user_name(user_td)
-                    if not user_name:
-                        user_name = f"Utilisateur {tbody_idx + 1}"  # Fallback
-                    
-                    # Initialiser les données pour cet utilisateur
-                    events_data['users'][user_name] = {
-                        'days': {}  # Dictionnaire où les clés sont les numéros de jours
-                    }
-                    
-                    debug_info['users_processed'] += 1
-                    
-                    # Traiter chaque ligne (généralement 3: matin, journée, soir)
-                    for row_idx, row in enumerate(rows):
-                        if extract_first_line_only and row_idx > 0:
-                            break
-                        
-                        # Déterminer le créneau horaire en fonction de l'index
-                        time_slots = ['morning', 'day', 'evening']
-                        time_slot = time_slots[row_idx] if row_idx < len(time_slots) else f"extra_{row_idx}"
-                        
-                        debug_info['rows_processed'] += 1
-                        
-                        # Déterminer quelles cellules contiennent des événements
-                        cells = row.find_all('td')
-                        start_idx = 2 if row_idx == 0 else 0  # Ignorer les 2 premières cellules pour la première ligne
-                        
-                        # Pour les lignes suivantes, il n'y a pas de cellule de nom
-                        # Donc nous commençons au début
-                        
-                        # Traiter chaque cellule d'événement
-                        for cell_idx, cell in enumerate(cells[start_idx:], start=1):
-                            debug_info['cells_processed'] += 1
-                            
-                            # Extraire le jour associé à cette cellule
-                            day = cls._extract_day_from_cell(cell, cell_idx)
-                            
-                            # Nous utilisons maintenant day comme clé, qu'il soit un entier ou une chaîne
-                            day_key = str(day)
-                            
-                            # Enregistrer le jour pour débogage
-                            debug_info['processed_days'].append(day)
-                            
-                            # Éviter les doublons en vérifiant si ce jour existe déjà pour cet utilisateur
-                            if day_key in events_data['users'][user_name]['days'] and time_slot in events_data['users'][user_name]['days'][day_key]:
-                                debug_info['skipped_days'] += 1
-                                continue
-                            
-                            # Extraire les informations de l'événement
-                            event_info = cls._extract_event_info(cell)
-                            
-                            # Si l'événement n'est pas vide, le comptabiliser
-                            if not event_info['is_empty'] or event_info['is_weekend']:
-                                debug_info['events_found'] += 1
-                            
-                            # Stocker l'événement
-                            if day_key not in events_data['users'][user_name]['days']:
-                                events_data['users'][user_name]['days'][day_key] = {}
-                            
-                            events_data['users'][user_name]['days'][day_key][time_slot] = event_info
+                    # Si extract_first_line_only est True, garder seulement les événements du matin
+                    if extract_first_line_only:
+                        for day_key, day_data in events_data['users'][user_name]['days'].items():
+                            keys_to_remove = [k for k in day_data.keys() if k != 'morning']
+                            for k in keys_to_remove:
+                                day_data.pop(k, None)
             
             # Calculer les statistiques globales
             events_data['summary'] = cls._calculate_events_summary(events_data['users'])
-            
-            # Ajouter les informations de débogage
-            events_data['debug'] = debug_info
-            
+                
         except Exception as e:
             import traceback
             events_data['error'] = str(e)
             events_data['traceback'] = traceback.format_exc()
-            events_data['debug'] = debug_info
         
         return events_data
-    
+
     @classmethod
     def debug_cell(cls, cell, day_index=None):
         """
@@ -578,7 +385,7 @@ class EventExtractor(ExtractorBase):
         
         # Si vraiment rien ne marche, retourner une chaîne avec l'identifiant unique
         return f"day_unknown_{id(cell)}"
-    
+
     @staticmethod
     def _extract_event_info(cell):
         """
@@ -598,7 +405,8 @@ class EventExtractor(ExtractorBase):
             'author': None,         # Auteur de la dernière modification
             'color': None,          # Classe CSS de couleur
             'is_empty': True,       # Indique si la cellule est vide
-            'is_weekend': False     # Indique si c'est un weekend
+            'is_weekend': False,    # Indique si c'est un weekend
+            'is_holiday': False     # Indique si c'est un jour férié
         }
         
         # Vérifier s'il s'agit d'un weekend (exactement la classe "WE")
@@ -657,8 +465,8 @@ class EventExtractor(ExtractorBase):
             'b_tomato': 'vacation',          # Congés
             'gold': 'duty',                  # Permanence
             'b_gold': 'duty',                # Permanence
-            'orange': 'morning_duty',        # Permanence matin
-            'b_orange': 'morning_duty',      # Permanence matin
+            'orange': 'preventive_meditech', # Préventive Meditech
+            'b_orange': 'preventive_meditech', # Préventive Meditech
             'teal': 'onsite',                # Garde sur site
             'b_teal': 'onsite',              # Garde sur site
             'blackwhite': 'leave',           # Congés posés
@@ -673,35 +481,56 @@ class EventExtractor(ExtractorBase):
                 event_info['color'] = cls
                 event_info['type'] = color_map[cls]
                 event_info['is_empty'] = False
+                
+                # Marquer les jours fériés
+                if color_map[cls] == 'holiday':
+                    event_info['is_holiday'] = True
         
         # Déterminer le type d'événement à partir du contenu si pas déjà défini
         if not event_info['type'] and event_info['content']:
             content = event_info['content']
             
-            if content == 'TL':
-                event_info['type'] = 'telework'
-            elif content == 'R':
-                event_info['type'] = 'meeting'
-            elif content == 'RTE':
-                event_info['type'] = 'rte'
-            elif content == 'C':
-                event_info['type'] = 'vacation'
-            elif content == 'P':
-                event_info['type'] = 'duty'
-            elif content == 'Pm':
-                event_info['type'] = 'morning_duty'
-            elif content == 'GS':
-                event_info['type'] = 'onsite'
-            elif content == 'CP':
-                event_info['type'] = 'leave'
-            elif content == 'JF':
-                event_info['type'] = 'holiday'
+            # Tous les types d'événements demandés
+            event_types = {
+                'TL': 'tele_maintenance',      # Télémaintenance
+                'TLT': 'telework',             # Télétravail
+                'P': 'preventive',             # Préventive
+                'Pf': 'preventive_fixed',      # Préventive fixée
+                'Pm': 'preventive_meditech',   # Préventive Meditech
+                'Pmf': 'preventive_meditech_fixed', # Préventive Meditech fixée
+                'C': 'corrective',             # Corrective
+                'Cf': 'corrective_fixed',      # Corrective fixée
+                'R': 'meeting',                # Réunion
+                'RTE': 'route',                # Route
+                'CP': 'paid_leave',            # Congés Payés
+                'CP2': 'half_paid_leave',      # Demi congés payés
+                'RTT': 'rtt',                  # RTT
+                'RT2': 'half_rtt',             # Demi RTT
+                'Rec': 'compensatory',         # Récup
+                'RC': 'compensatory_rest',     # Repos Compensateur
+                'CS': 'special_leave',         # Congés Spéciaux
+                'GS': 'stock_management',      # Gestion de Stock
+                'MES': 'commissioning',        # Mise en service
+                'I': 'installation',           # Installation
+                'FOR': 'training',             # Formation
+                'BUR': 'office',               # Bureau
+                'FT': 'tech_training',         # Formation Tech
+                'DM': 'dismantling',           # Démontage
+                'JF': 'holiday'                # Jour férié
+            }
+            
+            if content in event_types:
+                event_info['type'] = event_types[content]
+                
+                # Marquer les jours fériés
+                if event_info['type'] == 'holiday':
+                    event_info['is_holiday'] = True
             else:
                 event_info['type'] = 'other'
         
-        # Si on a un commentaire mais pas de type, mettre "other"
+        # Si on a un commentaire mais pas de type, mettre "comment"
         if not event_info['type'] and event_info['comment']:
-            event_info['type'] = 'other'
+            event_info['type'] = 'comment'
         
         # Si la cellule est vide mais que c'est un week-end, ne pas marquer comme empty
         if event_info['is_empty'] and event_info['is_weekend']:

@@ -214,7 +214,7 @@ def extract_dates():
 
 @teamplanning_bp.route('/extract-events', methods=['POST'])
 def extract_events():
-    """Extrait les événements du planning pour la première ligne du premier utilisateur"""
+    """Extrait les événements du planning pour tous les utilisateurs"""
     # Récupérer le dernier planning brut
     latest_raw_planning = RawPlanning.query.order_by(RawPlanning.created_at.desc()).first()
     
@@ -225,15 +225,17 @@ def extract_events():
         }), 404
     
     try:
-        # Utiliser la nouvelle méthode qui correspond au debug
-        # Liste de tous les jours de 1 à 30 pour avril
-        days_to_extract = list(range(1, 31))
-        user_index = 0  # Premier utilisateur
+        # Récupérer les options de la requête
+        data = request.get_json() or {}
+        # Modifier les paramètres par défaut pour traiter tous les utilisateurs et tous les créneaux
+        first_user_only = data.get('first_user_only', False)
+        first_line_only = data.get('first_line_only', False)  # False pour tous les créneaux
         
-        events_data = EventExtractor.extract_specific_days(
+        # Utiliser la méthode adaptée pour l'extraction complète
+        events_data = NetplanningExtractor.extract_planning_events(
             latest_raw_planning.raw_content,
-            days_to_extract=days_to_extract,
-            user_index=user_index
+            limit_to_first_user=first_user_only,
+            extract_first_line_only=first_line_only
         )
         
         if 'error' in events_data:
@@ -244,46 +246,50 @@ def extract_events():
         
         # Créer un résumé pour le front-end
         summary = {
-            'users_count': events_data['summary'].get('users_count', 0),
-            'events_count': events_data['summary'].get('total_events', 0),
-            'event_types': events_data['summary'].get('events_by_type', {}),
+            'users_count': events_data.get('summary', {}).get('users_count', 0),
+            'events_count': events_data.get('summary', {}).get('total_events', 0),
+            'event_types': events_data.get('summary', {}).get('events_by_type', {}),
         }
         
-        # Préparer un journal détaillé des événements pour l'affichage
+        # Préparer un journal détaillé des événements pour l'affichage - ignorer week-ends et jours fériés
         events_log = []
         for user, user_data in events_data['users'].items():
             for day_str, day_data in user_data.get('days', {}).items():
-                # Ne prendre que les événements du matin
-                if 'morning' not in day_data:
-                    continue
-                
-                event = day_data['morning']
-                events_log.append({
-                    'user': user,
-                    'day': day_str,
-                    'time_slot': 'morning',
-                    'content': event.get('content', ''),
-                    'type': event.get('type', 'unknown'),
-                    'is_weekend': event.get('is_weekend', False),
-                    'comment': event.get('comment', ''),
-                    'last_modified': event.get('last_modified', ''),
-                    'author': event.get('author', '')
-                })
+                # Inclure tous les créneaux horaires (matin, jour, soir)
+                for time_slot, event in day_data.items():
+                    # Ne pas inclure les événements vides, week-ends ou jours fériés
+                    if (not event.get('is_empty', True) and 
+                        not event.get('is_weekend', False) and 
+                        not event.get('is_holiday', False)):
+                        events_log.append({
+                            'user': user,
+                            'day': day_str,
+                            'time_slot': time_slot,
+                            'content': event.get('content', ''),
+                            'type': event.get('type', 'unknown'),
+                            'is_weekend': event.get('is_weekend', False),
+                            'is_holiday': event.get('is_holiday', False),
+                            'comment': event.get('comment', ''),
+                            'last_modified': event.get('last_modified', ''),
+                            'author': event.get('author', '')
+                        })
         
-        # Ajouter des informations de débogage
-        summary['extracted_days'] = list(sorted([int(day) for day in list(
-            set([day for user in events_data['users'] for day in events_data['users'][user].get('days', {})]))
-            if day.isdigit()
-        ]))
+        # Trier les événements par utilisateur, jour et créneau horaire
+        events_log.sort(key=lambda e: (
+            e['user'],
+            int(e['day']) if e['day'].isdigit() else 0, 
+            {'morning': 0, 'day': 1, 'evening': 2}.get(e['time_slot'], 3)
+        ))
         
-        # Ajouter un indicateur spécifique pour le jour 3
-        summary['day_3_events'] = [e for e in events_log if e['day'] == '3']
+        # Obtenir la liste des utilisateurs pour le filtrage
+        unique_users = sorted(list(set(e['user'] for e in events_log)))
         
         return jsonify({
             'success': True,
             'events': events_data,
             'summary': summary,
-            'events_log': events_log
+            'events_log': events_log,
+            'users': unique_users
         })
         
     except Exception as e:
@@ -397,7 +403,6 @@ def monthly_view():
         month_name=start_date.strftime('%B'),
         planning=latest_planning
     )
-
 
 @teamplanning_bp.route('/debug-day/<int:day>', methods=['GET'])
 def debug_day(day):

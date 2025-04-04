@@ -194,6 +194,9 @@ class PlanningParser:
     @staticmethod
     def _create_planning_entries(parsed_planning_id, planning_data):
         """Crée des entrées individuelles dans la base de données à partir des données analysées"""
+        from datetime import datetime, timedelta
+        import calendar
+        
         parsed_planning = ParsedPlanning.query.get(parsed_planning_id)
         if not parsed_planning:
             return
@@ -208,14 +211,23 @@ class PlanningParser:
             year = parsed_planning.year
             
             first_day = datetime(year, month_num, 1)
+            
+            # Déterminer le nombre de jours dans ce mois
+            _, days_in_month = calendar.monthrange(year, month_num)
         except (ValueError, KeyError):
             # En cas d'erreur, utiliser le mois courant
             now = datetime.now()
             first_day = datetime(now.year, now.month, 1)
+            _, days_in_month = calendar.monthrange(now.year, now.month)
         
         # Créer les entrées pour chaque personne et chaque jour
         for person in planning_data["people"]:
             for day_num in planning_data["days"]:
+                # Vérifier si le jour est valide pour ce mois
+                if day_num < 1 or day_num > days_in_month:
+                    print(f"Avertissement: jour {day_num} hors limites pour {month_name} {year} (max: {days_in_month})")
+                    continue
+                
                 day_data = planning_data["entries"].get(person, {}).get(day_num, {})
                 
                 entry_date = first_day + timedelta(days=day_num-1)

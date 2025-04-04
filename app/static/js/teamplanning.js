@@ -460,7 +460,10 @@ class Teamplanning {
                         first_line_only: true
                     };
                     
-                    const eventsData = await API.extractEvents(eventOptions);
+                    const eventsData = await API.extractEvents({
+                        first_user_only: false,  // Modifié pour récupérer tous les utilisateurs
+                        first_line_only: false   // Modifié pour récupérer tous les créneaux horaires
+                    });
                     
                     if (eventsData.success) {
                         // Déterminer le message de statut
@@ -534,7 +537,6 @@ class Teamplanning {
         const eventsLogContainer = document.getElementById('events-log');
         if (!eventsLogContainer) return;
         
-        // Débogage - afficher tous les événements reçus
         console.log("Événements reçus pour affichage:", eventsLog);
         
         if (!eventsLog || eventsLog.length === 0) {
@@ -547,8 +549,29 @@ class Teamplanning {
             return;
         }
         
-        // Créer un tableau pour afficher les événements
+        // Extraire la liste des utilisateurs uniques
+        const users = [...new Set(eventsLog.map(event => event.user))].sort();
+        
+        // Créer un sélecteur d'utilisateur
         let logHtml = `
+            <div class="form-group mb-3">
+                <label for="user-filter-select" class="form-label">Filtrer par utilisateur:</label>
+                <select id="user-filter-select" class="form-select">
+                    <option value="all">Tous les utilisateurs (${users.length})</option>
+        `;
+        
+        // Ajouter une option pour chaque utilisateur
+        users.forEach(user => {
+            logHtml += `<option value="${user}">${user}</option>`;
+        });
+        
+        logHtml += `
+                </select>
+            </div>
+        `;
+        
+        // Créer le tableau pour afficher les événements
+        logHtml += `
             <div class="table-responsive">
                 <table class="table table-sm table-hover">
                     <thead>
@@ -562,7 +585,7 @@ class Teamplanning {
                             <th>Dernière modif.</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="events-table-body">
         `;
         
         // Définir les noms français des créneaux horaires
@@ -572,61 +595,94 @@ class Teamplanning {
             'evening': 'Soir'
         };
         
-        // Définir les noms français des types d'événements
         const eventTypeNames = {
             'telework': 'Télétravail',
+            'tele_maintenance': 'Télémaintenance',
             'meeting': 'Réunion',
-            'rte': 'RTE',
+            'route': 'Route',
+            'preventive': 'Préventive',
+            'preventive_fixed': 'Préventive fixée',
+            'preventive_meditech': 'Préventive Meditech',
+            'preventive_meditech_fixed': 'Préventive Meditech fixée',
+            'corrective': 'Corrective',
+            'corrective_fixed': 'Corrective fixée',
+            'paid_leave': 'Congés payés',
+            'half_paid_leave': 'Demi congés payés',
+            'special_leave': 'Congés spéciaux',
+            'rtt': 'RTT',
+            'half_rtt': 'Demi RTT',
+            'compensatory': 'Récupération',
+            'compensatory_rest': 'Repos compensateur',
+            'stock_management': 'Gestion de stock',
+            'commissioning': 'Mise en service',
+            'installation': 'Installation',
+            'training': 'Formation',
+            'tech_training': 'Formation technique',
+            'office': 'Bureau',
+            'dismantling': 'Démontage',
             'vacation': 'Congés',
             'duty': 'Permanence',
-            'morning_duty': 'Permanence matin',
             'onsite': 'Sur site',
             'leave': 'Congés posés',
             'holiday': 'Jour férié',
             'weekend': 'Week-end',
+            'comment': 'Commentaire',
             'empty': 'Vide',
             'unknown': 'Inconnu',
             'other': 'Autre'
         };
-        
-        // Mapper les types aux classes Bootstrap
+
         const typeClasses = {
             'telework': 'success',
+            'tele_maintenance': 'success',
             'meeting': 'primary',
-            'rte': 'warning',
-            'vacation': 'danger',
+            'route': 'warning',
+            'preventive': 'info',
+            'preventive_fixed': 'info',
+            'preventive_meditech': 'info',
+            'preventive_meditech_fixed': 'info',
+            'corrective': 'danger',
+            'corrective_fixed': 'danger',
+            'paid_leave': 'secondary',
+            'half_paid_leave': 'secondary',
+            'special_leave': 'secondary',
+            'rtt': 'secondary',
+            'half_rtt': 'secondary',
+            'compensatory': 'secondary',
+            'compensatory_rest': 'secondary',
+            'stock_management': 'dark',
+            'commissioning': 'dark',
+            'installation': 'dark',
+            'training': 'primary',
+            'tech_training': 'primary',
+            'office': 'dark',
+            'dismantling': 'dark',
+            'vacation': 'secondary',
             'duty': 'info',
-            'morning_duty': 'info',
-            'onsite': 'secondary',
-            'leave': 'danger',
+            'onsite': 'dark',
+            'leave': 'secondary',
             'holiday': 'success',
             'weekend': 'secondary',
+            'comment': 'info',
             'empty': 'light',
             'unknown': 'light',
             'other': 'dark'
         };
         
-        // Trier les événements par jour et créneau
-        eventsLog.sort((a, b) => {
-            const dayA = parseInt(a.day) || 0;
-            const dayB = parseInt(b.day) || 0;
-            if (dayA !== dayB) return dayA - dayB;
-            
-            const slotOrder = { 'morning': 0, 'day': 1, 'evening': 2 };
-            return slotOrder[a.time_slot] - slotOrder[b.time_slot];
-        });
+        // Stocker tous les événements dans une variable globale pour le filtrage
+        window.allEvents = eventsLog;
+        // Par défaut, afficher les 100 premiers événements
+        window.displayedEvents = eventsLog.slice(0, 99000);
         
-        // Limiter à 100 événements maximum pour éviter de surcharger l'interface
-        const maxEvents = 100;
-        const displayedEvents = eventsLog.slice(0, maxEvents);
+        let rowsHtml = '';
         
-        // Ajouter chaque événement au tableau
-        displayedEvents.forEach(event => {
+        // Générer les lignes pour les événements affichés
+        window.displayedEvents.forEach(event => {
             const rowClass = event.is_weekend ? 'table-secondary' : '';
             const typeClass = typeClasses[event.type] || 'secondary';
             
-            logHtml += `
-                <tr class="${rowClass}">
+            rowsHtml += `
+                <tr class="${rowClass}" data-user="${event.user}">
                     <td>${event.user}</td>
                     <td>${event.day}</td>
                     <td>${timeSlotNames[event.time_slot] || event.time_slot}</td>
@@ -638,23 +694,171 @@ class Teamplanning {
             `;
         });
         
-        logHtml += `
+        logHtml += rowsHtml + `
                     </tbody>
                 </table>
             </div>
         `;
         
         // Ajouter un message si tous les événements ne sont pas affichés
-        if (eventsLog.length > maxEvents) {
+        if (eventsLog.length > 100) {
             logHtml += `
-                <div class="alert alert-info mt-2">
+                <div class="alert alert-info mt-2" id="display-info">
                     <i class="fas fa-info-circle me-2"></i>
-                    Affichage limité à ${maxEvents} événements sur ${eventsLog.length} au total.
+                    Affichage limité aux 100 premiers événements sur ${eventsLog.length} au total.
+                    Sélectionnez un utilisateur spécifique pour voir tous ses événements.
                 </div>
             `;
         }
         
+        // Ajouter un bouton pour charger plus d'événements
+        logHtml += `
+            <div class="text-center mt-3">
+                <button id="load-more-events" class="btn btn-outline-primary">
+                    <i class="fas fa-plus-circle me-2"></i>Charger plus d'événements
+                </button>
+            </div>
+        `;
+        
         eventsLogContainer.innerHTML = logHtml;
+        
+        // Ajouter les écouteurs d'événements
+        this.setupEventListeners(timeSlotNames, eventTypeNames, typeClasses);
+    }
+
+    setupEventListeners(timeSlotNames, eventTypeNames, typeClasses) {
+        // Ajouter l'écouteur pour le sélecteur d'utilisateur
+        const userFilterSelect = document.getElementById('user-filter-select');
+        if (userFilterSelect) {
+            userFilterSelect.addEventListener('change', () => {
+                const selectedUser = userFilterSelect.value;
+                this.filterEventsByUser(selectedUser, timeSlotNames, eventTypeNames, typeClasses);
+            });
+        }
+        
+        // Ajouter l'écouteur pour le bouton "Charger plus"
+        const loadMoreButton = document.getElementById('load-more-events');
+        if (loadMoreButton) {
+            loadMoreButton.addEventListener('click', () => {
+                this.loadMoreEvents(timeSlotNames, eventTypeNames, typeClasses);
+            });
+        }
+    }
+
+    filterEventsByUser(selectedUser, timeSlotNames, eventTypeNames, typeClasses) {
+        const tableBody = document.getElementById('events-table-body');
+        if (!tableBody || !window.allEvents) return;
+        
+        let filteredEvents;
+        
+        if (selectedUser === 'all') {
+            // Pour "Tous les utilisateurs", limiter à 100 événements
+            filteredEvents = window.allEvents.slice(0, 100);
+        } else {
+            // Pour un utilisateur spécifique, montrer tous ses événements
+            filteredEvents = window.allEvents.filter(event => event.user === selectedUser);
+        }
+        
+        window.displayedEvents = filteredEvents;
+        
+        let rowsHtml = '';
+        filteredEvents.forEach(event => {
+            const rowClass = event.is_weekend ? 'table-secondary' : '';
+            const typeClass = typeClasses[event.type] || 'secondary';
+            
+            rowsHtml += `
+                <tr class="${rowClass}" data-user="${event.user}">
+                    <td>${event.user}</td>
+                    <td>${event.day}</td>
+                    <td>${timeSlotNames[event.time_slot] || event.time_slot}</td>
+                    <td>${event.content || '-'}</td>
+                    <td><span class="badge bg-${typeClass}">${eventTypeNames[event.type] || event.type}</span></td>
+                    <td>${event.comment || '-'}</td>
+                    <td>${event.last_modified ? `${event.last_modified}<br>${event.author || ''}` : '-'}</td>
+                </tr>
+            `;
+        });
+        
+        tableBody.innerHTML = rowsHtml;
+        
+        // Mettre à jour le message d'information
+        const displayInfo = document.getElementById('display-info');
+        if (displayInfo) {
+            if (selectedUser === 'all' && window.allEvents.length > 100) {
+                displayInfo.innerHTML = `
+                    <i class="fas fa-info-circle me-2"></i>
+                    Affichage limité aux 100 premiers événements sur ${window.allEvents.length} au total.
+                    Sélectionnez un utilisateur spécifique pour voir tous ses événements.
+                `;
+                displayInfo.style.display = 'block';
+            } else if (selectedUser !== 'all') {
+                const userEventCount = window.allEvents.filter(e => e.user === selectedUser).length;
+                displayInfo.innerHTML = `
+                    <i class="fas fa-info-circle me-2"></i>
+                    Affichage des ${filteredEvents.length} événements pour ${selectedUser}.
+                `;
+                displayInfo.style.display = 'block';
+            } else {
+                displayInfo.style.display = 'none';
+            }
+        }
+        
+        // Gérer l'affichage du bouton "Charger plus"
+        const loadMoreButton = document.getElementById('load-more-events');
+        if (loadMoreButton) {
+            if (selectedUser === 'all' && window.displayedEvents.length < window.allEvents.length) {
+                loadMoreButton.style.display = 'inline-block';
+            } else {
+                loadMoreButton.style.display = 'none';
+            }
+        }
+    }
+
+    loadMoreEvents(timeSlotNames, eventTypeNames, typeClasses) {
+        const tableBody = document.getElementById('events-table-body');
+        if (!tableBody || !window.allEvents || !window.displayedEvents) return;
+        
+        const currentCount = window.displayedEvents.length;
+        const nextBatch = window.allEvents.slice(currentCount, currentCount + 100);
+        
+        if (nextBatch.length === 0) return;
+        
+        window.displayedEvents = [...window.displayedEvents, ...nextBatch];
+        
+        let rowsHtml = '';
+        window.displayedEvents.forEach(event => {
+            const rowClass = event.is_weekend ? 'table-secondary' : '';
+            const typeClass = typeClasses[event.type] || 'secondary';
+            
+            rowsHtml += `
+                <tr class="${rowClass}" data-user="${event.user}">
+                    <td>${event.user}</td>
+                    <td>${event.day}</td>
+                    <td>${timeSlotNames[event.time_slot] || event.time_slot}</td>
+                    <td>${event.content || '-'}</td>
+                    <td><span class="badge bg-${typeClass}">${eventTypeNames[event.type] || event.type}</span></td>
+                    <td>${event.comment || '-'}</td>
+                    <td>${event.last_modified ? `${event.last_modified}<br>${event.author || ''}` : '-'}</td>
+                </tr>
+            `;
+        });
+        
+        tableBody.innerHTML = rowsHtml;
+        
+        // Mettre à jour le message d'information
+        const displayInfo = document.getElementById('display-info');
+        if (displayInfo) {
+            displayInfo.innerHTML = `
+                <i class="fas fa-info-circle me-2"></i>
+                Affichage de ${window.displayedEvents.length} événements sur ${window.allEvents.length} au total.
+            `;
+        }
+        
+        // Masquer le bouton s'il n'y a plus d'événements à charger
+        const loadMoreButton = document.getElementById('load-more-events');
+        if (loadMoreButton && window.displayedEvents.length >= window.allEvents.length) {
+            loadMoreButton.style.display = 'none';
+        }
     }
 }
 
