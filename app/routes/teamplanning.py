@@ -231,7 +231,10 @@ def extract_events():
         selected_days = data.get('days', [])
         
         # Utiliser la méthode adaptée pour l'extraction ciblée
-        all_users = UserExtractor.extract_users(latest_raw_planning.raw_content)
+        # Au lieu d'appeler directement UserExtractor, utilisons NetplanningExtractor
+        metadata = NetplanningExtractor.extract_metadata(latest_raw_planning.raw_content)
+        all_users = metadata['users']
+        
         events_data = {'users': {}, 'summary': {}}
         
         # Si aucun utilisateur sélectionné, prendre le premier par défaut
@@ -256,7 +259,24 @@ def extract_events():
                     events_data['users'][user_name] = user_events['users'][user_name]
         
         # Calculer les statistiques globales
-        events_data['summary'] = EventExtractor._calculate_events_summary(events_data['users'])
+        # Au lieu d'appeler directement EventExtractor, utilisons une autre approche
+        # Comme EventExtractor n'est pas non plus importé, nous allons simplifier le calcul des statistiques
+        total_events = 0
+        events_by_type = {}
+        
+        for user, user_data in events_data['users'].items():
+            for day_data in user_data.get('days', {}).values():
+                for time_slot, event in day_data.items():
+                    if not event.get('is_empty', True):
+                        total_events += 1
+                        event_type = event.get('type', 'unknown')
+                        events_by_type[event_type] = events_by_type.get(event_type, 0) + 1
+        
+        events_data['summary'] = {
+            'users_count': len(events_data['users']),
+            'total_events': total_events,
+            'events_by_type': events_by_type
+        }
         
         # Préparer les événements pour l'affichage en excluant weekends et jours fériés
         events_log = []
