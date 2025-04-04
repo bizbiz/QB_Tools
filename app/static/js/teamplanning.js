@@ -290,6 +290,15 @@ class API {
             }
         }).then(response => response.json());
     }
+
+    static async extractMetadata() {
+        return fetch('/teamplanning/extract-metadata', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        }).then(response => response.json());
+    }
 }
 
 /**
@@ -382,18 +391,191 @@ class Teamplanning {
             console.error('Fetch error:', error);
         }
     }
-    
-    /**
-     * Traite les données pour extraire les utilisateurs
-     */
+
+    async extractMetadata() {
+        UI.showStatusMessage('info', 'Extraction des métadonnées en cours...', document.getElementById('process-status-message'));
+        
+        try {
+            const metadata = await API.extractMetadata();
+            
+            if (metadata.success) {
+                // Afficher l'interface de sélection
+                this.displaySelectionInterface(metadata.metadata);
+            } else {
+                UI.showStatusMessage('error', metadata.error || 'Erreur lors de l\'extraction des métadonnées.', document.getElementById('process-status-message'));
+            }
+        } catch (error) {
+            console.error('Error extracting metadata:', error);
+            UI.showStatusMessage('error', 'Erreur de connexion au serveur.', document.getElementById('process-status-message'));
+        }
+    }
+
+    displaySelectionInterface(metadata) {
+        const usersContainer = document.getElementById('users-list');
+        if (!usersContainer) return;
+        
+        const users = metadata.users || [];
+        const dates = metadata.dates?.days || [];
+        
+        // Créer l'interface de sélection
+        let html = `
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Sélection des données à extraire</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Utilisateurs (${users.length})</h6>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="select-all-users">
+                                <label class="form-check-label" for="select-all-users">
+                                    <strong>Sélectionner tout</strong>
+                                </label>
+                            </div>
+                            <div class="users-selection" style="max-height: 300px; overflow-y: auto;">
+        `;
+        
+        // Ajouter chaque utilisateur
+        users.forEach((user, index) => {
+            html += `
+                <div class="form-check">
+                    <input class="form-check-input user-checkbox" type="checkbox" value="${user}" id="user-${index}">
+                    <label class="form-check-label" for="user-${index}">
+                        ${user}
+                    </label>
+                </div>
+            `;
+        });
+        
+        html += `
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Jours (${dates.length})</h6>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="select-all-days">
+                                <label class="form-check-label" for="select-all-days">
+                                    <strong>Sélectionner tout</strong>
+                                </label>
+                            </div>
+                            <div class="days-selection" style="max-height: 300px; overflow-y: auto;">
+        `;
+        
+        // Ajouter chaque jour
+        dates.forEach(day => {
+            html += `
+                <div class="form-check">
+                    <input class="form-check-input day-checkbox" type="checkbox" value="${day}" id="day-${day}">
+                    <label class="form-check-label" for="day-${day}">
+                        Jour ${day}
+                    </label>
+                </div>
+            `;
+        });
+        
+        html += `
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4 text-center">
+                        <button id="extract-selected-data" class="btn btn-primary">
+                            <i class="fas fa-download me-2"></i>Extraire les données sélectionnées
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        usersContainer.innerHTML = html;
+        
+        // Ajouter les gestionnaires d'événements
+        this.setupSelectionEvents();
+    }
+
+    setupSelectionEvents() {
+        // Gestionnaire pour "Sélectionner tout" (utilisateurs)
+        const selectAllUsers = document.getElementById('select-all-users');
+        if (selectAllUsers) {
+            selectAllUsers.addEventListener('change', () => {
+                const userCheckboxes = document.querySelectorAll('.user-checkbox');
+                userCheckboxes.forEach(checkbox => {
+                    checkbox.checked = selectAllUsers.checked;
+                });
+            });
+        }
+        
+        // Gestionnaire pour "Sélectionner tout" (jours)
+        const selectAllDays = document.getElementById('select-all-days');
+        if (selectAllDays) {
+            selectAllDays.addEventListener('change', () => {
+                const dayCheckboxes = document.querySelectorAll('.day-checkbox');
+                dayCheckboxes.forEach(checkbox => {
+                    checkbox.checked = selectAllDays.checked;
+                });
+            });
+        }
+        
+        // Gestionnaire pour le bouton d'extraction
+        const extractButton = document.getElementById('extract-selected-data');
+        if (extractButton) {
+            extractButton.addEventListener('click', () => {
+                this.extractSelectedData();
+            });
+        }
+    }
+
+    async extractSelectedData() {
+        // Récupérer les utilisateurs sélectionnés
+        const selectedUsers = Array.from(document.querySelectorAll('.user-checkbox:checked'))
+            .map(checkbox => checkbox.value);
+        
+        // Récupérer les jours sélectionnés
+        const selectedDays = Array.from(document.querySelectorAll('.day-checkbox:checked'))
+            .map(checkbox => parseInt(checkbox.value));
+        
+        if (selectedUsers.length === 0) {
+            UI.showStatusMessage('warning', 'Veuillez sélectionner au moins un utilisateur.', document.getElementById('process-status-message'));
+            return;
+        }
+        
+        if (selectedDays.length === 0) {
+            UI.showStatusMessage('warning', 'Veuillez sélectionner au moins un jour.', document.getElementById('process-status-message'));
+            return;
+        }
+        
+        UI.showStatusMessage('info', 'Extraction des données en cours...', document.getElementById('process-status-message'));
+        UI.showSpinner(this.processSpinner);
+        
+        try {
+            const eventsData = await API.extractEvents({
+                users: selectedUsers,
+                days: selectedDays
+            });
+            
+            if (eventsData.success) {
+                UI.showStatusMessage('success', 'Extraction réussie!', document.getElementById('process-status-message'));
+                
+                if (eventsData.events_log) {
+                    this.displayEventsLog(eventsData.events_log);
+                }
+            } else {
+                UI.showStatusMessage('error', eventsData.error || 'Erreur lors de l\'extraction des données.', document.getElementById('process-status-message'));
+            }
+        } catch (error) {
+            console.error('Error extracting data:', error);
+            UI.showStatusMessage('error', 'Erreur de connexion au serveur.', document.getElementById('process-status-message'));
+        } finally {
+            UI.hideSpinner(this.processSpinner);
+        }
+    }
+
     async processData() {
         // Définir les étapes du traitement
         const processSteps = [
             { id: 'extract-users', name: 'Extraction des utilisateurs' },
             { id: 'extract-dates', name: 'Extraction des dates & vérifications' },
-            { id: 'extract-events', name: 'Extraction des événements' },
-            // Ajouter d'autres étapes au fur et à mesure du développement
-            // Par exemple: { id: 'analyze-schedule', name: 'Analyse des plannings' },
+            { id: 'prepare-extraction', name: 'Préparation de l\'extraction' }
         ];
         
         // Initialiser l'affichage des étapes
@@ -451,72 +633,28 @@ class Teamplanning {
                     // Marquer l'étape comme complétée
                     UI.updateStepStatus('extract-dates', statusType, statusMessage);
                     
-                    // Étape 3: Extraction des événements
-                    UI.updateStepStatus('extract-events', 'active');
+                    // Étape 3: Préparer l'extraction ciblée
+                    UI.updateStepStatus('prepare-extraction', 'active');
                     
-                    // Options pour limiter l'extraction au premier utilisateur, première ligne
-                    const eventOptions = {
-                        first_user_only: true,
-                        first_line_only: true
-                    };
+                    // Utiliser la nouvelle méthode pour extraire les métadonnées
+                    await this.extractMetadata();
                     
-                    const eventsData = await API.extractEvents({
-                        first_user_only: false,  // Modifié pour récupérer tous les utilisateurs
-                        first_line_only: false   // Modifié pour récupérer tous les créneaux horaires
-                    });
+                    UI.updateStepStatus('prepare-extraction', 'completed', 'Interface de sélection prête');
                     
-                    if (eventsData.success) {
-                        // Déterminer le message de statut
-                        const eventsCount = eventsData.summary?.events_count || 0;
-                        const usersCount = eventsData.summary?.users_count || 0;
-                        
-                        let eventsStatusMessage = `${eventsCount} événements extraits pour ${usersCount} utilisateur`;
-                        
-                        // Afficher les types d'événements extraits
-                        const eventTypes = eventsData.summary?.event_types || {};
-                        if (Object.keys(eventTypes).length > 0) {
-                            const typesText = Object.entries(eventTypes)
-                                .map(([type, count]) => `${count} ${type}`)
-                                .join(', ');
-                            eventsStatusMessage += ` (${typesText})`;
-                        }
-
-                        if (eventsData.events_log) {
-                            this.displayEventsLog(eventsData.events_log);
-                        }
-
-                        // Afficher des informations de débogage supplémentaires
-                        if (eventsData.summary && eventsData.summary.extracted_days) {
-                            console.log("Jours extraits:", eventsData.summary.extracted_days);
-                            console.log("Nombre d'événements par jour:", eventsData.summary.events_by_day);
-                            console.log("Événements jour 3:", eventsData.summary.day_3_events);
-                        }
-                                                
-                        UI.updateStepStatus('extract-events', 'completed', eventsStatusMessage);
-                        
-                        // Stocker les données d'événements pour utilisation ultérieure
-                        this.eventsData = eventsData.events;
-                    } else {
-                        UI.updateStepStatus('extract-events', 'error', 'Échec de l\'extraction');
-                    }
+                    // Message de succès global
+                    UI.showStatusMessage('success', 'Préparation terminée. Sélectionnez les données à extraire.', document.getElementById('process-status-message'));
                 } else {
                     // En cas d'erreur dans cette étape
                     UI.updateStepStatus('extract-dates', 'error', 'Échec de l\'extraction');
-                    UI.updateStepStatus('extract-events', 'pending');
+                    UI.updateStepStatus('prepare-extraction', 'pending');
+                    UI.showStatusMessage('error', datesData.error || 'Erreur lors du traitement des données.', document.getElementById('process-status-message'));
                 }
-                
-                // Message de succès global
-                UI.showStatusMessage('success', 'Traitement des données terminé avec succès!', document.getElementById('process-status-message'));
             } else {
                 // En cas d'erreur dans la première étape
                 UI.updateStepStatus('extract-users', 'error', 'Échec de l\'extraction');
                 UI.updateStepStatus('extract-dates', 'pending');
                 UI.showStatusMessage('error', userData.error || 'Erreur lors du traitement des données.', document.getElementById('process-status-message'));
             }
-            
-            // Ici, vous pourriez ajouter d'autres étapes au fur et à mesure du développement
-            // Par exemple: Analyse des plannings, génération de rapports, etc.
-            
         } catch (error) {
             // Gestion des erreurs générales
             UI.updateStepStatus('extract-users', 'error', 'Erreur de connexion');

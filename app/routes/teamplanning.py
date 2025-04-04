@@ -214,7 +214,7 @@ def extract_dates():
 
 @teamplanning_bp.route('/extract-events', methods=['POST'])
 def extract_events():
-    """Extrait les événements du planning pour tous les utilisateurs"""
+    """Extrait les événements du planning pour les utilisateurs et jours spécifiés"""
     # Récupérer le dernier planning brut
     latest_raw_planning = RawPlanning.query.order_by(RawPlanning.created_at.desc()).first()
     
@@ -225,39 +225,46 @@ def extract_events():
         }), 404
     
     try:
-        # Récupérer les options de la requête
+        # Récupérer les filtres de la requête
         data = request.get_json() or {}
-        # Modifier les paramètres par défaut pour traiter tous les utilisateurs et tous les créneaux
-        first_user_only = data.get('first_user_only', False)
-        first_line_only = data.get('first_line_only', False)  # False pour tous les créneaux
+        selected_users = data.get('users', [])
+        selected_days = data.get('days', [])
         
-        # Utiliser la méthode adaptée pour l'extraction complète
-        events_data = NetplanningExtractor.extract_planning_events(
-            latest_raw_planning.raw_content,
-            limit_to_first_user=first_user_only,
-            extract_first_line_only=first_line_only
-        )
+        # Utiliser la méthode adaptée pour l'extraction ciblée
+        all_users = UserExtractor.extract_users(latest_raw_planning.raw_content)
+        events_data = {'users': {}, 'summary': {}}
         
-        if 'error' in events_data:
-            return jsonify({
-                'success': False,
-                'error': f'Erreur lors de l\'extraction des événements: {events_data["error"]}'
-            }), 500
+        # Si aucun utilisateur sélectionné, prendre le premier par défaut
+        if not selected_users and all_users:
+            selected_users = [all_users[0]]
         
-        # Créer un résumé pour le front-end
-        summary = {
-            'users_count': events_data.get('summary', {}).get('users_count', 0),
-            'events_count': events_data.get('summary', {}).get('total_events', 0),
-            'event_types': events_data.get('summary', {}).get('events_by_type', {}),
-        }
+        # Pour chaque utilisateur sélectionné
+        for user_name in selected_users:
+            # Trouver son index dans la liste complète
+            user_index = all_users.index(user_name) if user_name in all_users else -1
+            
+            if user_index >= 0:
+                # Extraire les événements pour cet utilisateur et les jours sélectionnés
+                user_events = NetplanningExtractor.extract_specific_days(
+                    latest_raw_planning.raw_content,
+                    days_to_extract=selected_days if selected_days else None,
+                    user_index=user_index
+                )
+                
+                # Fusionner les données
+                if user_name in user_events['users']:
+                    events_data['users'][user_name] = user_events['users'][user_name]
         
-        # Préparer un journal détaillé des événements pour l'affichage - ignorer week-ends et jours fériés
+        # Calculer les statistiques globales
+        events_data['summary'] = EventExtractor._calculate_events_summary(events_data['users'])
+        
+        # Préparer les événements pour l'affichage en excluant weekends et jours fériés
         events_log = []
         for user, user_data in events_data['users'].items():
             for day_str, day_data in user_data.get('days', {}).items():
-                # Inclure tous les créneaux horaires (matin, jour, soir)
+                # Inclure tous les créneaux horaires
                 for time_slot, event in day_data.items():
-                    # Ne pas inclure les événements vides, week-ends ou jours fériés
+                    # Ignorer les événements vides, weekends et jours fériés
                     if (not event.get('is_empty', True) and 
                         not event.get('is_weekend', False) and 
                         not event.get('is_holiday', False)):
@@ -267,29 +274,23 @@ def extract_events():
                             'time_slot': time_slot,
                             'content': event.get('content', ''),
                             'type': event.get('type', 'unknown'),
-                            'is_weekend': event.get('is_weekend', False),
-                            'is_holiday': event.get('is_holiday', False),
                             'comment': event.get('comment', ''),
                             'last_modified': event.get('last_modified', ''),
                             'author': event.get('author', '')
                         })
         
-        # Trier les événements par utilisateur, jour et créneau horaire
+        # Trier les événements
         events_log.sort(key=lambda e: (
             e['user'],
-            int(e['day']) if e['day'].isdigit() else 0, 
+            int(e['day']) if e['day'].isdigit() else 0,
             {'morning': 0, 'day': 1, 'evening': 2}.get(e['time_slot'], 3)
         ))
-        
-        # Obtenir la liste des utilisateurs pour le filtrage
-        unique_users = sorted(list(set(e['user'] for e in events_log)))
         
         return jsonify({
             'success': True,
             'events': events_data,
-            'summary': summary,
-            'events_log': events_log,
-            'users': unique_users
+            'summary': events_data['summary'],
+            'events_log': events_log
         })
         
     except Exception as e:
@@ -425,4 +426,33 @@ def debug_day(day):
         return jsonify({
             'success': False,
             'error': str(e)
+        }), 500
+
+@teamplanning_bp.route('/extract-metadata', methods=['POST'])
+def extract_metadata():
+    """Extrait les métadonnées du planning (utilisateurs et dates)"""
+    # Récupérer le dernier planning brut
+    latest_raw_planning = RawPlanning.query.order_by(RawPlanning.created_at.desc()).first()
+    
+    if not latest_raw_planning:
+        return jsonify({
+            'success': False,
+            'error': 'Aucun planning n\'a été récupéré. Veuillez d\'abord récupérer des données Netplanning.'
+        }), 404
+    
+    try:
+        # Utiliser la nouvelle méthode pour extraire uniquement les métadonnées
+        metadata = NetplanningExtractor.extract_metadata(latest_raw_planning.raw_content)
+        
+        return jsonify({
+            'success': True,
+            'metadata': metadata
+        })
+        
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'success': False,
+            'error': f'Erreur lors de l\'extraction des métadonnées: {str(e)}',
+            'traceback': traceback.format_exc()
         }), 500

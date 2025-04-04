@@ -7,14 +7,38 @@ from app.services.teamplanning.user_extractor import UserExtractor
 from app.services.teamplanning.date_extractor import DateExtractor
 from app.services.teamplanning.event_extractor import EventExtractor
 
+"""
+Façade unifiée pour toutes les fonctionnalités d'extraction Netplanning.
+Délègue aux classes spécialisées.
+""" 
 # Classe principale qui regroupe les fonctionnalités d'extraction
 class NetplanningExtractor:
+
+
     """
-    Façade unifiée pour toutes les fonctionnalités d'extraction Netplanning.
-    Délègue aux classes spécialisées.
+    Extrait uniquement les métadonnées du planning (utilisateurs et dates)
+    
+    Args:
+        html_content (str): Contenu HTML brut
+        
+    Returns:
+        dict: Métadonnées du planning
     """
 
-    # app/services/teamplanning/__init__.py - Ajout de la nouvelle méthode
+    @staticmethod
+    def extract_metadata(html_content):
+        # Extraire les utilisateurs
+        users = UserExtractor.extract_users(html_content)
+        
+        # Extraire les informations de dates
+        dates_info = DateExtractor.extract_planning_dates(html_content)
+        
+        return {
+            'users': users,
+            'dates': dates_info,
+            'success': True
+        }
+
     @staticmethod
     def extract_specific_days(html_content, days_to_extract=None, user_index=0):
         """
