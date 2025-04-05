@@ -136,8 +136,7 @@
                                     <th>Description</th>
                                     <th>Montant</th>
                                     <th>Catégorie</th>
-                                    <th>Tricount</th>
-                                    <th>Pro</th>
+                                    <th>Type</th> <!-- Nouvelle colonne unique -->
                                 </tr>
                             </thead>
                             <tbody>
@@ -158,16 +157,20 @@
                                         <span class="badge bg-secondary">Non catégorisé</span>
                                         {% endif %}
                                     </td>
-                                    <td class="text-center">
-                                        <i class="fas {% if expense.include_in_tricount %}fa-check text-success{% else %}fa-times text-muted{% endif %}"></i>
-                                    </td>
-                                    <td class="text-center">
-                                        <i class="fas {% if expense.is_professional %}fa-check text-success{% else %}fa-times text-muted{% endif %}"></i>
+                                    <td>
+                                        {% if expense.flag %}
+                                        <span class="flag-badge" style="background-color: {{ expense.flag.color }}">
+                                            <i class="fas {{ expense.flag.icon }}"></i>
+                                            {{ expense.flag.name }}
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Non défini</span>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="6" class="text-center py-4">
+                                    <td colspan="5" class="text-center py-4"> <!-- Modifier colspan de 6 à 5 -->
                                         <div class="alert alert-info mb-0">
                                             <i class="fas fa-info-circle me-2"></i>
                                             Aucune dépense récente. <a href="{{ url_for('tricount.import_expenses') }}">Importez des dépenses</a> pour commencer.
