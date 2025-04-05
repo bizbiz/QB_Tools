@@ -140,6 +140,7 @@ class AutoCategorizationService:
             'confidence': 0
         }
     
+
     @staticmethod
     def apply_rules_to_expense(expense):
         """
@@ -162,8 +163,7 @@ class AutoCategorizationService:
             if rule.matches_expense(expense):
                 # Appliquer la règle
                 expense.category_id = rule.category_id
-                expense.include_in_tricount = rule.include_in_tricount
-                expense.is_professional = rule.is_professional
+                expense.flag_id = rule.flag_id  # Utiliser le flag_id au lieu de include_in_tricount/is_professional
                 return True
         
         return False

@@ -97,44 +97,33 @@
                         </div>
                         
                         <h4 class="mt-4">Catégorisation</h4>
+                        
+                        <!-- Sélection du flag avant la catégorie -->
+                        <div class="mb-3">
+                            <label for="flag-id" class="form-label">Type de dépense</label>
+                            <select class="form-select rule-input" id="flag-id" name="flag_id" required>
+                                <option value="">Choisir un type de dépense</option>
+                                {% for flag in flags %}
+                                <option value="{{ flag.id }}" {% if flag.is_default %}selected{% endif %}>
+                                    {{ flag.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="mt-2">
+                                <div id="flag-preview" class="d-flex align-items-center mt-2">
+                                    <!-- Prévisualisation du flag sélectionné sera insérée ici par JavaScript -->
+                                </div>
+                            </div>
+                        </div>
 
                         <div class="mb-3">
                             <label for="category-id" class="form-label">Catégorie</label>
                             <select class="form-select rule-input" id="category-id" name="category_id" required>
                                 <option value="">Choisir une catégorie</option>
-                                {% for category in categories %}
+                                {% for category in categories|sort(attribute='name') %}
                                 <option value="{{ category.id }}">{{ category.name }}</option>
                                 {% endfor %}
                             </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Type de dépense</label>
-                            <div class="form-check form-switch mb-2">
-                                <input class="form-check-input rule-input" type="checkbox" id="for-me" name="for_me" checked>
-                                <label class="form-check-label" for="for-me">
-                                    <span class="category-badge me">Moi</span> Dépense personnelle
-                                </label>
-                            </div>
-                            
-                            <div class="form-check form-switch mb-2">
-                                <input class="form-check-input rule-input" type="checkbox" id="include-tricount" name="include_in_tricount">
-                                <label class="form-check-label" for="include-tricount">
-                                    <span class="category-badge tricount">Emily</span> Dépense partagée
-                                </label>
-                            </div>
-                            
-                            <div class="form-check form-switch mb-2">
-                                <input class="form-check-input rule-input" type="checkbox" id="is-professional" name="is_professional">
-                                <label class="form-check-label" for="is-professional">
-                                    <span class="category-badge professional">Pro</span> Dépense professionnelle
-                                </label>
-                            </div>
-                            
-                            <div class="alert alert-info">
-                                <i class="fas fa-info-circle me-2"></i>
-                                Une dépense ne peut être associée qu'à un seul type (Moi, Emily ou Pro).
-                            </div>
                         </div>
                         
                         <div class="mb-3">
@@ -220,5 +209,27 @@
 {% endblock %}
 
 {% block extra_js %}
+<script>
+    // Ajouter les données des flags pour l'affichage et la manipulation en JavaScript
+    window.flagData = {
+        {% for flag in flags %}
+        "{{ flag.id }}": {
+            name: "{{ flag.name }}",
+            color: "{{ flag.color }}",
+            icon: "{{ flag.icon }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+    
+    // Information sur les catégories et les flags associés
+    window.categoryData = {
+        {% for category in categories %}
+        "{{ category.id }}": {
+            name: "{{ category.name }}",
+            flagIds: [{% for flag in category.flags %}{{ flag.id }}{% if not loop.last %},{% endif %}{% endfor %}]
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+</script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize.js') }}"></script>
 {% endblock %}

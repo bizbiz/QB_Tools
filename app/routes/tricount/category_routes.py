@@ -46,20 +46,17 @@ def add_category():
 
 @tricount_bp.route('/category/<int:category_id>/info')
 def category_info(category_id):
-    """API pour récupérer les informations d'une catégorie"""
+    """API pour récupérer les informations d'une catégorie, y compris son flag préféré"""
     category = Category.query.get_or_404(category_id)
     
-    # Provide default values since these fields are not in the model
-    # In a real implementation, these might be based on category flags
-    for_me = True  # Default value
-    include_in_tricount = False  # Default value
-    is_professional = False  # Default value
+    # Obtenir le premier flag associé comme flag préféré
+    preferred_flag = category.flags[0] if category.flags else None
+    preferred_flag_id = preferred_flag.id if preferred_flag else None
     
     return jsonify({
         'success': True,
-        'for_me': for_me,
-        'include_in_tricount': include_in_tricount,
-        'is_professional': is_professional
+        'preferred_flag_id': preferred_flag_id,
+        'flags': [{'id': flag.id, 'name': flag.name} for flag in category.flags]
     })
 
 @tricount_bp.route('/categories/update/<int:category_id>', methods=['POST'])

@@ -62,3 +62,7 @@ Pour étendre ce module, vous pouvez:
 . Il faut pouvoir lancer l'auto catégorisation avec toutes les regles via un bouton sur la page d'accueil avec un témoin de chargement
 . Il faut une page qui affiche des stats, avec une fonctionnalité qui permet de choisir 3 des stats qu'on met sur la page d'accueil
 . Il faut trouver un moyen de gérer les renvois depuis la carte corporate
+. Lorsqu'on selecte auto categorization si on a djéà choisi des flag ou des catégories il faut le pré remplir dans la page de paramétrage de l'auto catégorization
+. Dans auto categorize les catégories ne sont pas correctement rafraichi en fonction du flag
+. Il faut trier les listes de catégories par ordre alphabétique
+. Ici /tricount/auto-rules il faut ajouter les flags à la place des occurences

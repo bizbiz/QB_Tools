@@ -24,6 +24,119 @@ document.addEventListener('DOMContentLoaded', function() {
     // Sauvegarder les valeurs initiales
     saveCurrentFilters();
     
+    // Sélecteurs de flag et de catégorie
+    const flagSelect = document.getElementById('flag-id');
+    const categorySelect = document.getElementById('category-id');
+    const flagPreview = document.getElementById('flag-preview');
+    
+    // Stocker les options de catégorie originales pour le filtrage
+    let originalCategoryOptions = [];
+    if (categorySelect) {
+        originalCategoryOptions = Array.from(categorySelect.options).map(option => {
+            return {
+                value: option.value,
+                text: option.text
+            };
+        });
+    }
+    
+    // Mettre à jour la prévisualisation du flag et filtrer les catégories
+    if (flagSelect) {
+        flagSelect.addEventListener('change', function() {
+            updateFlagPreview();
+            filterCategoriesByFlag();
+        });
+        
+        // Initialiser au chargement
+        updateFlagPreview();
+        filterCategoriesByFlag();
+    }
+    
+    // Fonction pour prévisualiser le flag sélectionné
+    function updateFlagPreview() {
+        if (!flagPreview) return;
+        
+        const flagId = flagSelect.value;
+        flagPreview.innerHTML = '';
+        
+        if (flagId && window.flagData && window.flagData[flagId]) {
+            const flag = window.flagData[flagId];
+            
+            // Créer le badge de prévisualisation
+            const badge = document.createElement('span');
+            badge.className = 'flag-badge me-2';
+            badge.style.backgroundColor = flag.color;
+            badge.style.color = 'white';
+            badge.style.padding = '4px 12px';
+            badge.style.borderRadius = '20px';
+            badge.style.display = 'inline-flex';
+            badge.style.alignItems = 'center';
+            
+            // Ajouter l'icône
+            const icon = document.createElement('i');
+            icon.className = `fas ${flag.icon} me-2`;
+            badge.appendChild(icon);
+            
+            // Ajouter le nom
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = flag.name;
+            badge.appendChild(nameSpan);
+            
+            flagPreview.appendChild(badge);
+        }
+    }
+    
+    // Fonction pour filtrer les catégories en fonction du flag sélectionné
+    function filterCategoriesByFlag() {
+        if (!categorySelect || !flagSelect) return;
+        
+        const flagId = parseInt(flagSelect.value);
+        
+        // Vider les options actuelles
+        categorySelect.innerHTML = '';
+        
+        // Ajouter l'option "Choisir une catégorie"
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.text = 'Choisir une catégorie';
+        categorySelect.appendChild(defaultOption);
+        
+        // Filtrer et ajouter les catégories compatibles
+        const compatibleCategories = [];
+        
+        if (flagId) {
+            // Filtrer les catégories compatibles avec ce flag
+            for (const categoryId in window.categoryData) {
+                const category = window.categoryData[categoryId];
+                if (category.flagIds && category.flagIds.includes(flagId)) {
+                    compatibleCategories.push({
+                        id: categoryId,
+                        name: category.name
+                    });
+                }
+            }
+        } else {
+            // Si aucun flag n'est sélectionné, montrer toutes les catégories
+            for (const categoryId in window.categoryData) {
+                compatibleCategories.push({
+                    id: categoryId,
+                    name: window.categoryData[categoryId].name
+                });
+            }
+        }
+        
+        // Trier par ordre alphabétique
+        compatibleCategories.sort((a, b) => a.name.localeCompare(b.name));
+        
+        // Ajouter les options triées
+        compatibleCategories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category.id;
+            option.text = category.name;
+            categorySelect.appendChild(option);
+        });
+    }
+    
     // Événement pour le changement de type de fréquence
     if (frequencyType) {
         frequencyType.addEventListener('change', function() {
@@ -337,74 +450,5 @@ document.addEventListener('DOMContentLoaded', function() {
         
         similarExpensesContainer.innerHTML = '';
         similarExpensesContainer.appendChild(message);
-    }
-    
-    // Gestion du lien entre catégorie et options de type
-    const categorySelect = document.getElementById('category-id');
-    const forMeCheckbox = document.getElementById('for-me');
-    const tricountCheckbox = document.getElementById('include-tricount');
-    const professionalCheckbox = document.getElementById('is-professional');
-        
-    // Assurer qu'un seul flag est actif à la fois
-    function ensureOnlyOneActive() {
-        if (this === forMeCheckbox && this.checked) {
-            tricountCheckbox.checked = false;
-            professionalCheckbox.checked = false;
-        } else if (this === tricountCheckbox && this.checked) {
-            forMeCheckbox.checked = false;
-            professionalCheckbox.checked = false;
-        } else if (this === professionalCheckbox && this.checked) {
-            forMeCheckbox.checked = false;
-            tricountCheckbox.checked = false;
-        }
-        
-        // S'assurer qu'au moins un est coché
-        if (!forMeCheckbox.checked && !tricountCheckbox.checked && !professionalCheckbox.checked) {
-            forMeCheckbox.checked = true; // Par défaut
-        }
-    }
-
-    if (forMeCheckbox) forMeCheckbox.addEventListener('change', ensureOnlyOneActive);
-    if (tricountCheckbox) tricountCheckbox.addEventListener('change', ensureOnlyOneActive);
-    if (professionalCheckbox) professionalCheckbox.addEventListener('change', ensureOnlyOneActive);
-
-    if (categorySelect) {
-        categorySelect.addEventListener('change', function() {
-            const categoryId = this.value;
-            if (!categoryId) return;
-            
-            // Récupérer les informations de catégorie
-            fetch(`/tricount/category/${categoryId}/info`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // By default, follow the category's primary purpose
-                        const hasForMe = data.for_me;
-                        const hasTricount = data.include_in_tricount;
-                        const hasProfessional = data.is_professional;
-                        
-                        // Set checkboxes based on priority: Pro > Tricount > For Me
-                        if (hasProfessional) {
-                            if (professionalCheckbox) professionalCheckbox.checked = true;
-                            if (forMeCheckbox) forMeCheckbox.checked = false;
-                            if (tricountCheckbox) tricountCheckbox.checked = false;
-                        } else if (hasTricount) {
-                            if (tricountCheckbox) tricountCheckbox.checked = true;
-                            if (forMeCheckbox) forMeCheckbox.checked = false;
-                            if (professionalCheckbox) professionalCheckbox.checked = false;
-                        } else if (hasForMe) {
-                            if (forMeCheckbox) forMeCheckbox.checked = true;
-                            if (tricountCheckbox) tricountCheckbox.checked = false;
-                            if (professionalCheckbox) professionalCheckbox.checked = false;
-                        } else {
-                            // Default to "for me" if nothing is specified
-                            if (forMeCheckbox) forMeCheckbox.checked = true;
-                            if (tricountCheckbox) tricountCheckbox.checked = false;
-                            if (professionalCheckbox) professionalCheckbox.checked = false;
-                        }
-                    }
-                })
-                .catch(error => console.error('Error:', error));
-        });
     }
 });

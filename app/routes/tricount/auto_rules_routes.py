@@ -2,7 +2,7 @@
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from app.routes.tricount import tricount_bp
 from app.extensions import db
-from app.models.tricount import AutoCategorizationRule, Expense, Category
+from app.models.tricount import AutoCategorizationRule, Expense, Category, Flag
 from app.services.tricount.auto_categorization import AutoCategorizationService
 
 @tricount_bp.route('/auto-rules')
@@ -26,6 +26,24 @@ def delete_auto_rule(rule_id):
     
     return redirect(url_for('tricount.auto_rules_list'))
 
+@tricount_bp.route('/auto-categorize/<int:expense_id>')
+def auto_categorize(expense_id):
+    """Page pour créer une règle d'auto-catégorisation basée sur une dépense"""
+    expense = Expense.query.get_or_404(expense_id)
+    
+    # Trouver des dépenses similaires
+    similar_expenses = AutoCategorizationService.find_similar_expenses(expense)
+    
+    # Récupérer toutes les catégories ET les flags disponibles
+    categories = Category.query.all()
+    flags = Flag.query.all()  # Ajout des flags
+    
+    return render_template('tricount/auto_categorize.html',
+                           expense=expense,
+                           similar_expenses=similar_expenses,
+                           categories=categories,
+                           flags=flags)  # Passage des flags au template
+
 @tricount_bp.route('/auto-rules/apply/<int:rule_id>', methods=['POST'])
 def apply_auto_rule(rule_id):
     """Appliquer manuellement une règle d'auto-catégorisation"""
@@ -40,8 +58,7 @@ def apply_auto_rule(rule_id):
     for expense in uncategorized:
         if rule.matches_expense(expense):
             expense.category_id = rule.category_id
-            expense.include_in_tricount = rule.include_in_tricount
-            expense.is_professional = rule.is_professional
+            expense.flag_id = rule.flag_id  # Utiliser le flag_id au lieu de include_in_tricount/is_professional
             count += 1
     
     try:
@@ -52,22 +69,6 @@ def apply_auto_rule(rule_id):
         flash(f'Erreur lors de l\'application de la règle: {str(e)}', 'danger')
     
     return redirect(url_for('tricount.auto_rules_list'))
-
-@tricount_bp.route('/auto-categorize/<int:expense_id>')
-def auto_categorize(expense_id):
-    """Page pour créer une règle d'auto-catégorisation basée sur une dépense"""
-    expense = Expense.query.get_or_404(expense_id)
-    
-    # Trouver des dépenses similaires
-    similar_expenses = AutoCategorizationService.find_similar_expenses(expense)
-    
-    # Récupérer toutes les catégories
-    categories = Category.query.all()
-    
-    return render_template('tricount/auto_categorize.html',
-                           expense=expense,
-                           similar_expenses=similar_expenses,
-                           categories=categories)
 
 @tricount_bp.route('/auto-rules/create', methods=['POST'])
 def create_auto_rule():
