@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}QB Tools - Règles d'auto-catégorisation{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('tricount.index') }}">Tricount Helper</a></li>
+                    <li class="breadcrumb-item active">Règles d'auto-catégorisation</li>
+                </ol>
+            </nav>
+            
+            <div class="d-flex justify-content-between align-items-center">
+                <h1>Règles d'auto-catégorisation</h1>
+                <div>
+                    <a href="{{ url_for('tricount.categorize_expenses') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-tags me-2"></i>Catégoriser les dépenses
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h3 class="card-title">Instructions</h3>
+                </div>
+                <div class="card-body">
+                    <p>Les règles d'auto-catégorisation permettent de catégoriser automatiquement les dépenses similaires. Par exemple, vous pouvez créer des règles pour :</p>
+                    <ul>
+                        <li>Catégoriser toutes les dépenses chez un commerçant spécifique</li>
+                        <li>Identifier les abonnements mensuels qui sont facturés le même jour chaque mois</li>
+                        <li>Regrouper les transactions contenant certains mots-clés dans la description</li>
+                    </ul>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Vous pouvez créer une règle d'auto-catégorisation en cliquant sur le bouton "Automatiser" lors de la catégorisation d'une dépense.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="card-title">Liste des règles</h3>
+                        <span class="badge bg-primary">{{ rules|length }}</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if rules %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Nom</th>
+                                    <th>Filtres</th>
+                                    <th>Fréquence</th>
+                                    <th>Catégorie</th>
+                                    <th>Type</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for rule in rules %}
+                                <tr>
+                                    <td>{{ rule.name }}</td>
+                                    <td>
+                                        {% if rule.merchant_contains %}
+                                        <div><strong>Marchand contient:</strong> {{ rule.merchant_contains }}</div>
+                                        {% endif %}
+                                        {% if rule.description_contains %}
+                                        <div><strong>Description contient:</strong> {{ rule.description_contains }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if rule.frequency_type == 'monthly' %}
+                                            Mensuelle (jour {{ rule.frequency_day }})
+                                        {% elif rule.frequency_type == 'weekly' %}
+                                            Hebdomadaire ({{ ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'][rule.frequency_day] }})
+                                        {% else %}
+                                            Toutes les occurrences
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if rule.category %}
+                                            {{ rule.category.name }}
+                                        {% else %}
+                                            <span class="text-muted">Non définie</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="category-type-indicators">
+                                            {% if rule.include_in_tricount %}
+                                            <div class="indicator tricount" title="Tricount"></div>
+                                            {% endif %}
+                                            {% if rule.is_professional %}
+                                            <div class="indicator professional" title="Professionnel"></div>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <form method="POST" action="{{ url_for('tricount.apply_auto_rule', rule_id=rule.id) }}" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-success" data-bs-toggle="tooltip" title="Appliquer la règle">
+                                                <i class="fas fa-play"></i>
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ url_for('tricount.delete_auto_rule', rule_id=rule.id) }}" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-danger" data-bs-toggle="tooltip" title="Supprimer la règle" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette règle ?');">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Aucune règle d'auto-catégorisation n'a été créée. Vous pouvez en créer une en cliquant sur le bouton "Automatiser" lors de la catégorisation d'une dépense.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+    });
+</script>
+{% endblock %}

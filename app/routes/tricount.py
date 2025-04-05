@@ -429,3 +429,147 @@ def update_category(category_id):
         flash(f'Une catégorie avec le nom "{name}" existe déjà.', 'danger')
     
     return redirect(url_for('tricount.categories_list'))
+
+@tricount_bp.route('/auto-categorize/<int:expense_id>')
+def auto_categorize(expense_id):
+    """Créer une règle d'auto-catégorisation à partir d'une dépense"""
+    from app.services.tricount import AutoCategorizationService
+    
+    expense = Expense.query.get_or_404(expense_id)
+    
+    # Récupérer les dépenses similaires
+    similar_expenses = AutoCategorizationService.find_similar_expenses(expense)
+    
+    # Récupérer toutes les catégories
+    categories = Category.query.all()
+    
+    # Suggérer une fréquence
+    all_expenses = [expense] + similar_expenses
+    frequency = AutoCategorizationService.detect_frequency(all_expenses)
+    
+    # Suggérer une catégorie
+    category_suggestion = AutoCategorizationService.suggest_category(expense)
+    
+    return render_template('tricount/auto_categorize.html',
+                          expense=expense,
+                          similar_expenses=similar_expenses,
+                          categories=categories,
+                          frequency=frequency,
+                          suggestion=category_suggestion)
+
+@tricount_bp.route('/auto-categorize/create', methods=['POST'])
+def create_auto_rule():
+    """Créer une nouvelle règle d'auto-catégorisation"""
+    expense_id = request.form.get('expense_id', type=int)
+    expense = Expense.query.get_or_404(expense_id)
+    
+    rule_name = request.form.get('rule_name')
+    merchant_contains = request.form.get('merchant_contains')
+    description_contains = request.form.get('description_contains')
+    frequency_type = request.form.get('frequency_type')
+    frequency_day = request.form.get('frequency_day', type=int)
+    category_id = request.form.get('category_id', type=int)
+    include_in_tricount = request.form.get('include_in_tricount') == 'true'
+    is_professional = request.form.get('is_professional') == 'true'
+    
+    # Créer la règle
+    rule = AutoCategorizationRule(
+        name=rule_name or f"Règle pour {expense.merchant}",
+        merchant_contains=merchant_contains,
+        description_contains=description_contains,
+        frequency_type=frequency_type if frequency_type != 'none' else None,
+        frequency_day=frequency_day,
+        category_id=category_id,
+        include_in_tricount=include_in_tricount,
+        is_professional=is_professional,
+        created_by_expense_id=expense_id
+    )
+    
+    db.session.add(rule)
+    
+    # Appliquer immédiatement la règle si demandé
+    apply_now = request.form.get('apply_now') == 'true'
+    affected_expenses = []
+    
+    if apply_now:
+        # Trouver les dépenses qui correspondent à la règle
+        candidate_expenses = Expense.query.filter(
+            Expense.category_id == None,  # Non catégorisées
+        ).all()
+        
+        for candidate in candidate_expenses:
+            if rule.matches_expense(candidate):
+                candidate.category_id = category_id
+                candidate.include_in_tricount = include_in_tricount
+                candidate.is_professional = is_professional
+                affected_expenses.append(candidate.id)
+    
+    try:
+        db.session.commit()
+        flash(f'Règle d\'auto-catégorisation créée avec succès. {len(affected_expenses)} dépenses mises à jour.', 'success')
+    except IntegrityError:
+        db.session.rollback()
+        flash('Erreur lors de la création de la règle.', 'danger')
+    
+    return redirect(url_for('tricount.auto_rules_list'))
+
+@tricount_bp.route('/auto-rules')
+def auto_rules_list():
+    """Liste des règles d'auto-catégorisation"""
+    rules = AutoCategorizationRule.query.all()
+    return render_template('tricount/auto_rules.html', rules=rules)
+
+@tricount_bp.route('/auto-rules/delete/<int:rule_id>', methods=['POST'])
+def delete_auto_rule(rule_id):
+    """Supprimer une règle d'auto-catégorisation"""
+    rule = AutoCategorizationRule.query.get_or_404(rule_id)
+    
+    try:
+        db.session.delete(rule)
+        db.session.commit()
+        flash(f'Règle "{rule.name}" supprimée avec succès.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erreur lors de la suppression de la règle: {str(e)}', 'danger')
+    
+    return redirect(url_for('tricount.auto_rules_list'))
+
+@tricount_bp.route('/auto-rules/apply/<int:rule_id>', methods=['POST'])
+def apply_auto_rule(rule_id):
+    """Appliquer une règle d'auto-catégorisation aux dépenses non catégorisées"""
+    rule = AutoCategorizationRule.query.get_or_404(rule_id)
+    
+    # Trouver les dépenses qui correspondent à la règle
+    candidate_expenses = Expense.query.filter(
+        Expense.category_id == None,  # Non catégorisées
+    ).all()
+    
+    count = 0
+    for candidate in candidate_expenses:
+        if rule.matches_expense(candidate):
+            candidate.category_id = rule.category_id
+            candidate.include_in_tricount = rule.include_in_tricount
+            candidate.is_professional = rule.is_professional
+            count += 1
+    
+    try:
+        db.session.commit()
+        flash(f'Règle appliquée à {count} dépenses avec succès.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erreur lors de l\'application de la règle: {str(e)}', 'danger')
+    
+    return redirect(url_for('tricount.auto_rules_list'))
+
+@tricount_bp.route('/category/<int:category_id>/info')
+def category_info(category_id):
+    """Obtenir les informations d'une catégorie au format JSON"""
+    category = Category.query.get_or_404(category_id)
+    
+    return jsonify({
+        'success': True,
+        'id': category.id,
+        'name': category.name,
+        'include_in_tricount': category.include_in_tricount,
+        'is_professional': category.is_professional
+    })

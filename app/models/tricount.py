@@ -61,3 +61,54 @@ class Expense(db.Model):
         # Concaténer les informations clés et hasher
         identifier_str = f"{date.isoformat()}|{description}|{amount}"
         return hashlib.md5(identifier_str.encode()).hexdigest()
+
+class AutoCategorizationRule(db.Model):
+    """Modèle pour stocker les règles d'auto-catégorisation des dépenses"""
+    __tablename__ = 'auto_categorization_rules'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    
+    # Filtres
+    merchant_contains = db.Column(db.String(200))
+    description_contains = db.Column(db.String(200))
+    
+    # Fréquence
+    frequency_type = db.Column(db.String(20))  # monthly, weekly, yearly, etc.
+    frequency_day = db.Column(db.Integer)      # jour du mois/semaine
+    
+    # Destination
+    category_id = db.Column(db.Integer, db.ForeignKey('expense_categories.id'))
+    include_in_tricount = db.Column(db.Boolean, default=False)
+    is_professional = db.Column(db.Boolean, default=False)
+    
+    # Métadonnées
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by_expense_id = db.Column(db.Integer, db.ForeignKey('expenses.id'))
+    
+    # Relations
+    category = db.relationship('Category', backref='auto_rules')
+    
+    def __repr__(self):
+        return f'<AutoCategorizationRule {self.name}>'
+    
+    def matches_expense(self, expense):
+        """Vérifie si la règle correspond à une dépense"""
+        # Vérifier merchant et description
+        if self.merchant_contains and self.merchant_contains.lower() not in expense.merchant.lower():
+            return False
+        
+        if self.description_contains and self.description_contains.lower() not in expense.description.lower():
+            return False
+        
+        # Vérifier la fréquence si définie
+        if self.frequency_type and self.frequency_day:
+            # Vérifier si la dépense correspond à la fréquence définie
+            if self.frequency_type == 'monthly' and expense.date.day != self.frequency_day:
+                return False
+            elif self.frequency_type == 'weekly' and expense.date.weekday() != self.frequency_day:
+                return False
+        
+        return True

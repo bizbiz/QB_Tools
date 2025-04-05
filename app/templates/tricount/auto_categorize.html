@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}QB Tools - Auto-catégorisation{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('tricount.index') }}">Tricount Helper</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('tricount.categorize_expenses') }}">Catégoriser les dépenses</a></li>
+                    <li class="breadcrumb-item active">Auto-catégorisation</li>
+                </ol>
+            </nav>
+            
+            <h1>Créer une règle d'auto-catégorisation</h1>
+            <p class="lead">Configurez une règle pour catégoriser automatiquement les dépenses similaires</p>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h3 class="card-title">Dépense source</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Date:</strong> {{ expense.date.strftime('%d/%m/%Y') }}</p>
+                            <p><strong>Marchand:</strong> {{ expense.merchant }}</p>
+                            <p><strong>Description:</strong> {{ expense.description }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Montant:</strong> <span class="{% if expense.is_debit %}text-danger{% else %}text-success{% endif %}">
+                                {% if expense.is_debit %}-{% endif %}{{ "%.2f"|format(expense.amount) }} €
+                            </span></p>
+                            <p><strong>Méthode de paiement:</strong> {{ expense.payment_method or 'N/A' }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header">
+                    <h3 class="card-title">Configuration de la règle</h3>
+                </div>
+                <div class="card-body">
+                    <form id="rule-form" action="{{ url_for('tricount.create_auto_rule') }}" method="POST">
+                        <input type="hidden" name="expense_id" value="{{ expense.id }}">
+                        
+                        <div class="mb-3">
+                            <label for="rule-name" class="form-label">Nom de la règle</label>
+                            <input type="text" class="form-control" id="rule-name" name="rule_name" placeholder="Règle pour {{ expense.merchant }}" value="Règle pour {{ expense.merchant }}">
+                        </div>
+                        
+                        <h4 class="mt-4">Filtres</h4>
+                        
+                        <div class="mb-3">
+                            <label for="merchant-contains" class="form-label">Le marchand contient</label>
+                            <input type="text" class="form-control" id="merchant-contains" name="merchant_contains" value="{{ expense.merchant }}">
+                            <div class="form-text">Cette règle s'appliquera aux dépenses dont le nom du marchand contient ce texte.</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="description-contains" class="form-label">La description contient (optionnel)</label>
+                            <input type="text" class="form-control" id="description-contains" name="description_contains">
+                            <div class="form-text">Vous pouvez ajouter une condition sur la description pour être plus précis.</div>
+                        </div>
+                        
+                        <h4 class="mt-4">Fréquence (optionnel)</h4>
+                        
+                        <div class="mb-3">
+                            <label for="frequency-type" class="form-label">Type de fréquence</label>
+                            <select class="form-select" id="frequency-type" name="frequency_type">
+                                <option value="none">Aucune (toutes les occurrences)</option>
+                                <option value="monthly">Mensuelle (même jour chaque mois)</option>
+                                <option value="weekly">Hebdomadaire (même jour chaque semaine)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3" id="frequency-day-container" style="display: none;">
+                            <label for="frequency-day" class="form-label">Jour</label>
+                            <input type="number" class="form-control" id="frequency-day" name="frequency_day" value="{{ expense.date.day }}">
+                            <div class="form-text" id="frequency-day-help">Jour du mois (1-31) pour la fréquence mensuelle.</div>
+                        </div>
+                        
+                        <h4 class="mt-4">Catégorisation</h4>
+                        
+                        <div class="mb-3">
+                            <label for="category-id" class="form-label">Catégorie</label>
+                            <select class="form-select" id="category-id" name="category_id" required>
+                                <option value="">Choisir une catégorie</option>
+                                {% for category in categories %}
+                                <option value="{{ category.id }}">{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="include-tricount" name="include_in_tricount">
+                                <label class="form-check-label" for="include-tricount">Inclure dans Tricount</label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="is-professional" name="is_professional">
+                                <label class="form-check-label" for="is-professional">Dépense professionnelle</label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="apply-now" name="apply_now" value="true" checked>
+                                <label class="form-check-label" for="apply-now">
+                                    Appliquer immédiatement aux dépenses non catégorisées
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Créer la règle
+                            </button>
+                            <a href="{{ url_for('tricount.categorize_expenses') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Retour
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="card-title">Dépenses similaires trouvées</h3>
+                        <span class="badge bg-primary">{{ similar_expenses|length }}</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if similar_expenses %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Marchand</th>
+                                    <th>Montant</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for exp in similar_expenses %}
+                                <tr>
+                                    <td>{{ exp.date.strftime('%d/%m/%Y') }}</td>
+                                    <td>{{ exp.merchant }}</td>
+                                    <td class="{% if exp.is_debit %}text-danger{% else %}text-success{% endif %}">
+                                        {% if exp.is_debit %}-{% endif %}{{ "%.2f"|format(exp.amount) }} €
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="alert alert-info mt-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Ces dépenses correspondent au marchand "<strong>{{ expense.merchant }}</strong>". Elles seront catégorisées automatiquement si vous activez l'option "Appliquer immédiatement".
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Aucune dépense similaire non catégorisée n'a été trouvée. Votre règle s'appliquera aux futures dépenses.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Gestion de l'affichage du jour de fréquence
+        const frequencyType = document.getElementById('frequency-type');
+        const frequencyDayContainer = document.getElementById('frequency-day-container');
+        const frequencyDayHelp = document.getElementById('frequency-day-help');
+        
+        frequencyType.addEventListener('change', function() {
+            if (this.value === 'none') {
+                frequencyDayContainer.style.display = 'none';
+            } else {
+                frequencyDayContainer.style.display = 'block';
+                
+                if (this.value === 'monthly') {
+                    frequencyDayHelp.textContent = 'Jour du mois (1-31) pour la fréquence mensuelle.';
+                    document.getElementById('frequency-day').max = 31;
+                } else if (this.value === 'weekly') {
+                    frequencyDayHelp.textContent = 'Jour de la semaine (0=Lundi, 6=Dimanche) pour la fréquence hebdomadaire.';
+                    document.getElementById('frequency-day').max = 6;
+                }
+            }
+        });
+        
+        // Gestion du lien entre catégorie et options Tricount/Pro
+        const categorySelect = document.getElementById('category-id');
+        const tricountCheckbox = document.getElementById('include-tricount');
+        const professionalCheckbox = document.getElementById('is-professional');
+        
+        categorySelect.addEventListener('change', function() {
+            const categoryId = this.value;
+            if (!categoryId) return;
+            
+            // Récupérer les informations de catégorie (à adapter selon votre structure)
+            fetch(`/tricount/category/${categoryId}/info`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        tricountCheckbox.checked = data.include_in_tricount;
+                        professionalCheckbox.checked = data.is_professional;
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        });
+    });
+</script>
+{% endblock %}
