@@ -1,9 +1,5 @@
 // app/static/js/common/table_sorter.js
 
-/**
- * Utilitaire pour rendre les tableaux HTML triables
- * Permet de trier les tableaux en cliquant sur les en-têtes de colonnes
- */
 document.addEventListener('DOMContentLoaded', function() {
     // Initialiser le tri pour tous les tableaux ayant la classe 'sortable-table'
     initSortableTables();
@@ -42,207 +38,159 @@ function initSortableTable(table) {
         header.appendChild(sortIcon);
         
         // Ajouter l'événement de clic
-        header.addEventListener('click', () => {
-            sortTable(table, index);
+        header.addEventListener('click', function() {
+            // Vérifier l'état de tri actuel de cette colonne
+            let currentDirection = '';
+            if (sortIcon.classList.contains('asc')) {
+                currentDirection = 'asc';
+            } else if (sortIcon.classList.contains('desc')) {
+                currentDirection = 'desc';
+            }
+            
+            // Déterminer la nouvelle direction
+            let newDirection;
+            if (currentDirection === '') {
+                newDirection = 'asc'; // Premier clic: tri ascendant
+            } else if (currentDirection === 'asc') {
+                newDirection = 'desc'; // Deuxième clic: tri descendant
+            } else {
+                newDirection = 'asc'; // Troisième clic: retour au tri ascendant
+            }
+            
+            // Exécuter le tri avec la direction calculée
+            sortTableByColumn(table, index, newDirection);
         });
     });
 }
 
 /**
- * Trie un tableau selon une colonne spécifique
+ * Trie un tableau selon une colonne spécifique et une direction donnée
  * @param {HTMLElement} table - Le tableau à trier
  * @param {number} columnIndex - L'index de la colonne à trier
+ * @param {string} direction - Direction du tri ('asc' ou 'desc')
  */
-function sortTable(table, columnIndex) {
+function sortTableByColumn(table, columnIndex, direction) {
     const tbody = table.querySelector('tbody');
     const rows = Array.from(tbody.querySelectorAll('tr'));
     const headers = table.querySelectorAll('th');
     
-    // Déterminer la direction du tri
-    const header = headers[columnIndex];
-    const sortIcon = header.querySelector('.sort-icon');
-    
-    let sortDirection = 'asc';
-    // Si la même colonne est déjà triée, inverser la direction
-    if (sortIcon.classList.contains('asc')) {
-        sortDirection = 'desc';
-        sortIcon.classList.remove('asc');
-        sortIcon.classList.add('desc');
-    } else {
-        sortIcon.classList.remove('desc');
-        sortIcon.classList.add('asc');
-    }
-    
-    // Réinitialiser les autres en-têtes
-    headers.forEach(h => {
-        if (h !== header) {
-            const icon = h.querySelector('.sort-icon');
-            if (icon) {
-                icon.classList.remove('asc', 'desc');
+    // Mettre à jour l'affichage des icônes de tri
+    headers.forEach((header, i) => {
+        const icon = header.querySelector('.sort-icon');
+        if (icon) {
+            icon.classList.remove('asc', 'desc');
+            if (i === columnIndex) {
+                icon.classList.add(direction);
             }
         }
     });
     
-    // Déterminer le type de données de la colonne
-    const dataType = header.dataset.type || detectColumnType(rows, columnIndex);
+    // Déterminer le type de données
+    const header = headers[columnIndex];
+    let dataType = 'text';
     
-    // Trier les lignes en fonction du type de données
-    rows.sort((rowA, rowB) => {
-        // S'assurer que les cellules existent
-        if (!rowA.cells[columnIndex] || !rowB.cells[columnIndex]) {
+    // Utiliser l'attribut data-type s'il est défini
+    if (header.dataset.type) {
+        dataType = header.dataset.type;
+    } 
+    // Sinon, essayer de deviner le type de données
+    else {
+        const headerText = header.textContent.trim().toLowerCase();
+        if (headerText.includes('date')) {
+            dataType = 'date';
+        } else if (headerText.includes('montant') || headerText.includes('prix') || 
+                 headerText.includes('total') || headerText.includes('€')) {
+            dataType = 'number';
+        }
+    }
+    
+    // Trier les lignes
+    rows.sort((a, b) => {
+        // Protection contre les cellules manquantes
+        if (!a.cells[columnIndex] || !b.cells[columnIndex]) {
             return 0;
         }
         
-        // Obtenir les valeurs pour la comparaison
-        const valueA = getCellValue(rowA.cells[columnIndex], dataType);
-        const valueB = getCellValue(rowB.cells[columnIndex], dataType);
+        const aValue = getCellValue(a.cells[columnIndex], dataType);
+        const bValue = getCellValue(b.cells[columnIndex], dataType);
         
-        // Effectuer la comparaison en fonction du type
-        let result;
+        let comparison = 0;
         
-        if (dataType === 'date') {
-            // Pour les dates, comparer les timestamps
-            const timeA = valueA instanceof Date ? valueA.getTime() : 0;
-            const timeB = valueB instanceof Date ? valueB.getTime() : 0;
-            result = timeA - timeB;
-        } else if (dataType === 'number') {
-            // Pour les nombres, comparaison numérique
-            result = valueA - valueB;
-        } else {
-            // Pour le texte, comparaison lexicographique
-            result = String(valueA).localeCompare(String(valueB), undefined, { sensitivity: 'base' });
+        if (dataType === 'number') {
+            // Conversion en nombres pour la comparaison
+            const aNum = parseFloat(aValue.replace(/[^\d.-]/g, '').replace(',', '.')) || 0;
+            const bNum = parseFloat(bValue.replace(/[^\d.-]/g, '').replace(',', '.')) || 0;
+            comparison = aNum - bNum;
+        } 
+        else if (dataType === 'date') {
+            // Conversion des dates pour la comparaison
+            const aDate = parseDate(aValue);
+            const bDate = parseDate(bValue);
+            comparison = aDate - bDate;
+        } 
+        else {
+            // Comparaison de texte normale
+            comparison = aValue.localeCompare(bValue, undefined, {sensitivity: 'base'});
         }
         
-        // Inverser le résultat si tri descendant
-        return sortDirection === 'asc' ? result : -result;
+        // Inverser la comparaison si le tri est descendant
+        return direction === 'asc' ? comparison : -comparison;
     });
     
-    // Réattacher les lignes dans le nouvel ordre
+    // Réappliquer les lignes triées
     rows.forEach(row => tbody.appendChild(row));
 }
 
 /**
- * Détecte automatiquement le type de données d'une colonne
- * @param {Array} rows - Tableau des lignes
- * @param {number} columnIndex - Index de la colonne
- * @returns {string} - Type détecté ('date', 'number', ou 'text')
- */
-function detectColumnType(rows, columnIndex) {
-    // Vérifier quelques cellules pour déterminer le type
-    for (let i = 0; i < Math.min(rows.length, 5); i++) {
-        if (!rows[i].cells[columnIndex]) continue;
-        
-        const text = rows[i].cells[columnIndex].textContent.trim();
-        
-        // Vérifier si c'est une date (format DD/MM/YYYY)
-        if (/^\d{2}\/\d{2}\/\d{4}$/.test(text)) {
-            return 'date';
-        }
-        
-        // Vérifier si c'est un nombre (avec symbole de devise ou pourcentage)
-        if (/^-?[\d\s.,]+(\s*[€$%])?$/.test(text)) {
-            return 'number';
-        }
-    }
-    
-    // Par défaut, c'est du texte
-    return 'text';
-}
-
-/**
- * Obtient la valeur d'une cellule selon son type pour le tri
- * @param {HTMLElement} cell - La cellule du tableau
- * @param {string} dataType - Le type de données ('date', 'number', ou 'text')
- * @returns {*} - La valeur formatée pour le tri
+ * Extrait la valeur d'une cellule adaptée pour le tri
  */
 function getCellValue(cell, dataType) {
-    // Obtenir le texte de la cellule
-    let text = cell.textContent.trim();
+    let value = cell.textContent.trim();
     
-    // Pour une cellule vide
-    if (!text) {
-        return dataType === 'number' ? -Infinity : '';
+    // Pour les cellules contenant des badges ou éléments similaires
+    if (cell.querySelector('.badge, .category-badge, .flag-badge')) {
+        const badge = cell.querySelector('.badge, .category-badge, .flag-badge');
+        value = badge.textContent.trim();
     }
     
-    // Si la cellule contient plusieurs lignes, prendre la première significative
-    if (text.includes('\n')) {
-        const lines = text.split('\n').map(line => line.trim()).filter(line => line);
-        text = lines.length > 0 ? lines[0] : text;
+    // Gérer les montants négatifs
+    if (dataType === 'number' && value.indexOf('-') >= 0) {
+        // Assurer que le signe négatif est au début
+        value = '-' + value.replace(/[^0-9,.]/g, '');
     }
     
-    // Pour les cellules avec badges ou autres éléments, essayer d'extraire le texte principal
-    const badge = cell.querySelector('.badge, .category-badge, .flag-badge');
-    if (badge) {
-        text = badge.textContent.trim();
-    }
-    
-    // Traiter selon le type de données
-    switch (dataType) {
-        case 'date':
-            return parseDateString(text);
-        case 'number':
-            return parseNumberString(text);
-        default:
-            // Texte: normaliser (enlever accents) et mettre en minuscules
-            return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    }
+    return value;
 }
 
 /**
- * Parse une chaîne de date au format DD/MM/YYYY
- * @param {string} dateStr - La chaîne à parser
- * @returns {Date|string} - Date parsée ou chaîne originale si échec
+ * Parse une date au format français DD/MM/YYYY
  */
-function parseDateString(dateStr) {
-    // Rechercher le premier motif de date dans la chaîne
-    const dateMatch = dateStr.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-    
-    if (dateMatch) {
-        const [, day, month, year] = dateMatch;
-        try {
-            // Construire un objet Date valide
-            return new Date(`${year}-${month}-${day}`);
-        } catch (e) {
-            console.warn('Erreur de parsing de date:', dateStr);
+function parseDate(dateStr) {
+    const match = dateStr.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/);
+    if (match) {
+        const day = parseInt(match[1], 10);
+        const month = parseInt(match[2], 10) - 1;
+        let year = parseInt(match[3], 10);
+        
+        // Ajuster l'année si format court
+        if (year < 100) {
+            year += year < 50 ? 2000 : 1900;
         }
+        
+        return new Date(year, month, day).getTime();
     }
     
-    return dateStr; // Retourner la chaîne originale si le format ne correspond pas
-}
-
-/**
- * Parse une chaîne contenant un nombre (avec potentiellement un symbole)
- * @param {string} numStr - La chaîne à parser
- * @returns {number} - Le nombre extrait ou 0 si échec
- */
-function parseNumberString(numStr) {
-    // Nettoyer la chaîne: garder uniquement chiffres, point, virgule, signe
-    let cleanStr = numStr.replace(/[^\d,.\-+]/g, '');
-    
-    // Remplacer la virgule par un point pour le parsing
-    cleanStr = cleanStr.replace(',', '.');
-    
-    // Essayer de parser en nombre
-    const parsedNum = parseFloat(cleanStr);
-    
-    return isNaN(parsedNum) ? 0 : parsedNum;
-}
-
-/**
- * Rend un tableau spécifique triable (pour une utilisation externe)
- * @param {string} tableSelector - Sélecteur CSS du tableau
- */
-function makeSortable(tableSelector) {
-    const table = document.querySelector(tableSelector);
-    if (table) {
-        table.classList.add('sortable-table');
-        initSortableTable(table);
-    }
+    return 0; // Valeur par défaut si le format n'est pas reconnu
 }
 
 // Exposer les fonctions pour une utilisation externe
 window.TableSorter = {
     init: initSortableTables,
-    makeSortable: makeSortable,
-    sortTable: sortTable
+    makeSortable: function(selector) {
+        const table = document.querySelector(selector);
+        if (table) {
+            table.classList.add('sortable-table');
+            initSortableTable(table);
+        }
+    }
 };

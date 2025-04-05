@@ -4,36 +4,37 @@
 th.sortable {
     cursor: pointer;
     position: relative;
-    padding-right: 20px !important;  /* Espace pour l'icône */
 }
 
-/* Icônes de tri simples */
+/* Sort icons */
 .sort-icon {
     display: inline-block;
-    position: absolute;
-    right: 5px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 0.7rem;
-    color: #6c757d;
+    width: 12px;
+    height: 12px;
+    margin-left: 5px;
+    position: relative;
 }
 
-/* Afficher uniquement l'icône active */
-.sort-icon:after {
-    content: '';
-}
-
-.sort-icon.asc:after {
+.sort-icon.asc::after {
     content: '▲';
-    color: #007bff;
+    font-size: 0.7em;
+    position: absolute;
+    top: -8px;
 }
 
-.sort-icon.desc:after {
+.sort-icon.desc::after {
     content: '▼';
-    color: #007bff;
+    font-size: 0.7em;
+    position: absolute;
+    top: -8px;
 }
 
-/* Animation lors du tri */
-tbody tr {
-    transition: background-color 0.1s ease;
+/* Remove hover transformation */
+.card {
+    transition: box-shadow 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    transform: none !important;
 }
