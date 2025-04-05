@@ -135,12 +135,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Mettre à jour le message d'informations
                 if (data.count > 0) {
+                    
+                    // Cacher le message "aucune dépense"
                     if (noSimilarExpenses) {
                         noSimilarExpenses.style.display = 'none';
                     }
                     
-                    if (!similarExpensesTable) {
+                    // Créer ou afficher le tableau
+                    if (!similarExpensesTable || document.getElementById('similar-expenses-table') === null) {
+                        console.log("Création d'un nouveau tableau");
                         createExpensesTable(data.expenses);
+                    } else {
+                        similarExpensesTable.style.display = 'table';
                     }
                     
                     // Mettre à jour le texte du message d'info
