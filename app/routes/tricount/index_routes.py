@@ -2,6 +2,7 @@
 from flask import render_template
 from app.routes.tricount import tricount_bp
 from app.models.tricount import Expense
+from app.models.tricount import Flag
 
 @tricount_bp.route('/')
 def index():

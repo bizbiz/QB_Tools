@@ -2,7 +2,7 @@
 from flask import render_template, redirect, url_for, flash, request
 from app.routes.tricount import tricount_bp
 from app.extensions import db
-from app.models.tricount import Category
+from app.models.tricount import Category, Flag
 from sqlalchemy.exc import IntegrityError
 
 @tricount_bp.route('/categories')

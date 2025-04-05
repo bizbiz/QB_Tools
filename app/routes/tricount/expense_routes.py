@@ -2,7 +2,7 @@
 from flask import render_template, jsonify, request
 from app.routes.tricount import tricount_bp
 from app.extensions import db
-from app.models.tricount import Expense, Category
+from app.models.tricount import Expense, Category, Flag
 from datetime import datetime
 
 @tricount_bp.route('/expenses')

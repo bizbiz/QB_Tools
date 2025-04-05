@@ -1,7 +1,7 @@
 # app/routes/tricount/categorize_routes.py
 from flask import render_template
 from app.routes.tricount import tricount_bp
-from app.models.tricount import Expense, Category
+from app.models.tricount import Expense, Category, Flag
 
 @tricount_bp.route('/categorize')
 def categorize_expenses():
