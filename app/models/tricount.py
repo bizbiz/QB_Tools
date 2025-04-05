@@ -36,13 +36,6 @@ class Category(db.Model):
     def __repr__(self):
         return f'<Category {self.name}>'
 
-
-# Table d'association entre catégories et flags
-category_flags = db.Table('category_flags',
-    db.Column('category_id', db.Integer, db.ForeignKey('expense_categories.id'), primary_key=True),
-    db.Column('flag_id', db.Integer, db.ForeignKey('expense_flags.id'), primary_key=True)
-)
-
 class Expense(db.Model):
     """Modèle pour stocker les dépenses importées"""
     __tablename__ = 'expenses'
@@ -94,10 +87,15 @@ class AutoCategorizationRule(db.Model):
     # Filtres
     merchant_contains = db.Column(db.String(200))
     description_contains = db.Column(db.String(200))
+    min_amount = db.Column(db.Numeric(10, 2))  # Nouveau
+    max_amount = db.Column(db.Numeric(10, 2))  # Nouveau
     
     # Fréquence
     frequency_type = db.Column(db.String(20))  # monthly, weekly, yearly, etc.
     frequency_day = db.Column(db.Integer)      # jour du mois/semaine
+    
+    # Options
+    requires_confirmation = db.Column(db.Boolean, default=True)  # Nouveau
     
     # Destination
     category_id = db.Column(db.Integer, db.ForeignKey('expense_categories.id'))
@@ -124,6 +122,14 @@ class AutoCategorizationRule(db.Model):
         if self.description_contains and self.description_contains.lower() not in expense.description.lower():
             return False
         
+        # Vérifier le montant minimum (Nouveau)
+        if self.min_amount is not None and expense.amount < self.min_amount:
+            return False
+        
+        # Vérifier le montant maximum (Nouveau)
+        if self.max_amount is not None and expense.amount > self.max_amount:
+            return False
+        
         # Vérifier la fréquence si définie
         if self.frequency_type and self.frequency_day:
             # Vérifier si la dépense correspond à la fréquence définie
@@ -133,3 +139,9 @@ class AutoCategorizationRule(db.Model):
                 return False
         
         return True
+
+# Table d'association entre catégories et flags
+category_flags = db.Table('category_flags',
+    db.Column('category_id', db.Integer, db.ForeignKey('expense_categories.id'), primary_key=True),
+    db.Column('flag_id', db.Integer, db.ForeignKey('expense_flags.id'), primary_key=True)
+)
