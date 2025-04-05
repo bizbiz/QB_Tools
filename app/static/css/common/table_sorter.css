@@ -1,0 +1,39 @@
+/* app/static/css/common/table_sorter.css */
+
+/* Styles pour les tableaux triables */
+th.sortable {
+    cursor: pointer;
+    position: relative;
+    padding-right: 20px !important;  /* Espace pour l'icône */
+}
+
+/* Icônes de tri simples */
+.sort-icon {
+    display: inline-block;
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.7rem;
+    color: #6c757d;
+}
+
+/* Afficher uniquement l'icône active */
+.sort-icon:after {
+    content: '';
+}
+
+.sort-icon.asc:after {
+    content: '▲';
+    color: #007bff;
+}
+
+.sort-icon.desc:after {
+    content: '▼';
+    color: #007bff;
+}
+
+/* Animation lors du tri */
+tbody tr {
+    transition: background-color 0.1s ease;
+}

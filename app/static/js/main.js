@@ -1,6 +1,7 @@
+// app/static/js/main.js
+
 // Fichier JavaScript principal pour QB Tools
 
-// Activer les tooltips Bootstrap
 document.addEventListener('DOMContentLoaded', function() {
     // Initialiser les tooltips Bootstrap
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
@@ -19,4 +20,9 @@ document.addEventListener('DOMContentLoaded', function() {
             link.classList.add('active');
         }
     });
+    
+    // Initialiser tous les tableaux triables
+    if (window.TableSorter) {
+        window.TableSorter.init();
+    }
 });
