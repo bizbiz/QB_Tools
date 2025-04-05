@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}QB Tools - Tricount Helper{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Accueil</a></li>
+                    <li class="breadcrumb-item active">Tricount Helper</li>
+                </ol>
+            </nav>
+            
+            <h1>Tricount Helper</h1>
+            <p class="lead">Simplifiez la gestion des dépenses partagées et le calcul des remboursements</p>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h3 class="card-title">Tableau de bord</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3 mb-md-0">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Total des dépenses</h5>
+                                    <p class="display-4 mb-0">{{ expenses_stats.total }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3 mb-md-0">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Non catégorisées</h5>
+                                    <p class="display-4 mb-0 {% if expenses_stats.uncategorized > 0 %}text-warning{% endif %}">
+                                        {{ expenses_stats.uncategorized }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3 mb-md-0">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Pour Tricount</h5>
+                                    <p class="display-4 mb-0 text-primary">{{ expenses_stats.tricount }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Professionnelles</h5>
+                                    <p class="display-4 mb-0 text-success">{{ expenses_stats.professional }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-6 mb-4 mb-md-0">
+            <div class="card shadow-sm h-100">
+                <div class="card-header">
+                    <h3 class="card-title">Importer des dépenses</h3>
+                </div>
+                <div class="card-body">
+                    <p>Importez vos dépenses depuis votre relevé bancaire Société Générale pour les analyser et les catégoriser.</p>
+                    
+                    <div class="d-grid mt-3">
+                        <a href="{{ url_for('tricount.import_expenses') }}" class="btn btn-primary">
+                            <i class="fas fa-file-import me-2"></i>Importer depuis Société Générale
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header">
+                    <h3 class="card-title">Gérer mes dépenses</h3>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        <a href="{{ url_for('tricount.expenses_list') }}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-list me-2"></i>Liste des dépenses
+                        </a>
+                        <a href="{{ url_for('tricount.categorize_expenses') }}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-tags me-2"></i>Catégoriser les dépenses
+                            {% if expenses_stats.uncategorized > 0 %}
+                            <span class="badge bg-warning float-end">{{ expenses_stats.uncategorized }}</span>
+                            {% endif %}
+                        </a>
+                        <a href="{{ url_for('tricount.categories_list') }}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-folder me-2"></i>Gérer les catégories
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h3 class="card-title">Dépenses récentes</h3>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Description</th>
+                                    <th>Montant</th>
+                                    <th>Catégorie</th>
+                                    <th>Tricount</th>
+                                    <th>Pro</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for expense in recent_expenses %}
+                                <tr>
+                                    <td>{{ expense.date.strftime('%d/%m/%Y') }}</td>
+                                    <td>
+                                        <div class="fw-bold">{{ expense.merchant }}</div>
+                                        <div class="small text-muted">{{ expense.description|truncate(50) }}</div>
+                                    </td>
+                                    <td class="{% if expense.is_debit %}text-danger{% else %}text-success{% endif %}">
+                                        {% if expense.is_debit %}-{% endif %}{{ "%.2f"|format(expense.amount) }} €
+                                    </td>
+                                    <td>
+                                        {% if expense.category %}
+                                        <span class="badge bg-info">{{ expense.category.name }}</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Non catégorisé</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <i class="fas {% if expense.include_in_tricount %}fa-check text-success{% else %}fa-times text-muted{% endif %}"></i>
+                                    </td>
+                                    <td class="text-center">
+                                        <i class="fas {% if expense.is_professional %}fa-check text-success{% else %}fa-times text-muted{% endif %}"></i>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4">
+                                        <div class="alert alert-info mb-0">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            Aucune dépense récente. <a href="{{ url_for('tricount.import_expenses') }}">Importez des dépenses</a> pour commencer.
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% if recent_expenses %}
+                <div class="card-footer text-center">
+                    <a href="{{ url_for('tricount.expenses_list') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-list me-2"></i>Voir toutes les dépenses
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

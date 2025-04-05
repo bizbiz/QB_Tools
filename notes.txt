@@ -1,0 +1,57 @@
+# Module Tricount Helper
+
+Ce module permet de gérer vos dépenses personnelles et professionnelles, et de les organiser pour les partager via Tricount ou les soumettre comme notes de frais via N2F.
+
+## Fonctionnalités principales
+
+- **Importation de dépenses** depuis les relevés Société Générale
+- **Catégorisation automatique et manuelle** des dépenses
+- **Marquage des dépenses** à inclure dans Tricount ou comme dépenses professionnelles
+- **Exportation CSV** compatible avec Tricount et N2F
+
+## Structure du module
+
+```
+app/services/tricount/
+├── __init__.py                # Exporte les classes principales
+├── bank_statement_parser.py   # Analyseur de relevés bancaires
+└── README.md                  # Ce fichier
+```
+
+## Installation et initialisation
+
+### Initialisation des catégories par défaut
+
+Pour initialiser les catégories par défaut, utilisez la commande Flask suivante:
+
+```bash
+docker exec qb_tools_app flask init-tricount-categories
+```
+
+Cette commande crée les catégories par défaut dans la base de données.
+
+## Utilisation
+
+1. **Accédez au module Tricount Helper** depuis la page d'accueil de QB Tools
+2. **Importez vos dépenses** en copiant-collant le texte de votre relevé bancaire Société Générale
+3. **Catégorisez vos dépenses** et marquez celles à inclure dans Tricount ou comme professionnelles
+4. **Exportez les données** au format CSV pour Tricount ou N2F
+
+## Paramètres d'exportation
+
+### Pour Tricount
+- **Participants**: Liste des participants séparés par des virgules (ex: "John, Jane, Bob")
+- **Payeur par défaut**: Nom du participant qui a payé les dépenses par défaut
+
+### Pour N2F
+- **Nom de l'employé**: Votre nom complet
+- **ID employé**: Votre identifiant d'employé (optionnel)
+- **Projet**: Nom du projet associé aux dépenses (optionnel)
+
+## Développement
+
+Pour étendre ce module, vous pouvez:
+
+1. Ajouter de nouveaux parsers de relevés bancaires dans le dossier `app/services/tricount/`
+2. Modifier les catégories par défaut dans `app/commands.py`
+3. Personnaliser les formats d'exportation dans `app/routes/tricount.py`

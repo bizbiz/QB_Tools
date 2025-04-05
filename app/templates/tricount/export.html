@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}QB Tools - Exporter les dépenses{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('tricount.index') }}">Tricount Helper</a></li>
+                    <li class="breadcrumb-item active">Exporter les dépenses</li>
+                </ol>
+            </nav>
+            
+            <h1>Exporter les dépenses</h1>
+            <p class="lead">Exportez vos dépenses pour Tricount ou N2F</p>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="card-title">Exporter pour Tricount</h3>
+                </div>
+                <div class="card-body">
+                    <p>Cette option permet d'exporter les dépenses marquées "Tricount" au format CSV compatible avec Tricount.</p>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        L'export inclura uniquement les dépenses marquées pour Tricount.
+                    </div>
+                    
+                    <form action="{{ url_for('tricount.export_tricount') }}" method="POST">
+                        <div class="mb-3">
+                            <label for="tricount-participants" class="form-label">Participants (séparés par des virgules)</label>
+                            <input type="text" class="form-control" id="tricount-participants" name="participants" placeholder="John, Jane, Bob" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="tricount-payer" class="form-label">Payeur par défaut</label>
+                            <input type="text" class="form-control" id="tricount-payer" name="default_payer" placeholder="John" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="tricount-equal" name="equal_split" checked>
+                                <label class="form-check-label" for="tricount-equal">
+                                    Répartition égale entre tous les participants
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-file-export me-2"></i>Exporter pour Tricount
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-success text-white">
+                    <h3 class="card-title">Exporter pour N2F</h3>
+                </div>
+                <div class="card-body">
+                    <p>Cette option permet d'exporter les dépenses professionnelles au format compatible avec N2F pour les notes de frais.</p>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        L'export inclura uniquement les dépenses marquées comme professionnelles.
+                    </div>
+                    
+                    <form action="{{ url_for('tricount.export_n2f') }}" method="POST">
+                        <div class="mb-3">
+                            <label for="n2f-employee" class="form-label">Nom de l'employé</label>
+                            <input type="text" class="form-control" id="n2f-employee" name="employee_name" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="n2f-id" class="form-label">ID employé (optionnel)</label>
+                            <input type="text" class="form-control" id="n2f-id" name="employee_id">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="n2f-project" class="form-label">Projet (optionnel)</label>
+                            <input type="text" class="form-control" id="n2f-project" name="project">
+                        </div>
+                        
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="fas fa-file-export me-2"></i>Exporter pour N2F
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h3 class="card-title">Résumé des dépenses à exporter</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3 mb-md-0">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h5 class="card-title mb-0">Dépenses pour Tricount</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span>Nombre de dépenses :</span>
+                                        <span class="badge bg-primary">{{ tricount_stats.count }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mt-2">
+                                        <span>Montant total :</span>
+                                        <span class="text-primary fw-bold">{{ "%.2f"|format(tricount_stats.total) }} €</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mt-2">
+                                        <span>Période :</span>
+                                        <span>{{ tricount_stats.start_date|default('N/A', true) }} - {{ tricount_stats.end_date|default('N/A', true) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h5 class="card-title mb-0">Dépenses professionnelles</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span>Nombre de dépenses :</span>
+                                        <span class="badge bg-success">{{ professional_stats.count }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mt-2">
+                                        <span>Montant total :</span>
+                                        <span class="text-success fw-bold">{{ "%.2f"|format(professional_stats.total) }} €</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mt-2">
+                                        <span>Période :</span>
+                                        <span>{{ professional_stats.start_date|default('N/A', true) }} - {{ professional_stats.end_date|default('N/A', true) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-warning mt-4">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Assurez-vous que toutes vos dépenses sont correctement catégorisées et marquées pour Tricount ou comme professionnelles avant d'exporter.
+                        <a href="{{ url_for('tricount.categorize_expenses') }}" class="alert-link">Catégoriser les dépenses</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

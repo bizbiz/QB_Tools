@@ -42,6 +42,8 @@ def create_app(config_name='default'):
 def register_blueprints(app):
     from app.routes.main import main_bp
     from app.routes.teamplanning import teamplanning_bp
+    from app.routes.tricount import tricount_bp
     
     app.register_blueprint(main_bp)
     app.register_blueprint(teamplanning_bp)
+    app.register_blueprint(tricount_bp)

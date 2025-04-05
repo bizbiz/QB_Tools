@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+
+{% block title %}QB Tools - Liste des dépenses{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('tricount.index') }}">Tricount Helper</a></li>
+                    <li class="breadcrumb-item active">Liste des dépenses</li>
+                </ol>
+            </nav>
+            
+            <div class="d-flex justify-content-between align-items-center">
+                <h1>Liste des dépenses</h1>
+                <div>
+                    <a href="{{ url_for('tricount.import_expenses') }}" class="btn btn-primary">
+                        <i class="fas fa-file-import me-2"></i>Importer
+                    </a>
+                    <a href="{{ url_for('tricount.categorize_expenses') }}" class="btn btn-secondary ms-2">
+                        <i class="fas fa-tags me-2"></i>Catégoriser
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h3 class="card-title">Filtres</h3>
+                </div>
+                <div class="card-body">
+                    <form id="filter-form" method="GET" action="{{ url_for('tricount.expenses_list') }}">
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <label for="category_id" class="form-label">Catégorie</label>
+                                <select class="form-select" id="category_id" name="category_id">
+                                    <option value="">Toutes les catégories</option>
+                                    <option value="0" {% if request.args.get('category_id') == '0' %}selected{% endif %}>Non catégorisé</option>
+                                    {% for category in categories %}
+                                    <option value="{{ category.id }}" {% if request.args.get('category_id')|int == category.id %}selected{% endif %}>
+                                        {{ category.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-3 mb-3">
+                                <label for="start_date" class="form-label">Date de début</label>
+                                <input type="date" class="form-control" id="start_date" name="start_date" value="{{ request.args.get('start_date', '') }}">
+                            </div>
+                            
+                            <div class="col-md-3 mb-3">
+                                <label for="end_date" class="form-label">Date de fin</label>
+                                <input type="date" class="form-control" id="end_date" name="end_date" value="{{ request.args.get('end_date', '') }}">
+                            </div>
+                            
+                            <div class="col-md-3 mb-3">
+                                <label for="sort" class="form-label">Trier par</label>
+                                <select class="form-select" id="sort" name="sort">
+                                    <option value="date" {% if request.args.get('sort') == 'date' or not request.args.get('sort') %}selected{% endif %}>Date</option>
+                                    <option value="amount" {% if request.args.get('sort') == 'amount' %}selected{% endif %}>Montant</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="tricount" name="tricount" value="1" {% if request.args.get('tricount') == '1' %}checked{% endif %}>
+                                    <label class="form-check-label" for="tricount">Incluses dans Tricount</label>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="professional" name="professional" value="1" {% if request.args.get('professional') == '1' %}checked{% endif %}>
+                                    <label class="form-check-label" for="professional">Dépenses professionnelles</label>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3 text-end">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-filter me-2"></i>Filtrer
+                                </button>
+                                <a href="{{ url_for('tricount.expenses_list') }}" class="btn btn-outline-secondary ms-2">
+                                    <i class="fas fa-undo me-2"></i>Réinitialiser
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="card-title">Dépenses</h3>
+                        <span class="badge bg-primary">{{ expenses.total }} dépenses</span>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Description</th>
+                                    <th>Montant</th>
+                                    <th>Catégorie</th>
+                                    <th>Tricount</th>
+                                    <th>Pro</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for expense in expenses.items %}
+                                <tr data-expense-id="{{ expense.id }}">
+                                    <td>{{ expense.date.strftime('%d/%m/%Y') }}</td>
+                                    <td>
+                                        <div class="fw-bold">{{ expense.merchant }}</div>
+                                        <div class="small text-muted">{{ expense.description|truncate(80) }}</div>
+                                    </td>
+                                    <td class="{% if expense.is_debit %}text-danger{% else %}text-success{% endif %}">
+                                        {% if expense.is_debit %}-{% endif %}{{ "%.2f"|format(expense.amount) }} €
+                                    </td>
+                                    <td>
+                                        {% if expense.category %}
+                                        <span class="badge bg-info">{{ expense.category.name }}</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Non catégorisé</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <i class="fas {% if expense.include_in_tricount %}fa-check text-success{% else %}fa-times text-muted{% endif %}"></i>
+                                    </td>
+                                    <td class="text-center">
+                                        <i class="fas {% if expense.is_professional %}fa-check text-success{% else %}fa-times text-muted{% endif %}"></i>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary edit-expense" 
+                                                data-bs-toggle="tooltip" 
+                                                data-bs-placement="top" 
+                                                title="Modifier">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-4">
+                                        <div class="alert alert-info mb-0">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            Aucune dépense trouvée. Utilisez les filtres ci-dessus ou 
+                                            <a href="{{ url_for('tricount.import_expenses') }}">importez de nouvelles dépenses</a>.
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="card-footer">
+                    <nav aria-label="Pagination des dépenses">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if expenses.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('tricount.expenses_list', page=expenses.prev_num, **request.args) }}">
+                                    <i class="fas fa-chevron-left"></i> Précédent
+                                </a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link"><i class="fas fa-chevron-left"></i> Précédent</span>
+                            </li>
+                            {% endif %}
+                            
+                            {# Afficher jusqu'à 5 numéros de page #}
+                            {% set start_page = [expenses.page - 2, 1]|max %}
+                            {% set end_page = [start_page + 4, expenses.pages]|min %}
+                            {% set start_page = [end_page - 4, 1]|max %}
+                            
+                            {% for page_num in range(start_page, end_page + 1) %}
+                            <li class="page-item {% if page_num == expenses.page %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('tricount.expenses_list', page=page_num, **request.args) }}">
+                                    {{ page_num }}
+                                </a>
+                            </li>
+                            {% endfor %}
+                            
+                            {% if expenses.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('tricount.expenses_list', page=expenses.next_num, **request.args) }}">
+                                    Suivant <i class="fas fa-chevron-right"></i>
+                                </a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">Suivant <i class="fas fa-chevron-right"></i></span>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal d'édition -->
+<div class="modal fade" id="editExpenseModal" tabindex="-1" aria-labelledby="editExpenseModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editExpenseModalLabel">Modifier la dépense</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-expense-form">
+                    <input type="hidden" id="edit-expense-id" name="expense_id">
+                    
+                    <div class="mb-3">
+                        <label for="edit-category" class="form-label">Catégorie</label>
+                        <select class="form-select" id="edit-category" name="category_id">
+                            <option value="">Non catégorisé</option>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}">{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="edit-tricount" name="include_tricount">
+                            <label class="form-check-label" for="edit-tricount">Inclure dans Tricount</label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="edit-professional" name="is_professional">
+                            <label class="form-check-label" for="edit-professional">Dépense professionnelle</label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="save-expense">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialiser les tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+        
+        // Gestion de la modal d'édition
+        const editButtons = document.querySelectorAll('.edit-expense');
+        const editModal = new bootstrap.Modal(document.getElementById('editExpenseModal'));
+        const editForm = document.getElementById('edit-expense-form');
+        const editExpenseId = document.getElementById('edit-expense-id');
+        const editCategory = document.getElementById('edit-category');
+        const editTricount = document.getElementById('edit-tricount');
+        const editProfessional = document.getElementById('edit-professional');
+        const saveButton = document.getElementById('save-expense');
+        
+        // Ouvrir la modal d'édition
+        editButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const row = this.closest('tr');
+                const expenseId = row.dataset.expenseId;
+                
+                // Récupérer l'état actuel
+                const categoryBadge = row.querySelector('td:nth-child(4) .badge');
+                const isTricount = row.querySelector('td:nth-child(5) .fa-check') !== null;
+                const isProfessional = row.querySelector('td:nth-child(6) .fa-check') !== null;
+                
+                // Remplir le formulaire
+                editExpenseId.value = expenseId;
+                
+                // Trouver la catégorie
+                if (categoryBadge && categoryBadge.textContent !== 'Non catégorisé') {
+                    // Trouver l'option correspondante
+                    const categoryOptions = Array.from(editCategory.options);
+                    const matchingOption = categoryOptions.find(option => option.textContent === categoryBadge.textContent);
+                    if (matchingOption) {
+                        editCategory.value = matchingOption.value;
+                    } else {
+                        editCategory.value = ''; // Non catégorisé par défaut
+                    }
+                } else {
+                    editCategory.value = '';
+                }
+                
+                editTricount.checked = isTricount;
+                editProfessional.checked = isProfessional;
+                
+                // Ouvrir la modal
+                editModal.show();
+            });
+        });
+        
+        // Enregistrer les modifications
+        saveButton.addEventListener('click', function() {
+            const formData = new FormData(editForm);
+            
+            fetch('{{ url_for("tricount.update_expense") }}', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Fermer la modal
+                    editModal.hide();
+                    
+                    // Recharger la page pour voir les changements
+                    window.location.reload();
+                } else {
+                    alert('Erreur lors de la mise à jour: ' + (data.error || 'Erreur inconnue'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Erreur de connexion au serveur.');
+            });
+        });
+    });
+</script>
+{% endblock %}
