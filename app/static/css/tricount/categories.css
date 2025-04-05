@@ -1,4 +1,4 @@
-/* app/static/css/qb_tools/categories.css */
+/* app/static/css/tricount/categories.css */
 
 /* Sort icons */
 .sort-icon {
@@ -21,16 +21,6 @@
     font-size: 0.7em;
     position: absolute;
     top: -8px;
-}
-
-/* Remove hover transformation */
-.card {
-    transition: box-shadow 0.3s ease;
-}
-
-.card:hover {
-    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-    transform: none !important;
 }
 
 /* Category badges */

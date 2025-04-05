@@ -1,4 +1,4 @@
-// app/static/js/category_management.js
+// app/static/js/tricount/category_management.js
 
 document.addEventListener('DOMContentLoaded', function() {
     // Set up table sorting

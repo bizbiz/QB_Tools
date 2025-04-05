@@ -1,4 +1,4 @@
-// Add this to a new file: static/js/category_filtering.js
+// app/static/js/tricount/category_filtering.js
 
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize category data (will be populated in the template)

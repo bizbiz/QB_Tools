@@ -3,7 +3,7 @@
 {% block title %}QB Tools - Catégoriser les dépenses{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/main.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -147,18 +147,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- Définition des données des catégories pour JavaScript -->
-<script>
-    // Category data for filtering
-    window.categoryData = {
-        {% for category in categories %}
-        "{{ category.id }}": {
-            includeInTricount: {{ category.include_in_tricount|lower }},
-            isProfessional: {{ category.is_professional|lower }}
-        },
-        {% endfor %}
-    };
-</script>
-<!-- Inclure le nouveau fichier JavaScript -->
-<script src="{{ url_for('static', filename='js/tricount_categorize.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tricount/categorize.js') }}"></script>
 {% endblock %}

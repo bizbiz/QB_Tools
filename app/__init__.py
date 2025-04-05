@@ -39,6 +39,8 @@ def create_app(config_name='default'):
     register_blueprints(app)
     return app
 
+# app/__init__.py - Update in register_blueprints function
+
 def register_blueprints(app):
     from app.routes.main import main_bp
     from app.routes.teamplanning import teamplanning_bp
