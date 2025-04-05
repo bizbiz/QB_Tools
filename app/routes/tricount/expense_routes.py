@@ -12,9 +12,6 @@ def expenses_list():
     category_id = request.args.get('category_id', type=int)
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
-    for_me = request.args.get('for_me', type=int)
-    include_tricount = request.args.get('tricount', type=int)
-    is_professional = request.args.get('professional', type=int)
     
     # Construire la requête
     query = Expense.query
@@ -38,14 +35,17 @@ def expenses_list():
         except ValueError:
             pass
     
-    if for_me is not None:
-        query = query.filter_by(for_me=bool(for_me))
+    # Filtrage par flags
+    flags = Flag.query.all()
+    selected_flags = []
     
-    if include_tricount is not None:
-        query = query.filter_by(include_in_tricount=bool(include_tricount))
+    for flag in flags:
+        flag_param = request.args.get(f'flag_{flag.id}', type=int)
+        if flag_param == 1:
+            selected_flags.append(flag.id)
     
-    if is_professional is not None:
-        query = query.filter_by(is_professional=bool(is_professional))
+    if selected_flags:
+        query = query.filter(Expense.flag_id.in_(selected_flags))
     
     # Tri
     sort_by = request.args.get('sort', 'date')
@@ -66,16 +66,15 @@ def expenses_list():
     
     return render_template('tricount/expenses_list.html',
                           expenses=expenses,
-                          categories=categories)
+                          categories=categories,
+                          flags=flags)
 
 @tricount_bp.route('/expenses/update', methods=['POST'])
 def update_expense():
     """API pour mettre à jour une dépense"""
     expense_id = request.form.get('expense_id', type=int)
     category_id = request.form.get('category_id')
-    for_me = request.form.get('for_me') == 'true'
-    include_tricount = request.form.get('include_tricount') == 'true'
-    is_professional = request.form.get('is_professional') == 'true'
+    flag_id = request.form.get('flag_id', type=int)
     
     if not expense_id:
         return jsonify({'success': False, 'error': 'ID de dépense non fourni'}), 400
@@ -88,24 +87,14 @@ def update_expense():
     else:
         expense.category_id = None
     
-    # Assurer qu'un seul flag est actif
-    if for_me:
-        expense.for_me = True
-        expense.include_in_tricount = False
-        expense.is_professional = False
-    elif include_tricount:
-        expense.for_me = False
-        expense.include_in_tricount = True
-        expense.is_professional = False
-    elif is_professional:
-        expense.for_me = False
-        expense.include_in_tricount = False
-        expense.is_professional = True
+    # Mettre à jour le flag
+    if flag_id:
+        expense.flag_id = flag_id
     else:
-        # Par défaut, si aucun n'est sélectionné, utiliser "for_me"
-        expense.for_me = True
-        expense.include_in_tricount = False
-        expense.is_professional = False
+        # Si aucun flag n'est fourni, utiliser le flag par défaut
+        default_flag = Flag.query.filter_by(is_default=True).first()
+        if default_flag:
+            expense.flag_id = default_flag.id
     
     try:
         db.session.commit()

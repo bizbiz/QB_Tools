@@ -5,46 +5,29 @@ from app.models.tricount import Expense
 import csv
 from io import StringIO
 
-@tricount_bp.route('/export')
+@tricount_bp.route('/export/options')
 def export_options():
     """Page d'options d'exportation pour Tricount et N2F"""
-    # Statistiques des dépenses pour moi
-    for_me_expenses = Expense.query.filter_by(for_me=True).all()
-    for_me_total = sum(expense.amount for expense in for_me_expenses if expense.is_debit)
+    # Obtenir tous les flags
+    flags = Flag.query.all()
     
-    for_me_stats = {
-        'count': len(for_me_expenses),
-        'total': for_me_total,
-        'start_date': min([expense.date.strftime('%d/%m/%Y') for expense in for_me_expenses]) if for_me_expenses else None,
-        'end_date': max([expense.date.strftime('%d/%m/%Y') for expense in for_me_expenses]) if for_me_expenses else None
-    }
-
-    # Statistiques des dépenses pour Tricount
-    tricount_expenses = Expense.query.filter_by(include_in_tricount=True).all()
-    tricount_total = sum(expense.amount for expense in tricount_expenses if expense.is_debit)
+    # Statistiques pour chaque flag
+    flag_stats = {}
     
-    tricount_stats = {
-        'count': len(tricount_expenses),
-        'total': tricount_total,
-        'start_date': min([expense.date.strftime('%d/%m/%Y') for expense in tricount_expenses]) if tricount_expenses else None,
-        'end_date': max([expense.date.strftime('%d/%m/%Y') for expense in tricount_expenses]) if tricount_expenses else None
-    }
-    
-    # Statistiques des dépenses professionnelles
-    professional_expenses = Expense.query.filter_by(is_professional=True).all()
-    professional_total = sum(expense.amount for expense in professional_expenses if expense.is_debit)
-    
-    professional_stats = {
-        'count': len(professional_expenses),
-        'total': professional_total,
-        'start_date': min([expense.date.strftime('%d/%m/%Y') for expense in professional_expenses]) if professional_expenses else None,
-        'end_date': max([expense.date.strftime('%d/%m/%Y') for expense in professional_expenses]) if professional_expenses else None
-    }
+    for flag in flags:
+        expenses = Expense.query.filter_by(flag_id=flag.id).all()
+        total = sum(expense.amount for expense in expenses if expense.is_debit)
+        
+        flag_stats[flag.id] = {
+            'count': len(expenses),
+            'total': total,
+            'start_date': min([expense.date.strftime('%d/%m/%Y') for expense in expenses]) if expenses else None,
+            'end_date': max([expense.date.strftime('%d/%m/%Y') for expense in expenses]) if expenses else None
+        }
     
     return render_template('tricount/export.html',
-                          for_me_stats=for_me_stats,
-                          tricount_stats=tricount_stats,
-                          professional_stats=professional_stats)
+                          flags=flags,
+                          flag_stats=flag_stats)
 
 @tricount_bp.route('/export/tricount', methods=['POST'])
 def export_tricount():
@@ -52,13 +35,14 @@ def export_tricount():
     participants = request.form.get('participants', '')
     default_payer = request.form.get('default_payer', '')
     equal_split = request.form.get('equal_split') == 'on'
+    flag_id = request.form.get('flag_id', type=int)
     
-    if not participants or not default_payer:
-        flash('Les participants et le payeur par défaut sont requis.', 'warning')
+    if not participants or not default_payer or not flag_id:
+        flash('Les participants, le payeur par défaut et le type de dépense sont requis.', 'warning')
         return redirect(url_for('tricount.export_options'))
     
-    # Récupérer les dépenses pour Tricount (Emily)
-    expenses = Expense.query.filter_by(include_in_tricount=True).order_by(Expense.date.asc()).all()
+    # Récupérer les dépenses pour le flag sélectionné
+    expenses = Expense.query.filter_by(flag_id=flag_id).order_by(Expense.date.asc()).all()
     
     if not expenses:
         flash('Aucune dépense à exporter pour Tricount.', 'warning')

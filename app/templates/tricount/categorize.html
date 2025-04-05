@@ -107,27 +107,15 @@
                                             </select>
                                         </div>
                                         
-                                        <div class="mb-3 d-flex">
-                                            <div class="form-check form-switch me-3">
-                                                <input class="form-check-input" type="checkbox" id="for-me-{{ expense.id }}" name="for_me" checked>
-                                                <label class="form-check-label" for="for-me-{{ expense.id }}">
-                                                    <span class="category-badge me">Moi</span>
-                                                </label>
-                                            </div>
-                                            
-                                            <div class="form-check form-switch me-3">
-                                                <input class="form-check-input" type="checkbox" id="tricount-{{ expense.id }}" name="include_tricount">
-                                                <label class="form-check-label" for="tricount-{{ expense.id }}">
-                                                    <span class="category-badge tricount">Emily</span>
-                                                </label>
-                                            </div>
-                                            
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="professional-{{ expense.id }}" name="is_professional">
-                                                <label class="form-check-label" for="professional-{{ expense.id }}">
-                                                    <span class="category-badge professional">Pro</span>
-                                                </label>
-                                            </div>
+                                        <div class="mb-3">
+                                            <label for="flag-{{ expense.id }}" class="form-label">Type de dépense</label>
+                                            <select class="form-select flag-select" id="flag-{{ expense.id }}" name="flag_id" data-expense-id="{{ expense.id }}">
+                                                {% for flag in flags %}
+                                                <option value="{{ flag.id }}" {% if flag.is_default %}selected{% endif %}>
+                                                    {{ flag.name }}
+                                                </option>
+                                                {% endfor %}
+                                            </select>
                                         </div>
                                         
                                         <div class="d-flex gap-2">
@@ -164,9 +152,19 @@
     window.categoryData = {
         {% for category in categories %}
         "{{ category.id }}": {
-            forMe: {{ category.for_me|lower }},
-            includeInTricount: {{ category.include_in_tricount|lower }},
-            isProfessional: {{ category.is_professional|lower }}
+            name: "{{ category.name }}",
+            flagIds: [{% for flag in category.flags %}{{ flag.id }}{% if not loop.last %},{% endif %}{% endfor %}]
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+    
+    // Données des flags
+    window.flagData = {
+        {% for flag in flags %}
+        "{{ flag.id }}": {
+            name: "{{ flag.name }}",
+            color: "{{ flag.color }}",
+            icon: "{{ flag.icon }}"
         }{% if not loop.last %},{% endif %}
         {% endfor %}
     };

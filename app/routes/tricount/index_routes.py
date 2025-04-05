@@ -10,14 +10,17 @@ def index():
     expenses_stats = {
         'total': Expense.query.count(),
         'uncategorized': Expense.query.filter_by(category_id=None).count(),
-        'for_me': Expense.query.filter_by(for_me=True).count(),
-        'tricount': Expense.query.filter_by(include_in_tricount=True).count(),
-        'professional': Expense.query.filter_by(is_professional=True).count()
     }
+    
+    # Ajouter des statistiques par flag
+    flags = Flag.query.all()
+    for flag in flags:
+        expenses_stats[f'flag_{flag.id}'] = Expense.query.filter_by(flag_id=flag.id).count()
     
     # Récupérer les dernières dépenses
     recent_expenses = Expense.query.order_by(Expense.date.desc()).limit(5).all()
     
     return render_template('tricount/index.html', 
                            expenses_stats=expenses_stats,
+                           flags=flags,
                            recent_expenses=recent_expenses)

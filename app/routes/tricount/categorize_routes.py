@@ -9,9 +9,20 @@ def categorize_expenses():
     # Récupérer les dépenses non catégorisées
     uncategorized = Expense.query.filter_by(category_id=None).order_by(Expense.date.desc()).all()
     
-    # Récupérer toutes les catégories
+    # Récupérer toutes les catégories et tous les flags
     categories = Category.query.all()
+    flags = Flag.query.all()
+    
+    # Préparation des données pour le JavaScript
+    category_data = {}
+    for category in categories:
+        category_data[category.id] = {
+            'name': category.name,
+            'flagIds': [flag.id for flag in category.flags]
+        }
     
     return render_template('tricount/categorize.html',
                           expenses=uncategorized,
-                          categories=categories)
+                          categories=categories,
+                          flags=flags,
+                          category_data=category_data)

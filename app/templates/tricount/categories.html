@@ -44,30 +44,25 @@
                             <input type="text" class="form-control" id="description" name="description">
                         </div>
                         
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Disponible pour</label>
-                            <div class="d-flex gap-3">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="for_me" name="for_me" checked>
-                                    <label class="form-check-label" for="for_me">
-                                        <span class="category-badge me">Moi</span>
+                        <div class="mb-3">
+                            <label class="form-label">Types de dépenses applicables</label>
+                            <div class="d-flex flex-wrap gap-2">
+                                {% for flag in flags %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="flag-{{ flag.id }}" name="flags" value="{{ flag.id }}" checked>
+                                    <label class="form-check-label" for="flag-{{ flag.id }}">
+                                        <span class="flag-badge" style="background-color: {{ flag.color }}">
+                                            <i class="fas {{ flag.icon }}"></i>
+                                            {{ flag.name }}
+                                        </span>
                                     </label>
                                 </div>
-                                
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="tricount" name="include_in_tricount" checked>
-                                    <label class="form-check-label" for="tricount">
-                                        <span class="category-badge tricount">Emily</span>
-                                    </label>
-                                </div>
-                                
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="professional" name="is_professional" checked>
-                                    <label class="form-check-label" for="professional">
-                                        <span class="category-badge professional">Pro</span>
-                                    </label>
-                                </div>
+                                {% endfor %}
                             </div>
+                            <div class="form-text">
+                                Sélectionnez les types de dépenses pour lesquels cette catégorie sera disponible.
+                            </div>
+                        </div>
                         </div>
                         
                         <div class="col-12 mt-3">
@@ -133,9 +128,7 @@
                                 <tr>
                                     <th>Nom</th>
                                     <th>Description</th>
-                                    <th class="text-center">Moi</th>
-                                    <th class="text-center">Emily</th>
-                                    <th class="text-center">Pro</th>
+                                    <th>Types</th>
                                     <th>Date de création</th>
                                     <th>Actions</th>
                                 </tr>
@@ -145,14 +138,17 @@
                                 <tr>
                                     <td>{{ category.name }}</td>
                                     <td>{{ category.description or 'N/A' }}</td>
-                                    <td class="text-center">
-                                        <i class="fas {% if category.for_me %}fa-check text-success{% else %}fa-times text-muted{% endif %}"></i>
-                                    </td>
-                                    <td class="text-center">
-                                        <i class="fas {% if category.include_in_tricount %}fa-check text-success{% else %}fa-times text-muted{% endif %}"></i>
-                                    </td>
-                                    <td class="text-center">
-                                        <i class="fas {% if category.is_professional %}fa-check text-success{% else %}fa-times text-muted{% endif %}"></i>
+                                    <td>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            {% for flag in category.flags %}
+                                            <span class="flag-badge small" style="background-color: {{ flag.color }}">
+                                                <i class="fas {{ flag.icon }}"></i>
+                                                {{ flag.name }}
+                                            </span>
+                                            {% else %}
+                                            <span class="badge bg-secondary">Aucun</span>
+                                            {% endfor %}
+                                        </div>
                                     </td>
                                     <td>{{ category.created_at.strftime('%d/%m/%Y') }}</td>
                                     <td>
@@ -240,24 +236,19 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label class="form-label">Disponible pour</label>
-                        <div class="form-check form-switch mb-2">
-                            <input class="form-check-input" type="checkbox" id="edit-for-me" name="for_me">
-                            <label class="form-check-label" for="edit-for-me">
-                                <span class="category-badge me">Moi</span> Dépenses personnelles
-                            </label>
-                        </div>
-                        <div class="form-check form-switch mb-2">
-                            <input class="form-check-input" type="checkbox" id="edit-tricount" name="include_in_tricount">
-                            <label class="form-check-label" for="edit-tricount">
-                                <span class="category-badge tricount">Emily</span> Dépenses partagées
-                            </label>
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="edit-professional" name="is_professional">
-                            <label class="form-check-label" for="edit-professional">
-                                <span class="category-badge professional">Pro</span> Dépenses professionnelles
-                            </label>
+                        <label class="form-label">Types de dépenses applicables</label>
+                        <div id="edit-flags-container" class="d-flex flex-wrap gap-2">
+                            {% for flag in flags %}
+                            <div class="form-check">
+                                <input class="form-check-input edit-flag-checkbox" type="checkbox" id="edit-flag-{{ flag.id }}" name="flags" value="{{ flag.id }}">
+                                <label class="form-check-label" for="edit-flag-{{ flag.id }}">
+                                    <span class="flag-badge" style="background-color: {{ flag.color }}">
+                                        <i class="fas {{ flag.icon }}"></i>
+                                        {{ flag.name }}
+                                    </span>
+                                </label>
+                            </div>
+                            {% endfor %}
                         </div>
                     </div>
                 </form>

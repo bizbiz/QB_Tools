@@ -34,24 +34,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Function to filter categories based on type selection
+    // Fonction pour filtrer les catégories basées sur le flag sélectionné
     function filterCategoriesForExpense(expenseId) {
         const select = document.getElementById(`category-${expenseId}`);
-        const isForMe = document.getElementById(`for-me-${expenseId}`).checked;
-        const isTricount = document.getElementById(`tricount-${expenseId}`).checked;
-        const isProfessional = document.getElementById(`professional-${expenseId}`).checked;
-        
-        // Ensure only one flag is active at a time
-        if (isForMe) {
-            document.getElementById(`tricount-${expenseId}`).checked = false;
-            document.getElementById(`professional-${expenseId}`).checked = false;
-        } else if (isTricount) {
-            document.getElementById(`for-me-${expenseId}`).checked = false;
-            document.getElementById(`professional-${expenseId}`).checked = false;
-        } else if (isProfessional) {
-            document.getElementById(`for-me-${expenseId}`).checked = false;
-            document.getElementById(`tricount-${expenseId}`).checked = false;
-        }
+        const flagSelect = document.getElementById(`flag-${expenseId}`);
+        const flagId = flagSelect.value;
         
         if (!select || !select.originalOptions) return;
         
@@ -81,22 +68,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            // Check if this category should be shown based on the flags
-            let showCategory = false;
-            
-            if (isForMe && categoryInfo.forMe) {
-                showCategory = true;
-            }
-            
-            if (isTricount && categoryInfo.includeInTricount) {
-                showCategory = true;
-            }
-            
-            if (isProfessional && categoryInfo.isProfessional) {
-                showCategory = true;
-            }
-            
-            if (showCategory) {
+            // Check if this category is available for the selected flag
+            if (categoryInfo.flagIds.includes(parseInt(flagId))) {
                 const newOption = document.createElement('option');
                 newOption.value = option.value;
                 newOption.text = option.text;
@@ -104,6 +77,15 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // Initialize all flag selects
+    document.querySelectorAll('.flag-select').forEach(select => {
+        const expenseId = select.dataset.expenseId;
+        
+        select.addEventListener('change', function() {
+            filterCategoriesForExpense(expenseId);
+        });
+    });
     
     // Initialize all category selects
     document.querySelectorAll('.category-select').forEach(select => {

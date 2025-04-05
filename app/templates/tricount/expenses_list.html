@@ -95,9 +95,7 @@
                                     <th>Description</th>
                                     <th>Montant</th>
                                     <th>Catégorie</th>
-                                    <th class="text-center">Moi</th>
-                                    <th class="text-center">Emily</th>
-                                    <th class="text-center">Pro</th>
+                                    <th>Type</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -119,14 +117,15 @@
                                         <span class="badge bg-secondary">Non catégorisé</span>
                                         {% endif %}
                                     </td>
-                                    <td class="text-center">
-                                        <i class="fas {% if expense.for_me %}fa-check text-success{% else %}fa-times text-muted{% endif %}"></i>
-                                    </td>
-                                    <td class="text-center">
-                                        <i class="fas {% if expense.include_in_tricount %}fa-check text-success{% else %}fa-times text-muted{% endif %}"></i>
-                                    </td>
-                                    <td class="text-center">
-                                        <i class="fas {% if expense.is_professional %}fa-check text-success{% else %}fa-times text-muted{% endif %}"></i>
+                                    <td>
+                                        {% if expense.flag %}
+                                        <span class="flag-badge" style="background-color: {{ expense.flag.color }}">
+                                            <i class="fas {{ expense.flag.icon }}"></i>
+                                            {{ expense.flag.name }}
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Non défini</span>
+                                        {% endif %}
                                     </td>
                                     <td>
                                         <button class="btn btn-sm btn-outline-primary edit-expense" 
@@ -228,27 +227,20 @@
                         </select>
                     </div>
                     
-                    <div class="mb-3">
-                        <label class="form-label">Type de dépense</label>
-                        <div class="form-check form-switch mb-2">
-                            <input class="form-check-input" type="checkbox" id="edit-for-me" name="for_me">
-                            <label class="form-check-label" for="edit-for-me">
-                                <span class="category-badge me">Moi</span> Dépense personnelle
-                            </label>
-                        </div>
-                        
-                        <div class="form-check form-switch mb-2">
-                            <input class="form-check-input" type="checkbox" id="edit-tricount" name="include_tricount">
-                            <label class="form-check-label" for="edit-tricount">
-                                <span class="category-badge tricount">Emily</span> Dépense partagée
-                            </label>
-                        </div>
-                        
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="edit-professional" name="is_professional">
-                            <label class="form-check-label" for="edit-professional">
-                                <span class="category-badge professional">Pro</span> Dépense professionnelle
-                            </label>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Types de dépenses</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for flag in flags %}
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="flag_{{ flag.id }}" name="flag_{{ flag.id }}" value="1" {% if request.args.get('flag_' ~ flag.id) == '1' %}checked{% endif %}>
+                                <label class="form-check-label" for="flag_{{ flag.id }}">
+                                    <span class="flag-badge" style="background-color: {{ flag.color }}">
+                                        <i class="fas {{ flag.icon }}"></i>
+                                        {{ flag.name }}
+                                    </span>
+                                </label>
+                            </div>
+                            {% endfor %}
                         </div>
                     </div>
                     

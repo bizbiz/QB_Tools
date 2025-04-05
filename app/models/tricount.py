@@ -3,6 +3,21 @@ from app.extensions import db
 from datetime import datetime
 import hashlib
 
+class Flag(db.Model):
+    """Modèle pour stocker les flags de dépenses (types de dépenses)"""
+    __tablename__ = 'expense_flags'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    description = db.Column(db.String(255))
+    color = db.Column(db.String(50))  # Pour le styling (ex: "blue", "#0366d6")
+    icon = db.Column(db.String(50))   # Pour afficher une icône (ex: "fa-home")
+    is_default = db.Column(db.Boolean, default=False)  # Pour définir le flag par défaut
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<Flag {self.name}>'
+
 class Category(db.Model):
     """Modèle pour stocker les catégories de dépenses"""
     __tablename__ = 'expense_categories'
@@ -12,16 +27,21 @@ class Category(db.Model):
     description = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Flags pour les types de dépenses
-    for_me = db.Column(db.Boolean, default=True)               # Disponible pour mes dépenses personnelles
-    include_in_tricount = db.Column(db.Boolean, default=True)  # Disponible pour Tricount (Emily)
-    is_professional = db.Column(db.Boolean, default=True)      # Disponible pour dépenses professionnelles
+    # Association many-to-many avec les flags
+    flags = db.relationship('Flag', secondary='category_flags', backref=db.backref('categories', lazy=True))
     
     # Relation avec les dépenses
     expenses = db.relationship('Expense', backref='category', lazy=True)
     
     def __repr__(self):
         return f'<Category {self.name}>'
+
+
+# Table d'association entre catégories et flags
+category_flags = db.Table('category_flags',
+    db.Column('category_id', db.Integer, db.ForeignKey('expense_categories.id'), primary_key=True),
+    db.Column('flag_id', db.Integer, db.ForeignKey('expense_flags.id'), primary_key=True)
+)
 
 class Expense(db.Model):
     """Modèle pour stocker les dépenses importées"""
@@ -45,11 +65,10 @@ class Expense(db.Model):
     
     # Relations
     category_id = db.Column(db.Integer, db.ForeignKey('expense_categories.id'))
+    flag_id = db.Column(db.Integer, db.ForeignKey('expense_flags.id'))
     
-    # Flags pour le type de dépense (un seul peut être actif à la fois)
-    for_me = db.Column(db.Boolean, default=True)             # Pour moi
-    include_in_tricount = db.Column(db.Boolean, default=False) # Pour Tricount (Emily)
-    is_professional = db.Column(db.Boolean, default=False)   # Pour N2F (professionnel)
+    # Relation avec le flag
+    flag = db.relationship('Flag', backref=db.backref('expenses', lazy=True))
     
     # Identifiant unique pour éviter les doublons
     unique_identifier = db.Column(db.String(255), unique=True, index=True)
@@ -82,9 +101,7 @@ class AutoCategorizationRule(db.Model):
     
     # Destination
     category_id = db.Column(db.Integer, db.ForeignKey('expense_categories.id'))
-    for_me = db.Column(db.Boolean, default=True)
-    include_in_tricount = db.Column(db.Boolean, default=False)
-    is_professional = db.Column(db.Boolean, default=False)
+    flag_id = db.Column(db.Integer, db.ForeignKey('expense_flags.id'))
     
     # Métadonnées
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -93,6 +110,7 @@ class AutoCategorizationRule(db.Model):
     
     # Relations
     category = db.relationship('Category', backref='auto_rules')
+    flag = db.relationship('Flag', backref='auto_rules')
     
     def __repr__(self):
         return f'<AutoCategorizationRule {self.name}>'

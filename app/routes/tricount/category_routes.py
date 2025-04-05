@@ -9,16 +9,15 @@ from sqlalchemy.exc import IntegrityError
 def categories_list():
     """Liste des catégories"""
     categories = Category.query.all()
-    return render_template('tricount/categories.html', categories=categories)
+    flags = Flag.query.all()
+    return render_template('tricount/categories.html', categories=categories, flags=flags)
 
 @tricount_bp.route('/categories/add', methods=['POST'])
 def add_category():
     """Ajouter une nouvelle catégorie"""
     name = request.form.get('name')
     description = request.form.get('description', '')
-    for_me = 'for_me' in request.form
-    include_in_tricount = 'include_in_tricount' in request.form
-    is_professional = 'is_professional' in request.form
+    flag_ids = request.form.getlist('flags')
     
     if not name:
         flash('Le nom de la catégorie est requis.', 'warning')
@@ -26,16 +25,51 @@ def add_category():
     
     category = Category(
         name=name, 
-        description=description,
-        for_me=for_me,
-        include_in_tricount=include_in_tricount,
-        is_professional=is_professional
+        description=description
     )
+    
+    # Associer les flags sélectionnés
+    if flag_ids:
+        flags = Flag.query.filter(Flag.id.in_(flag_ids)).all()
+        category.flags = flags
+    
     db.session.add(category)
     
     try:
         db.session.commit()
         flash(f'Catégorie "{name}" ajoutée avec succès.', 'success')
+    except IntegrityError:
+        db.session.rollback()
+        flash(f'Une catégorie avec le nom "{name}" existe déjà.', 'danger')
+    
+    return redirect(url_for('tricount.categories_list'))
+
+@tricount_bp.route('/categories/update/<int:category_id>', methods=['POST'])
+def update_category(category_id):
+    """Mettre à jour une catégorie"""
+    category = Category.query.get_or_404(category_id)
+    
+    name = request.form.get('name')
+    description = request.form.get('description', '')
+    flag_ids = request.form.getlist('flags')
+    
+    if not name:
+        flash('Le nom de la catégorie est requis.', 'warning')
+        return redirect(url_for('tricount.categories_list'))
+    
+    try:
+        category.name = name
+        category.description = description
+        
+        # Mettre à jour les flags
+        if flag_ids:
+            flags = Flag.query.filter(Flag.id.in_(flag_ids)).all()
+            category.flags = flags
+        else:
+            category.flags = []
+        
+        db.session.commit()
+        flash(f'Catégorie "{name}" mise à jour avec succès.', 'success')
     except IntegrityError:
         db.session.rollback()
         flash(f'Une catégorie avec le nom "{name}" existe déjà.', 'danger')
@@ -54,35 +88,5 @@ def delete_category(category_id):
     except Exception as e:
         db.session.rollback()
         flash(f'Erreur lors de la suppression de la catégorie: {str(e)}', 'danger')
-    
-    return redirect(url_for('tricount.categories_list'))
-
-@tricount_bp.route('/categories/update/<int:category_id>', methods=['POST'])
-def update_category(category_id):
-    """Mettre à jour une catégorie"""
-    category = Category.query.get_or_404(category_id)
-    
-    name = request.form.get('name')
-    description = request.form.get('description', '')
-    for_me = 'for_me' in request.form
-    include_in_tricount = 'include_in_tricount' in request.form
-    is_professional = 'is_professional' in request.form
-    
-    if not name:
-        flash('Le nom de la catégorie est requis.', 'warning')
-        return redirect(url_for('tricount.categories_list'))
-    
-    try:
-        category.name = name
-        category.description = description
-        category.for_me = for_me
-        category.include_in_tricount = include_in_tricount
-        category.is_professional = is_professional
-        
-        db.session.commit()
-        flash(f'Catégorie "{name}" mise à jour avec succès.', 'success')
-    except IntegrityError:
-        db.session.rollback()
-        flash(f'Une catégorie avec le nom "{name}" existe déjà.', 'danger')
     
     return redirect(url_for('tricount.categories_list'))
