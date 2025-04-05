@@ -146,6 +146,14 @@ def find_similar_expenses():
     frequency_type = request.json.get('frequency_type')
     frequency_day = request.json.get('frequency_day')
     
+    # Log de débogage
+    print(f"Recherche de dépenses similaires avec les paramètres suivants:")
+    print(f"  - expense_id: {expense_id}")
+    print(f"  - merchant_contains: '{merchant_contains}'")
+    print(f"  - description_contains: '{description_contains}'")
+    print(f"  - frequency_type: {frequency_type}")
+    print(f"  - frequency_day: {frequency_day}")
+    
     # Valider les données reçues
     if not expense_id or not merchant_contains:
         return jsonify({
@@ -156,18 +164,33 @@ def find_similar_expenses():
     # Récupérer l'expense de base
     base_expense = Expense.query.get_or_404(expense_id)
     
+    # Debug de l'expense de base
+    print(f"Expense de base: ID={base_expense.id}, Merchant='{base_expense.merchant}'")
+    
     # Rechercher des dépenses similaires non catégorisées
     query = Expense.query.filter(
         Expense.id != expense_id,
         Expense.category_id == None  # Non catégorisées
     )
     
+    # Compter les dépenses avant filtrage
+    count_before = query.count()
+    print(f"Nombre de dépenses non catégorisées (avant filtrage): {count_before}")
+    
     # Appliquer les filtres
     if merchant_contains:
         query = query.filter(Expense.merchant.ilike(f'%{merchant_contains}%'))
         
+    # Compter après le filtre merchant_contains
+    count_after_merchant = query.count()
+    print(f"Nombre après filtre merchant_contains: {count_after_merchant}")
+        
     if description_contains:
         query = query.filter(Expense.description.ilike(f'%{description_contains}%'))
+        
+    # Compter après le filtre description_contains
+    count_after_description = query.count()
+    print(f"Nombre après filtre description_contains: {count_after_description}")
     
     # Filtrer par fréquence si elle est spécifiée
     if frequency_type and frequency_type != 'none' and frequency_day is not None:
@@ -178,9 +201,20 @@ def find_similar_expenses():
         elif frequency_type == 'weekly':
             # Filtrer par jour de la semaine (0=lundi, 6=dimanche)
             query = query.filter(extract('dow', Expense.date) == frequency_day)
+            
+    # Compter après le filtre de fréquence
+    count_after_frequency = query.count()
+    print(f"Nombre après filtre de fréquence: {count_after_frequency}")
     
     # Exécuter la requête
     similar_expenses = query.all()
+    
+    # Debug des résultats
+    print(f"Nombre final de dépenses similaires trouvées: {len(similar_expenses)}")
+    if similar_expenses:
+        print("Premières dépenses trouvées:")
+        for i, exp in enumerate(similar_expenses[:3]):  # Afficher les 3 premières
+            print(f"  {i+1}. ID={exp.id}, Merchant='{exp.merchant}'")
     
     # Préparer les données pour le JSON
     expenses_data = []
@@ -197,5 +231,11 @@ def find_similar_expenses():
     return jsonify({
         'success': True, 
         'count': len(similar_expenses),
-        'expenses': expenses_data
+        'expenses': expenses_data,
+        'debug': {
+            'count_before': count_before,
+            'count_after_merchant': count_after_merchant,
+            'count_after_description': count_after_description,
+            'count_after_frequency': count_after_frequency
+        }
     })
