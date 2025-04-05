@@ -140,6 +140,16 @@
 
 {% block extra_js %}
 <script>
+    // Category data for filtering
+    window.categoryData = {
+        {% for category in categories %}
+        "{{ category.id }}": {
+            includeInTricount: {{ category.include_in_tricount|lower }},
+            isProfessional: {{ category.is_professional|lower }}
+        },
+        {% endfor %}
+    };
+    
     document.addEventListener('DOMContentLoaded', function() {
         const saveButtons = document.querySelectorAll('.save-button');
         const expensesCount = document.getElementById('expenses-count');
@@ -165,6 +175,96 @@
             applyQuickFilter(leisureKeywords, 'Loisirs');
         });
         
+        // Function to filter categories based on Tricount/Pro checkboxes
+        function filterCategoriesForExpense(expenseId) {
+            const select = document.getElementById(`category-${expenseId}`);
+            const isTricount = document.getElementById(`tricount-${expenseId}`).checked;
+            const isProfessional = document.getElementById(`professional-${expenseId}`).checked;
+            
+            if (!select || !select.originalOptions) return;
+            
+            // Clear current options
+            select.innerHTML = '';
+            
+            // Add empty option
+            const emptyOption = document.createElement('option');
+            emptyOption.value = '';
+            emptyOption.text = 'Choisir une catégorie';
+            select.add(emptyOption);
+            
+            // Filter and add appropriate categories
+            select.originalOptions.forEach(option => {
+                // Skip the empty option which we just added
+                if (option.value === '') return;
+                
+                const categoryId = option.value;
+                const categoryInfo = window.categoryData[categoryId];
+                
+                // If no category info (shouldn't happen), show the option
+                if (!categoryInfo) {
+                    const newOption = document.createElement('option');
+                    newOption.value = option.value;
+                    newOption.text = option.text;
+                    select.add(newOption);
+                    return;
+                }
+                
+                // Check if this category should be shown based on Tricount/Pro settings
+                let showCategory = true;
+                
+                if (isTricount && !categoryInfo.includeInTricount) {
+                    showCategory = false;
+                }
+                
+                if (isProfessional && !categoryInfo.isProfessional) {
+                    showCategory = false;
+                }
+                
+                if (showCategory) {
+                    const newOption = document.createElement('option');
+                    newOption.value = option.value;
+                    newOption.text = option.text;
+                    select.add(newOption);
+                }
+            });
+        }
+        
+        // Initialize all category selects
+        document.querySelectorAll('.category-select').forEach(select => {
+            const expenseId = select.dataset.expenseId;
+            
+            // Save original options
+            const originalOptions = Array.from(select.options).map(option => {
+                return {
+                    value: option.value,
+                    text: option.text,
+                    disabled: option.disabled
+                };
+            });
+            
+            // Store on the select element
+            select.originalOptions = originalOptions;
+            
+            // Add event listeners to checkboxes
+            const tricountCheckbox = document.getElementById(`tricount-${expenseId}`);
+            const professionalCheckbox = document.getElementById(`professional-${expenseId}`);
+            
+            if (tricountCheckbox) {
+                tricountCheckbox.addEventListener('change', function() {
+                    filterCategoriesForExpense(expenseId);
+                });
+            }
+            
+            if (professionalCheckbox) {
+                professionalCheckbox.addEventListener('change', function() {
+                    filterCategoriesForExpense(expenseId);
+                });
+            }
+            
+            // Initial filter
+            filterCategoriesForExpense(expenseId);
+        });
+        
         // Fonction pour appliquer les filtres rapides
         function applyQuickFilter(keywords, categoryName) {
             const expenseCards = document.querySelectorAll('.expense-card');
@@ -174,7 +274,7 @@
             let categoryId = '';
             categorySelects.forEach(select => {
                 Array.from(select.options).forEach(option => {
-                    if (option.textContent === categoryName) {
+                    if (option.textContent === categoryName || option.textContent.includes(categoryName)) {
                         categoryId = option.value;
                     }
                 });
@@ -194,6 +294,16 @@
                 if (match) {
                     const expenseId = card.closest('.expense-card-container').id.replace('expense-container-', '');
                     const select = document.getElementById(`category-${expenseId}`);
+                    
+                    // Set Tricount and Pro checkboxes appropriately based on the category
+                    const categoryInfo = window.categoryData[categoryId];
+                    if (categoryInfo) {
+                        document.getElementById(`tricount-${expenseId}`).checked = categoryInfo.includeInTricount;
+                        document.getElementById(`professional-${expenseId}`).checked = categoryInfo.isProfessional;
+                        
+                        // Re-filter categories based on new checkbox values
+                        filterCategoriesForExpense(expenseId);
+                    }
                     
                     // Mettre à jour la sélection
                     if (select) {

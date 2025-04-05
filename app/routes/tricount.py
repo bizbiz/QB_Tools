@@ -195,12 +195,19 @@ def add_category():
     """Ajouter une nouvelle catégorie"""
     name = request.form.get('name')
     description = request.form.get('description', '')
+    include_in_tricount = 'include_in_tricount' in request.form
+    is_professional = 'is_professional' in request.form
     
     if not name:
         flash('Le nom de la catégorie est requis.', 'warning')
         return redirect(url_for('tricount.categories_list'))
     
-    category = Category(name=name, description=description)
+    category = Category(
+        name=name, 
+        description=description,
+        include_in_tricount=include_in_tricount,
+        is_professional=is_professional
+    )
     db.session.add(category)
     
     try:
@@ -367,3 +374,58 @@ def export_n2f():
     response.headers["Content-type"] = "text/csv"
     
     return response
+
+@tricount_bp.route('/categories/delete/<int:category_id>', methods=['POST'])
+def delete_category(category_id):
+    """Supprimer une catégorie"""
+    category = Category.query.get_or_404(category_id)
+    
+    try:
+        db.session.delete(category)
+        db.session.commit()
+        flash(f'Catégorie "{category.name}" supprimée avec succès.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erreur lors de la suppression de la catégorie: {str(e)}', 'danger')
+    
+    return redirect(url_for('tricount.categories_list'))
+    """Supprimer une catégorie"""
+    category = Category.query.get_or_404(category_id)
+    
+    try:
+        db.session.delete(category)
+        db.session.commit()
+        flash(f'Catégorie "{category.name}" supprimée avec succès.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erreur lors de la suppression de la catégorie: {str(e)}', 'danger')
+    
+    return redirect(url_for('tricount.categories_list'))
+
+@tricount_bp.route('/categories/update/<int:category_id>', methods=['POST'])
+def update_category(category_id):
+    """Mettre à jour une catégorie"""
+    category = Category.query.get_or_404(category_id)
+    
+    name = request.form.get('name')
+    description = request.form.get('description', '')
+    include_in_tricount = 'include_in_tricount' in request.form
+    is_professional = 'is_professional' in request.form
+    
+    if not name:
+        flash('Le nom de la catégorie est requis.', 'warning')
+        return redirect(url_for('tricount.categories_list'))
+    
+    try:
+        category.name = name
+        category.description = description
+        category.include_in_tricount = include_in_tricount
+        category.is_professional = is_professional
+        
+        db.session.commit()
+        flash(f'Catégorie "{name}" mise à jour avec succès.', 'success')
+    except IntegrityError:
+        db.session.rollback()
+        flash(f'Une catégorie avec le nom "{name}" existe déjà.', 'danger')
+    
+    return redirect(url_for('tricount.categories_list'))

@@ -12,6 +12,10 @@ class Category(db.Model):
     description = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+    # New fields to indicate category usage
+    include_in_tricount = db.Column(db.Boolean, default=True)  # Available in Tricount
+    is_professional = db.Column(db.Boolean, default=True)      # Available for professional expenses
+    
     # Relation avec les dépenses
     expenses = db.relationship('Expense', backref='category', lazy=True)
     

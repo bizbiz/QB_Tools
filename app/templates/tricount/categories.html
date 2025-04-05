@@ -4,6 +4,10 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount.css') }}">
+<style>
+    /* Include our custom CSS here */
+    {% include 'tricount/category_styles.html' %}
+</style>
 {% endblock %}
 
 {% block content %}
@@ -41,10 +45,44 @@
                             <textarea class="form-control" id="description" name="description" rows="3"></textarea>
                         </div>
                         
+                        <div class="mb-3">
+                            <label class="form-label">Disponible pour</label>
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="tricount" name="include_in_tricount" checked>
+                                <label class="form-check-label" for="tricount">
+                                    <span class="category-badge tricount">Tricount</span> Dépenses partagées
+                                </label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="professional" name="is_professional" checked>
+                                <label class="form-check-label" for="professional">
+                                    <span class="category-badge professional">Pro</span> Dépenses professionnelles
+                                </label>
+                            </div>
+                        </div>
+                        
                         <button type="submit" class="btn btn-primary w-100">
                             <i class="fas fa-plus-circle me-2"></i>Ajouter
                         </button>
                     </form>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm mt-4">
+                <div class="card-header">
+                    <h3 class="card-title">Légende</h3>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="indicator tricount me-2"></div>
+                        <span class="category-badge tricount me-2">Tricount</span>
+                        <span>Disponible pour les dépenses partagées</span>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <div class="indicator professional me-2"></div>
+                        <span class="category-badge professional me-2">Pro</span>
+                        <span>Disponible pour les dépenses professionnelles</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -64,6 +102,7 @@
                                 <tr>
                                     <th>Nom</th>
                                     <th>Description</th>
+                                    <th>Type</th>
                                     <th>Date de création</th>
                                     <th>Actions</th>
                                 </tr>
@@ -73,12 +112,24 @@
                                 <tr>
                                     <td>{{ category.name }}</td>
                                     <td>{{ category.description or 'N/A' }}</td>
+                                    <td>
+                                        <div class="category-type-indicators">
+                                            {% if category.include_in_tricount %}
+                                            <div class="indicator tricount" title="Tricount"></div>
+                                            {% endif %}
+                                            {% if category.is_professional %}
+                                            <div class="indicator professional" title="Professionnel"></div>
+                                            {% endif %}
+                                        </div>
+                                    </td>
                                     <td>{{ category.created_at.strftime('%d/%m/%Y') }}</td>
                                     <td>
                                         <button class="btn btn-sm btn-outline-primary edit-category" 
                                                 data-id="{{ category.id }}"
                                                 data-name="{{ category.name }}"
                                                 data-description="{{ category.description or '' }}"
+                                                data-tricount="{{ category.include_in_tricount|lower }}"
+                                                data-professional="{{ category.is_professional|lower }}"
                                                 data-bs-toggle="tooltip" 
                                                 data-bs-placement="top" 
                                                 title="Modifier">
@@ -96,7 +147,7 @@
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="4" class="text-center py-4">
+                                    <td colspan="5" class="text-center py-4">
                                         <div class="alert alert-info mb-0">
                                             <i class="fas fa-info-circle me-2"></i>
                                             Aucune catégorie trouvée. Utilisez le formulaire ci-contre pour ajouter votre première catégorie.
@@ -154,6 +205,22 @@
                         <label for="edit-description" class="form-label">Description (optionnelle)</label>
                         <textarea class="form-control" id="edit-description" name="description" rows="3"></textarea>
                     </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Disponible pour</label>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="edit-tricount" name="include_in_tricount">
+                            <label class="form-check-label" for="edit-tricount">
+                                <span class="category-badge tricount">Tricount</span> Dépenses partagées
+                            </label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="edit-professional" name="is_professional">
+                            <label class="form-check-label" for="edit-professional">
+                                <span class="category-badge professional">Pro</span> Dépenses professionnelles
+                            </label>
+                        </div>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -166,57 +233,12 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Pass URLs to JavaScript -->
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialiser les tooltips
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl)
-        });
-        
-        // Gestion de la modal de suppression
-        const deleteButtons = document.querySelectorAll('.delete-category');
-        const deleteModal = new bootstrap.Modal(document.getElementById('deleteCategoryModal'));
-        const deleteCategoryName = document.getElementById('delete-category-name');
-        const deleteCategoryForm = document.getElementById('delete-category-form');
-        
-        deleteButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const categoryId = this.dataset.id;
-                const categoryName = this.dataset.name;
-                
-                deleteCategoryName.textContent = categoryName;
-                deleteCategoryForm.action = "{{ url_for('tricount.delete_category', category_id=0) }}".replace('0', categoryId);
-                
-                deleteModal.show();
-            });
-        });
-        
-        // Gestion de la modal d'édition
-        const editButtons = document.querySelectorAll('.edit-category');
-        const editModal = new bootstrap.Modal(document.getElementById('editCategoryModal'));
-        const editCategoryForm = document.getElementById('edit-category-form');
-        const editNameInput = document.getElementById('edit-name');
-        const editDescriptionInput = document.getElementById('edit-description');
-        const saveCategoryButton = document.getElementById('save-category');
-        
-        editButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const categoryId = this.dataset.id;
-                const categoryName = this.dataset.name;
-                const categoryDescription = this.dataset.description;
-                
-                editNameInput.value = categoryName;
-                editDescriptionInput.value = categoryDescription;
-                editCategoryForm.action = "{{ url_for('tricount.update_category', category_id=0) }}".replace('0', categoryId);
-                
-                editModal.show();
-            });
-        });
-        
-        saveCategoryButton.addEventListener('click', function() {
-            editCategoryForm.submit();
-        });
-    });
+    window.categoryDeleteUrl = "{{ url_for('tricount.delete_category', category_id=0) }}";
+    window.categoryUpdateUrl = "{{ url_for('tricount.update_category', category_id=0) }}";
 </script>
+
+<!-- Include our external JS file -->
+<script src="{{ url_for('static', filename='js/category_management.js') }}"></script>
 {% endblock %}
