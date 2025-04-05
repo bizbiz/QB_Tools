@@ -180,7 +180,9 @@
                         <ul class="pagination justify-content-center mb-0">
                             {% if expenses.has_prev %}
                             <li class="page-item">
-                                <a class="page-link" href="{{ url_for('tricount.expenses_list', page=expenses.prev_num, **request.args) }}">
+                                {% set args = request.args.copy() %}
+                                {% set _ = args.pop('page', None) %}
+                                <a class="page-link" href="{{ url_for('tricount.expenses_list', page=expenses.prev_num, **args) }}">
                                     <i class="fas fa-chevron-left"></i> Précédent
                                 </a>
                             </li>
@@ -197,7 +199,9 @@
                             
                             {% for page_num in range(start_page, end_page + 1) %}
                             <li class="page-item {% if page_num == expenses.page %}active{% endif %}">
-                                <a class="page-link" href="{{ url_for('tricount.expenses_list', page=page_num, **request.args) }}">
+                                {% set args = request.args.copy() %}
+                                {% set _ = args.pop('page', None) %}
+                                <a class="page-link" href="{{ url_for('tricount.expenses_list', page=page_num, **args) }}">
                                     {{ page_num }}
                                 </a>
                             </li>
@@ -205,7 +209,9 @@
                             
                             {% if expenses.has_next %}
                             <li class="page-item">
-                                <a class="page-link" href="{{ url_for('tricount.expenses_list', page=expenses.next_num, **request.args) }}">
+                                {% set args = request.args.copy() %}
+                                {% set _ = args.pop('page', None) %}
+                                <a class="page-link" href="{{ url_for('tricount.expenses_list', page=expenses.next_num, **args) }}">
                                     Suivant <i class="fas fa-chevron-right"></i>
                                 </a>
                             </li>

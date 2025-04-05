@@ -1,8 +1,7 @@
 # app/services/tricount/bank_statement_parser.py
 import re
-import decimal
 from datetime import datetime
-from decimal import Decimal
+from app.utils.money_helpers import clean_amount_string
 
 class SocieteGeneraleParser:
     """Parser pour les relevés de compte de Société Générale"""
@@ -51,8 +50,8 @@ class SocieteGeneraleParser:
                 amount_match = re.match(r'^moins-\s*([\d\s,]+)\s*€$', amount_line)
                 
                 if amount_match:
-                    amount_str = amount_match.group(1).replace(' ', '').replace(',', '.')
-                    amount = Decimal(amount_str)
+                    amount_str = amount_match.group(1)
+                    amount = clean_amount_string(amount_str)
                     
                     # Créer la transaction
                     transaction = {
@@ -88,20 +87,8 @@ class SocieteGeneraleParser:
                         amount_match = re.match(r'^([\d\s,]+)\s*€$', amount_line)
                         
                         if amount_match:
-                            amount_str = amount_match.group(1).replace(' ', '')
-                            # Remplacer la virgule par un point pour la décimale
-                            amount_str = amount_str.replace(',', '.')
-                            try:
-                                amount = Decimal(amount_str)
-                            except decimal.InvalidOperation:
-                                # En cas d'erreur, essayons d'autres nettoyages
-                                # Supprimer tous les caractères non numériques sauf le point décimal
-                                clean_str = ''.join(c for c in amount_str if c.isdigit() or c == '.')
-                                # S'assurer qu'il n'y a qu'un seul point décimal
-                                if clean_str.count('.') > 1:
-                                    last_dot_index = clean_str.rindex('.')
-                                    clean_str = clean_str.replace('.', '', last_dot_index) + clean_str[last_dot_index:]
-                                amount = Decimal(clean_str)
+                            amount_str = amount_match.group(1)
+                            amount = clean_amount_string(amount_str)
                             
                             transaction = {
                                 'date': current_date,
@@ -121,20 +108,8 @@ class SocieteGeneraleParser:
                     # Vérifier si c'est directement un montant
                     amount_match = re.match(r'^([\d\s,]+)\s*€$', next_line)
                     if amount_match:
-                        amount_str = amount_match.group(1).replace(' ', '')
-                        # Remplacer la virgule par un point pour la décimale
-                        amount_str = amount_str.replace(',', '.')
-                        try:
-                            amount = Decimal(amount_str)
-                        except decimal.InvalidOperation:
-                            # En cas d'erreur, essayons d'autres nettoyages
-                            # Supprimer tous les caractères non numériques sauf le point décimal
-                            clean_str = ''.join(c for c in amount_str if c.isdigit() or c == '.')
-                            # S'assurer qu'il n'y a qu'un seul point décimal
-                            if clean_str.count('.') > 1:
-                                last_dot_index = clean_str.rindex('.')
-                                clean_str = clean_str.replace('.', '', last_dot_index) + clean_str[last_dot_index:]
-                            amount = Decimal(clean_str)
+                        amount_str = amount_match.group(1)
+                        amount = clean_amount_string(amount_str)
                         
                         transaction = {
                             'date': current_date,
@@ -168,20 +143,8 @@ class SocieteGeneraleParser:
                         amount_match = re.match(r'^moins-\s*([\d\s,]+)\s*€$', amount_line)
                         
                         if amount_match:
-                            amount_str = amount_match.group(1).replace(' ', '')
-                            # Remplacer la virgule par un point pour la décimale
-                            amount_str = amount_str.replace(',', '.')
-                            try:
-                                amount = Decimal(amount_str)
-                            except decimal.InvalidOperation:
-                                # En cas d'erreur, essayons d'autres nettoyages
-                                # Supprimer tous les caractères non numériques sauf le point décimal
-                                clean_str = ''.join(c for c in amount_str if c.isdigit() or c == '.')
-                                # S'assurer qu'il n'y a qu'un seul point décimal
-                                if clean_str.count('.') > 1:
-                                    last_dot_index = clean_str.rindex('.')
-                                    clean_str = clean_str.replace('.', '', last_dot_index) + clean_str[last_dot_index:]
-                                amount = Decimal(clean_str)
+                            amount_str = amount_match.group(1)
+                            amount = clean_amount_string(amount_str)
                             
                             transaction = {
                                 'date': current_date,
@@ -201,8 +164,8 @@ class SocieteGeneraleParser:
                     # Vérifier si c'est directement un montant
                     amount_match = re.match(r'^moins-\s*([\d\s,]+)\s*€$', next_line)
                     if amount_match:
-                        amount_str = amount_match.group(1).replace(' ', '').replace(',', '.')
-                        amount = Decimal(amount_str)
+                        amount_str = amount_match.group(1)
+                        amount = clean_amount_string(amount_str)
                         
                         transaction = {
                             'date': current_date,
@@ -236,18 +199,8 @@ class SocieteGeneraleParser:
                         amount_match = re.match(r'^moins-\s*([\d\s,]+)\s*€$', amount_line)
                         
                         if amount_match:
-                            amount_str = amount_match.group(1).replace(' ', '')
-                            amount_str = amount_str.replace(',', '.')
-                            try:
-                                amount = Decimal(amount_str)
-                            except decimal.InvalidOperation:
-                                # Supprimer tous les caractères non numériques sauf le point décimal
-                                clean_str = ''.join(c for c in amount_str if c.isdigit() or c == '.')
-                                # S'assurer qu'il n'y a qu'un seul point décimal
-                                if clean_str.count('.') > 1:
-                                    last_dot_index = clean_str.rindex('.')
-                                    clean_str = clean_str.replace('.', '', last_dot_index) + clean_str[last_dot_index:]
-                                amount = Decimal(clean_str)
+                            amount_str = amount_match.group(1)
+                            amount = clean_amount_string(amount_str)
                             
                             # Extraire une référence ou un mandat s'il existe
                             ref_match = re.search(r'REF:\s+([^\s]+)', motif)
