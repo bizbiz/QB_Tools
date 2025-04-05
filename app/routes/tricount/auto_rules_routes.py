@@ -79,32 +79,14 @@ def create_auto_rule():
     frequency_type = request.form.get('frequency_type')
     frequency_day = request.form.get('frequency_day', type=int)
     category_id = request.form.get('category_id', type=int)
-    for_me = 'for_me' in request.form
-    include_in_tricount = 'include_in_tricount' in request.form
-    is_professional = 'is_professional' in request.form
+    flag_id = request.form.get('flag_id', type=int)  # Use flag selection instead of for_me/tricount/professional
     apply_now = 'apply_now' in request.form
-    
-    # S'assurer qu'un seul flag est actif
-    if for_me:
-        include_in_tricount = False
-        is_professional = False
-    elif include_in_tricount:
-        for_me = False
-        is_professional = False
-    elif is_professional:
-        for_me = False
-        include_in_tricount = False
-    else:
-        # Par défaut, utiliser "for_me"
-        for_me = True
-        include_in_tricount = False
-        is_professional = False
     
     if not rule_name or not merchant_contains or not category_id:
         flash('Le nom de la règle, le filtre de marchand et la catégorie sont requis.', 'warning')
         return redirect(url_for('tricount.auto_categorize', expense_id=expense_id))
     
-    # Créer la règle
+    # Create rule without for_me, include_in_tricount, is_professional parameters
     rule = AutoCategorizationRule(
         name=rule_name,
         merchant_contains=merchant_contains,
@@ -112,9 +94,7 @@ def create_auto_rule():
         frequency_type=frequency_type if frequency_type != 'none' else None,
         frequency_day=frequency_day if frequency_type != 'none' else None,
         category_id=category_id,
-        for_me=for_me,
-        include_in_tricount=include_in_tricount,
-        is_professional=is_professional,
+        flag_id=flag_id,  # Store the flag_id instead
         created_by_expense_id=expense_id
     )
     
@@ -132,8 +112,7 @@ def create_auto_rule():
             for expense in uncategorized:
                 if rule.matches_expense(expense):
                     expense.category_id = rule.category_id
-                    expense.include_in_tricount = rule.include_in_tricount
-                    expense.is_professional = rule.is_professional
+                    expense.flag_id = rule.flag_id  # Also apply the flag
                     count += 1
             
             db.session.commit()
@@ -143,18 +122,6 @@ def create_auto_rule():
         flash(f'Erreur lors de la création de la règle: {str(e)}', 'danger')
     
     return redirect(url_for('tricount.auto_rules_list'))
-
-@tricount_bp.route('/category/<int:category_id>/info')
-def category_info(category_id):
-    """API pour récupérer les informations d'une catégorie"""
-    category = Category.query.get_or_404(category_id)
-    
-    return jsonify({
-        'success': True,
-        'for_me': category.for_me,
-        'include_in_tricount': category.include_in_tricount,
-        'is_professional': category.is_professional
-    })
 
 @tricount_bp.route('/find-similar-expenses', methods=['POST'])
 def find_similar_expenses():

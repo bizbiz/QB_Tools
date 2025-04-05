@@ -38,9 +38,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function filterCategoriesForExpense(expenseId) {
         const select = document.getElementById(`category-${expenseId}`);
         const flagSelect = document.getElementById(`flag-${expenseId}`);
-        const flagId = flagSelect.value;
         
-        if (!select || !select.originalOptions) return;
+        if (!select || !select.originalOptions || !flagSelect) return;
+        
+        const flagId = flagSelect.value;
         
         // Clear current options
         select.innerHTML = '';
@@ -69,7 +70,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             // Check if this category is available for the selected flag
-            if (categoryInfo.flagIds.includes(parseInt(flagId))) {
+            if (!categoryInfo.flagIds || categoryInfo.flagIds.includes(parseInt(flagId))) {
                 const newOption = document.createElement('option');
                 newOption.value = option.value;
                 newOption.text = option.text;
@@ -102,34 +103,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Store on the select element
         select.originalOptions = originalOptions;
-        
-        // Add event listeners to checkboxes
-        const forMeCheckbox = document.getElementById(`for-me-${expenseId}`);
-        const tricountCheckbox = document.getElementById(`tricount-${expenseId}`);
-        const professionalCheckbox = document.getElementById(`professional-${expenseId}`);
-        
-        // Set default state - "For Me" checked by default
-        if (forMeCheckbox && !tricountCheckbox.checked && !professionalCheckbox.checked) {
-            forMeCheckbox.checked = true;
-        }
-        
-        if (forMeCheckbox) {
-            forMeCheckbox.addEventListener('change', function() {
-                filterCategoriesForExpense(expenseId);
-            });
-        }
-        
-        if (tricountCheckbox) {
-            tricountCheckbox.addEventListener('change', function() {
-                filterCategoriesForExpense(expenseId);
-            });
-        }
-        
-        if (professionalCheckbox) {
-            professionalCheckbox.addEventListener('change', function() {
-                filterCategoriesForExpense(expenseId);
-            });
-        }
         
         // Initial filter
         filterCategoriesForExpense(expenseId);
@@ -165,19 +138,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 const expenseId = card.closest('.expense-card-container').id.replace('expense-container-', '');
                 const select = document.getElementById(`category-${expenseId}`);
                 
-                // Set appropriate flag based on the category
-                const categoryInfo = window.categoryData[categoryId];
-                if (categoryInfo) {
-                    // Set For Me as default if nothing specific is indicated
-                    document.getElementById(`for-me-${expenseId}`).checked = 
-                        categoryInfo.forMe && !categoryInfo.includeInTricount && !categoryInfo.isProfessional;
-                    document.getElementById(`tricount-${expenseId}`).checked = categoryInfo.includeInTricount;
-                    document.getElementById(`professional-${expenseId}`).checked = categoryInfo.isProfessional;
-                    
-                    // Re-filter categories based on new checkbox values
-                    filterCategoriesForExpense(expenseId);
-                }
-                
                 // Mettre à jour la sélection
                 if (select) {
                     select.value = categoryId;
@@ -198,24 +158,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!categoryId) {
                 alert('Veuillez sélectionner une catégorie avant d\'enregistrer.');
                 return;
-            }
-            
-            // Ensure only one flag is set
-            const isForMe = form.querySelector(`#for-me-${expenseId}`).checked;
-            const isTricount = form.querySelector(`#tricount-${expenseId}`).checked;
-            const isProfessional = form.querySelector(`#professional-${expenseId}`).checked;
-            
-            // Default to "for me" if nothing is selected
-            if (!isForMe && !isTricount && !isProfessional) {
-                form.querySelector(`#for-me-${expenseId}`).checked = true;
-                formData.set('for_me', 'true');
-                formData.set('include_tricount', 'false');
-                formData.set('is_professional', 'false');
-            } else {
-                // Add the values of the checkboxes
-                formData.set('for_me', isForMe ? 'true' : 'false');
-                formData.set('include_tricount', isTricount ? 'true' : 'false');
-                formData.set('is_professional', isProfessional ? 'true' : 'false');
             }
             
             // URL pour l'API mise à jour

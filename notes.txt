@@ -52,6 +52,13 @@ Cette commande crée les catégories par défaut dans la base de données.
 
 Pour étendre ce module, vous pouvez:
 
-1. Ajouter de nouveaux parsers de relevés bancaires dans le dossier `app/services/tricount/`
-2. Modifier les catégories par défaut dans `app/commands.py`
-3. Personnaliser les formats d'exportation dans `app/routes/tricount.py`
+. Ajouter de nouveaux parsers de relevés bancaires dans le dossier `app/services/tricount/`
+. Personnaliser les formats d'exportation dans `app/routes/tricount.py`
+. Vérifier que si on créé une auto rule qu'aucune dépense ne soit impactée par cette auto rule + une des autres déjà présente sinon on demande de préciser une des deux auto rule
+. Les regles d'auto catégorisation n'appliquent pas les flags alors qu'ils le devraient
+. On peut rajouter un montant minimum ou maximum ou les deux pour les regles d'auto catégorisation
+. Il faut ajouter une page pour valider les dépenses qui ont été catch par des regles d'auto catégorisation
+. Il faut ajouter un 3 eme bloc qui permet de gérer l'auto catégorisation
+. Il faut pouvoir lancer l'auto catégorisation avec toutes les regles via un bouton sur la page d'accueil avec un témoin de chargement
+. Il faut une page qui affiche des stats, avec une fonctionnalité qui permet de choisir 3 des stats qu'on met sur la page d'accueil
+. Il faut trouver un moyen de gérer les renvois depuis la carte corporate

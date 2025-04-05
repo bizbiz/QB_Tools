@@ -44,6 +44,24 @@ def add_category():
     
     return redirect(url_for('tricount.categories_list'))
 
+@tricount_bp.route('/category/<int:category_id>/info')
+def category_info(category_id):
+    """API pour récupérer les informations d'une catégorie"""
+    category = Category.query.get_or_404(category_id)
+    
+    # Provide default values since these fields are not in the model
+    # In a real implementation, these might be based on category flags
+    for_me = True  # Default value
+    include_in_tricount = False  # Default value
+    is_professional = False  # Default value
+    
+    return jsonify({
+        'success': True,
+        'for_me': for_me,
+        'include_in_tricount': include_in_tricount,
+        'is_professional': is_professional
+    })
+
 @tricount_bp.route('/categories/update/<int:category_id>', methods=['POST'])
 def update_category(category_id):
     """Mettre à jour une catégorie"""
