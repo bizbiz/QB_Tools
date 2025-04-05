@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     tableHeaders.forEach((header, index) => {
         // Skip the "Actions" column
-        if (header.textContent.trim() !== 'Actions') {
+        if (!header.classList.contains('no-sort')) {
             header.style.cursor = 'pointer';
             header.addEventListener('click', () => {
                 sortTable(categoryTable, index);
@@ -63,8 +63,13 @@ function sortTable(table, columnIndex) {
         let aValue = a.cells[columnIndex].textContent.trim();
         let bValue = b.cells[columnIndex].textContent.trim();
         
+        // Special case for flag columns (check/x mark)
+        if (a.cells[columnIndex].querySelector('.fa-check') || a.cells[columnIndex].querySelector('.fa-times')) {
+            aValue = a.cells[columnIndex].querySelector('.fa-check') ? 1 : 0;
+            bValue = b.cells[columnIndex].querySelector('.fa-check') ? 1 : 0;
+        }
         // Handle date format (DD/MM/YYYY)
-        if (headers[columnIndex].textContent.includes('Date')) {
+        else if (headers[columnIndex].dataset.type === 'date') {
             aValue = parseDateString(aValue);
             bValue = parseDateString(bValue);
         }
@@ -115,9 +120,6 @@ function setupModalEventListeners() {
     const editCategoryForm = document.getElementById('edit-category-form');
     const editNameInput = document.getElementById('edit-name');
     const editDescriptionInput = document.getElementById('edit-description');
-    const editForMeCheckbox = document.getElementById('edit-for-me');
-    const editTricountCheckbox = document.getElementById('edit-tricount');
-    const editProfessionalCheckbox = document.getElementById('edit-professional');
     const saveCategoryButton = document.getElementById('save-category');
     
     editButtons.forEach(button => {
@@ -125,15 +127,27 @@ function setupModalEventListeners() {
             const categoryId = this.dataset.id;
             const categoryName = this.dataset.name;
             const categoryDescription = this.dataset.description;
-            const categoryForMe = this.dataset.forMe === 'true';
-            const categoryTricount = this.dataset.tricount === 'true';
-            const categoryProfessional = this.dataset.professional === 'true';
+            
+            // Récupérer les flags de cette catégorie
+            const row = this.closest('tr');
+            const flagCheckboxes = document.querySelectorAll('.edit-flag-checkbox');
+            
+            // Réinitialiser toutes les cases à cocher
+            flagCheckboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            
+            // Vérifier quels flags sont actifs pour cette catégorie
+            const flagCells = row.querySelectorAll('td.text-center');
+            flagCells.forEach((cell, index) => {
+                const hasFlag = cell.querySelector('.fa-check') !== null;
+                if (hasFlag && flagCheckboxes[index]) {
+                    flagCheckboxes[index].checked = true;
+                }
+            });
             
             editNameInput.value = categoryName;
             editDescriptionInput.value = categoryDescription;
-            editForMeCheckbox.checked = categoryForMe;
-            editTricountCheckbox.checked = categoryTricount;
-            editProfessionalCheckbox.checked = categoryProfessional;
             
             editCategoryForm.action = window.categoryUpdateUrl.replace('0', categoryId);
             

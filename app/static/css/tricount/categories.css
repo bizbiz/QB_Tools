@@ -94,3 +94,30 @@
 .form-check-label {
     font-weight: 500;
 }
+
+/* Style pour les icônes de flag dans les en-têtes */
+.flag-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    color: white;
+}
+
+/* Ajustements de largeur pour le tableau */
+.table {
+    width: 100%;
+    table-layout: fixed;
+}
+
+/* Style pour les cellules d'action */
+.table th:last-child, .table td:last-child {
+    width: 100px;
+}
+
+/* Style pour les colonnes de type */
+.table th[title], .table td.text-center {
+    width: 60px;
+}

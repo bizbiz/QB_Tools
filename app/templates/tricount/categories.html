@@ -25,7 +25,7 @@
         </div>
     </div>
     
-    <!-- Formulaire d'ajout déplacé en haut -->
+    <!-- Formulaire d'ajout -->
     <div class="row mb-4">
         <div class="col">
             <div class="card shadow-sm">
@@ -33,22 +33,24 @@
                     <h3 class="card-title">Ajouter une catégorie</h3>
                 </div>
                 <div class="card-body">
-                    <form action="{{ url_for('tricount.add_category') }}" method="POST" class="row">
-                        <div class="col-md-4 mb-3">
-                            <label for="name" class="form-label">Nom de la catégorie</label>
-                            <input type="text" class="form-control" id="name" name="name" required>
-                        </div>
-                        
-                        <div class="col-md-4 mb-3">
-                            <label for="description" class="form-label">Description (optionnelle)</label>
-                            <input type="text" class="form-control" id="description" name="description">
+                    <form action="{{ url_for('tricount.add_category') }}" method="POST">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="name" class="form-label">Nom de la catégorie</label>
+                                <input type="text" class="form-control" id="name" name="name" required>
+                            </div>
+                            
+                            <div class="col-md-8 mb-3">
+                                <label for="description" class="form-label">Description (optionnelle)</label>
+                                <input type="text" class="form-control" id="description" name="description">
+                            </div>
                         </div>
                         
                         <div class="mb-3">
                             <label class="form-label">Types de dépenses applicables</label>
                             <div class="d-flex flex-wrap gap-2">
                                 {% for flag in flags %}
-                                <div class="form-check">
+                                <div class="form-check me-3">
                                     <input class="form-check-input" type="checkbox" id="flag-{{ flag.id }}" name="flags" value="{{ flag.id }}" checked>
                                     <label class="form-check-label" for="flag-{{ flag.id }}">
                                         <span class="flag-badge" style="background-color: {{ flag.color }}">
@@ -63,9 +65,8 @@
                                 Sélectionnez les types de dépenses pour lesquels cette catégorie sera disponible.
                             </div>
                         </div>
-                        </div>
                         
-                        <div class="col-12 mt-3">
+                        <div class="mt-3">
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-plus-circle me-2"></i>Ajouter
                             </button>
@@ -118,7 +119,7 @@
                 <div class="card-header">
                     <div class="d-flex align-items-center">
                         <h3 class="card-title">Liste des catégories</h3>
-                        <span class="badge bg-primary">{{ categories|length }} catégories</span>
+                        <span class="badge bg-primary ms-2">{{ categories|length }} catégories</span>
                     </div>
                 </div>
                 <div class="card-body p-0">
@@ -128,8 +129,14 @@
                                 <tr>
                                     <th data-type="text">Nom</th>
                                     <th data-type="text">Description</th>
-                                    <th data-type="text">Types</th>
                                     <th data-type="date">Date de création</th>
+                                    {% for flag in flags %}
+                                    <th class="text-center" data-type="text" title="{{ flag.name }}">
+                                        <span class="flag-icon" style="background-color: {{ flag.color }}">
+                                            <i class="fas {{ flag.icon }}"></i>
+                                        </span>
+                                    </th>
+                                    {% endfor %}
                                     <th class="no-sort">Actions</th>
                                 </tr>
                             </thead>
@@ -138,27 +145,21 @@
                                 <tr>
                                     <td>{{ category.name }}</td>
                                     <td>{{ category.description or 'N/A' }}</td>
-                                    <td>
-                                        <div class="d-flex flex-wrap gap-1">
-                                            {% for flag in category.flags %}
-                                            <span class="flag-badge small" style="background-color: {{ flag.color }}">
-                                                <i class="fas {{ flag.icon }}"></i>
-                                                {{ flag.name }}
-                                            </span>
-                                            {% else %}
-                                            <span class="badge bg-secondary">Aucun</span>
-                                            {% endfor %}
-                                        </div>
-                                    </td>
                                     <td>{{ category.created_at.strftime('%d/%m/%Y') }}</td>
+                                    {% for flag in flags %}
+                                    <td class="text-center">
+                                        {% if flag in category.flags %}
+                                        <i class="fas fa-check text-success"></i>
+                                        {% else %}
+                                        <i class="fas fa-times text-muted"></i>
+                                        {% endif %}
+                                    </td>
+                                    {% endfor %}
                                     <td>
                                         <button class="btn btn-sm btn-outline-primary edit-category" 
                                                 data-id="{{ category.id }}"
                                                 data-name="{{ category.name }}"
                                                 data-description="{{ category.description or '' }}"
-                                                data-for-me="{{ category.for_me|lower }}"
-                                                data-tricount="{{ category.include_in_tricount|lower }}"
-                                                data-professional="{{ category.is_professional|lower }}"
                                                 data-bs-toggle="tooltip" 
                                                 data-bs-placement="top" 
                                                 title="Modifier">
@@ -176,7 +177,7 @@
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="7" class="text-center py-4">
+                                    <td colspan="{{ 4 + flags|length }}" class="text-center py-4">
                                         <div class="alert alert-info mb-0">
                                             <i class="fas fa-info-circle me-2"></i>
                                             Aucune catégorie trouvée. Utilisez le formulaire ci-dessus pour ajouter votre première catégorie.
@@ -239,7 +240,7 @@
                         <label class="form-label">Types de dépenses applicables</label>
                         <div id="edit-flags-container" class="d-flex flex-wrap gap-2">
                             {% for flag in flags %}
-                            <div class="form-check">
+                            <div class="form-check me-3">
                                 <input class="form-check-input edit-flag-checkbox" type="checkbox" id="edit-flag-{{ flag.id }}" name="flags" value="{{ flag.id }}">
                                 <label class="form-check-label" for="edit-flag-{{ flag.id }}">
                                     <span class="flag-badge" style="background-color: {{ flag.color }}">

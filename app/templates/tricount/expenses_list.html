@@ -3,7 +3,7 @@
 {% block title %}QB Tools - Liste des dépenses{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/main.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -42,32 +42,51 @@
                     <form id="filter-form" method="GET" action="{{ url_for('tricount.expenses_list') }}">
                         <div class="row">
                             <div class="col-md-3 mb-3">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="for_me" name="for_me" value="1" {% if request.args.get('for_me') == '1' %}checked{% endif %}>
-                                    <label class="form-check-label" for="for_me">Mes dépenses personnelles</label>
-                                </div>
+                                <label for="category_id" class="form-label">Catégorie</label>
+                                <select class="form-select" id="category_id" name="category_id">
+                                    <option value="-1" {% if selected_category_id is none or selected_category_id < 0 %}selected{% endif %}>Toutes les catégories</option>
+                                    <option value="0" {% if selected_category_id == 0 %}selected{% endif %}>Non catégorisées</option>
+                                    {% for category in categories %}
+                                    <option value="{{ category.id }}" {% if selected_category_id == category.id %}selected{% endif %}>{{ category.name }}</option>
+                                    {% endfor %}
+                                </select>
                             </div>
                             
                             <div class="col-md-3 mb-3">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="tricount" name="tricount" value="1" {% if request.args.get('tricount') == '1' %}checked{% endif %}>
-                                    <label class="form-check-label" for="tricount">Dépenses partagées (Emily)</label>
-                                </div>
+                                <label for="flag_id" class="form-label">Type de dépense</label>
+                                <select class="form-select" id="flag_id" name="flag_id">
+                                    <option value="-1" {% if selected_flag_id is none or selected_flag_id < 0 %}selected{% endif %}>Tous les types</option>
+                                    {% for flag in flags %}
+                                    <option value="{{ flag.id }}" {% if selected_flag_id == flag.id %}selected{% endif %}>{{ flag.name }}</option>
+                                    {% endfor %}
+                                </select>
                             </div>
                             
-                            <div class="col-md-3 mb-3">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="professional" name="professional" value="1" {% if request.args.get('professional') == '1' %}checked{% endif %}>
-                                    <label class="form-check-label" for="professional">Dépenses professionnelles</label>
-                                </div>
+                            <div class="col-md-2 mb-3">
+                                <label for="start_date" class="form-label">Date de début</label>
+                                <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date }}">
                             </div>
                             
-                            <div class="col-md-3 mb-3 text-end">
-                                <button type="submit" class="btn btn-primary">
+                            <div class="col-md-2 mb-3">
+                                <label for="end_date" class="form-label">Date de fin</label>
+                                <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date }}">
+                            </div>
+                            
+                            <div class="col-md-2 mb-3 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary w-100">
                                     <i class="fas fa-filter me-2"></i>Filtrer
                                 </button>
-                                <a href="{{ url_for('tricount.expenses_list') }}" class="btn btn-outline-secondary ms-2">
-                                    <i class="fas fa-undo me-2"></i>Réinitialiser
+                            </div>
+                        </div>
+                        
+                        <!-- Préserver les paramètres de tri -->
+                        <input type="hidden" name="sort" value="{{ sort_by }}">
+                        <input type="hidden" name="order" value="{{ order }}">
+                        
+                        <div class="row mt-2">
+                            <div class="col-12 text-end">
+                                <a href="{{ url_for('tricount.expenses_list') }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-undo me-2"></i>Réinitialiser les filtres
                                 </a>
                             </div>
                         </div>
@@ -100,106 +119,175 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for expense in expenses.items %}
-                                <tr data-expense-id="{{ expense.id }}">
-                                    <td>{{ expense.date.strftime('%d/%m/%Y') }}</td>
-                                    <td>
-                                        <div class="fw-bold">{{ expense.merchant }}</div>
-                                        <div class="small text-muted">{{ expense.description|truncate(80) }}</div>
-                                    </td>
-                                    <td class="{% if expense.is_debit %}text-danger{% else %}text-success{% endif %}">
-                                        {% if expense.is_debit %}-{% endif %}{{ "%.2f"|format(expense.amount) }} €
-                                    </td>
-                                    <td>
-                                        {% if expense.category %}
-                                        <span class="badge bg-info">{{ expense.category.name }}</span>
-                                        {% else %}
-                                        <span class="badge bg-secondary">Non catégorisé</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if expense.flag %}
-                                        <span class="flag-badge" style="background-color: {{ expense.flag.color }}">
-                                            <i class="fas {{ expense.flag.icon }}"></i>
-                                            {{ expense.flag.name }}
-                                        </span>
-                                        {% else %}
-                                        <span class="badge bg-secondary">Non défini</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary edit-expense" 
-                                                data-bs-toggle="tooltip" 
-                                                data-bs-placement="top" 
-                                                title="Modifier">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                    </td>
-                                </tr>
+                                {% if paginated %}
+                                    {% for expense in expenses.items %}
+                                    <tr data-expense-id="{{ expense.id }}">
+                                        <!-- Contenu des colonnes -->
+                                        <td>{{ expense.date.strftime('%d/%m/%Y') }}</td>
+                                        <td>
+                                            <div class="fw-bold">{{ expense.merchant }}</div>
+                                            <div class="small text-muted">{{ expense.description|truncate(80) }}</div>
+                                        </td>
+                                        <td class="{% if expense.is_debit %}text-danger{% else %}text-success{% endif %}">
+                                            {% if expense.is_debit %}-{% endif %}{{ "%.2f"|format(expense.amount) }} €
+                                        </td>
+                                        <td>
+                                            {% if expense.category %}
+                                            <span class="badge bg-info">{{ expense.category.name }}</span>
+                                            {% else %}
+                                            <span class="badge bg-secondary">Non catégorisé</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if expense.flag %}
+                                            <span class="flag-badge" style="background-color: {{ expense.flag.color }}">
+                                                <i class="fas {{ expense.flag.icon }}"></i>
+                                                {{ expense.flag.name }}
+                                            </span>
+                                            {% else %}
+                                            <span class="badge bg-secondary">Non défini</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary edit-expense" 
+                                                    data-bs-toggle="tooltip" 
+                                                    data-bs-placement="top" 
+                                                    title="Modifier">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4">
+                                            <div class="alert alert-info mb-0">
+                                                <i class="fas fa-info-circle me-2"></i>
+                                                Aucune dépense trouvée.
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
                                 {% else %}
-                                <tr>
-                                    <td colspan="7" class="text-center py-4">
-                                        <div class="alert alert-info mb-0">
-                                            <i class="fas fa-info-circle me-2"></i>
-                                            Aucune dépense trouvée. Utilisez les filtres ci-dessus ou 
-                                            <a href="{{ url_for('tricount.import_expenses') }}">importez de nouvelles dépenses</a>.
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
+                                    {% for expense in expenses %}
+                                    <tr data-expense-id="{{ expense.id }}">
+                                        <!-- Même contenu que ci-dessus -->
+                                        <td>{{ expense.date.strftime('%d/%m/%Y') }}</td>
+                                        <td>
+                                            <div class="fw-bold">{{ expense.merchant }}</div>
+                                            <div class="small text-muted">{{ expense.description|truncate(80) }}</div>
+                                        </td>
+                                        <td class="{% if expense.is_debit %}text-danger{% else %}text-success{% endif %}">
+                                            {% if expense.is_debit %}-{% endif %}{{ "%.2f"|format(expense.amount) }} €
+                                        </td>
+                                        <td>
+                                            {% if expense.category %}
+                                            <span class="badge bg-info">{{ expense.category.name }}</span>
+                                            {% else %}
+                                            <span class="badge bg-secondary">Non catégorisé</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if expense.flag %}
+                                            <span class="flag-badge" style="background-color: {{ expense.flag.color }}">
+                                                <i class="fas {{ expense.flag.icon }}"></i>
+                                                {{ expense.flag.name }}
+                                            </span>
+                                            {% else %}
+                                            <span class="badge bg-secondary">Non défini</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary edit-expense" 
+                                                    data-bs-toggle="tooltip" 
+                                                    data-bs-placement="top" 
+                                                    title="Modifier">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4">
+                                            <div class="alert alert-info mb-0">
+                                                <i class="fas fa-info-circle me-2"></i>
+                                                Aucune dépense trouvée avec les filtres appliqués. 
+                                                <a href="{{ url_for('tricount.expenses_list') }}">Réinitialiser les filtres</a>.
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% endif %}
                             </tbody>
                         </table>
                     </div>
                 </div>
-                
+
                 <div class="card-footer">
-                    <nav aria-label="Pagination des dépenses">
-                        <ul class="pagination justify-content-center mb-0">
-                            {% if expenses.has_prev %}
-                            <li class="page-item">
-                                {% set args = request.args.copy() %}
-                                {% set _ = args.pop('page', None) %}
-                                <a class="page-link" href="{{ url_for('tricount.expenses_list', page=expenses.prev_num, **args) }}">
-                                    <i class="fas fa-chevron-left"></i> Précédent
-                                </a>
-                            </li>
-                            {% else %}
-                            <li class="page-item disabled">
-                                <span class="page-link"><i class="fas fa-chevron-left"></i> Précédent</span>
-                            </li>
+                    {% if filters_applied and expenses|length > 0 %}
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted">Affichage de {{ expenses|length }} dépense(s)</span>
+                            {% if exceeds_limit %}
+                            <div class="alert alert-info mb-0 py-1 px-3">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Les résultats sont limités aux {{ max_per_page }} premières dépenses. Affinez vos filtres pour des résultats plus précis.
+                            </div>
                             {% endif %}
-                            
-                            {# Afficher jusqu'à 5 numéros de page #}
-                            {% set start_page = [expenses.page - 2, 1]|max %}
-                            {% set end_page = [start_page + 4, expenses.pages]|min %}
-                            {% set start_page = [end_page - 4, 1]|max %}
-                            
-                            {% for page_num in range(start_page, end_page + 1) %}
-                            <li class="page-item {% if page_num == expenses.page %}active{% endif %}">
-                                {% set args = request.args.copy() %}
-                                {% set _ = args.pop('page', None) %}
-                                <a class="page-link" href="{{ url_for('tricount.expenses_list', page=page_num, **args) }}">
-                                    {{ page_num }}
-                                </a>
-                            </li>
-                            {% endfor %}
-                            
-                            {% if expenses.has_next %}
-                            <li class="page-item">
-                                {% set args = request.args.copy() %}
-                                {% set _ = args.pop('page', None) %}
-                                <a class="page-link" href="{{ url_for('tricount.expenses_list', page=expenses.next_num, **args) }}">
-                                    Suivant <i class="fas fa-chevron-right"></i>
-                                </a>
-                            </li>
-                            {% else %}
-                            <li class="page-item disabled">
-                                <span class="page-link">Suivant <i class="fas fa-chevron-right"></i></span>
-                            </li>
-                            {% endif %}
-                        </ul>
-                    </nav>
+                        </div>
+                    {% elif paginated %}
+                        <nav aria-label="Pagination des dépenses">
+                            <ul class="pagination justify-content-center mb-0">
+                                {% if expenses.has_prev %}
+                                <li class="page-item">
+                                    {% set args = request.args.copy() %}
+                                    {% set _ = args.pop('page', None) %}
+                                    <a class="page-link" href="{{ url_for('tricount.expenses_list', page=expenses.prev_num, **args) }}">
+                                        <i class="fas fa-chevron-left"></i> Précédent
+                                    </a>
+                                </li>
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link"><i class="fas fa-chevron-left"></i> Précédent</span>
+                                </li>
+                                {% endif %}
+                                
+                                {# Afficher jusqu'à 5 numéros de page #}
+                                {% set start_page = [expenses.page - 2, 1]|max %}
+                                {% set end_page = [start_page + 4, expenses.pages]|min %}
+                                {% set start_page = [end_page - 4, 1]|max %}
+                                
+                                {% for page_num in range(start_page, end_page + 1) %}
+                                <li class="page-item {% if page_num == expenses.page %}active{% endif %}">
+                                    {% set args = request.args.copy() %}
+                                    {% set _ = args.pop('page', None) %}
+                                    <a class="page-link" href="{{ url_for('tricount.expenses_list', page=page_num, **args) }}">
+                                        {{ page_num }}
+                                    </a>
+                                </li>
+                                {% endfor %}
+                                
+                                {% if expenses.has_next %}
+                                <li class="page-item">
+                                    {% set args = request.args.copy() %}
+                                    {% set _ = args.pop('page', None) %}
+                                    <a class="page-link" href="{{ url_for('tricount.expenses_list', page=expenses.next_num, **args) }}">
+                                        Suivant <i class="fas fa-chevron-right"></i>
+                                    </a>
+                                </li>
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">Suivant <i class="fas fa-chevron-right"></i></span>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    {% endif %}
                 </div>
+                {% if exceeds_limit %}
+                <div class="alert alert-info mt-3">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Les résultats sont limités aux {{ max_per_page }} premières dépenses. Utilisez les filtres pour affiner votre recherche.
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>

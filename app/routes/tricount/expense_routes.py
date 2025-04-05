@@ -5,69 +5,103 @@ from app.extensions import db
 from app.models.tricount import Expense, Category, Flag
 from datetime import datetime
 
+# app/routes/tricount/expense_routes.py
+from flask import render_template, jsonify, request
+from app.routes.tricount import tricount_bp
+from app.extensions import db
+from app.models.tricount import Expense, Category, Flag
+from datetime import datetime
+
 @tricount_bp.route('/expenses')
 def expenses_list():
     """Liste des dépenses"""
     # Filtres
     category_id = request.args.get('category_id', type=int)
+    flag_id = request.args.get('flag_id', type=int)
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
+    
+    # Vérifier si des filtres sont appliqués
+    filters_applied = (category_id is not None or flag_id is not None or 
+                      start_date is not None or end_date is not None)
+    
+    # Paramètres de tri
+    sort_by = request.args.get('sort', 'date')
+    order = request.args.get('order', 'desc')
     
     # Construire la requête
     query = Expense.query
     
+    # Filtre par catégorie
     if category_id is not None:
-        query = query.filter_by(category_id=category_id)
-    elif category_id == 0:  # Cas spécial pour "Non catégorisé"
-        query = query.filter_by(category_id=None)
+        if category_id == 0:  # Cas spécial pour "Non catégorisé"
+            query = query.filter_by(category_id=None)
+        elif category_id > 0:  # Catégorie spécifique
+            query = query.filter_by(category_id=category_id)
     
+    # Filtre par flag
+    if flag_id is not None and flag_id > 0:
+        query = query.filter_by(flag_id=flag_id)
+    
+    # Filtre par date
     if start_date:
         try:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d')
-            query = query.filter(Expense.date >= start_date)
+            start_date_obj = datetime.strptime(start_date, '%Y-%m-%d')
+            query = query.filter(Expense.date >= start_date_obj)
         except ValueError:
-            pass
+            start_date = None
     
     if end_date:
         try:
-            end_date = datetime.strptime(end_date, '%Y-%m-%d')
-            query = query.filter(Expense.date <= end_date)
+            end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
+            query = query.filter(Expense.date <= end_date_obj)
         except ValueError:
-            pass
+            end_date = None
     
-    # Filtrage par flags
-    flags = Flag.query.all()
-    selected_flags = []
-    
-    for flag in flags:
-        flag_param = request.args.get(f'flag_{flag.id}', type=int)
-        if flag_param == 1:
-            selected_flags.append(flag.id)
-    
-    if selected_flags:
-        query = query.filter(Expense.flag_id.in_(selected_flags))
-    
-    # Tri
-    sort_by = request.args.get('sort', 'date')
-    order = request.args.get('order', 'desc')
-    
+    # Appliquer le tri
     if sort_by == 'date':
         query = query.order_by(Expense.date.desc() if order == 'desc' else Expense.date)
     elif sort_by == 'amount':
         query = query.order_by(Expense.amount.desc() if order == 'desc' else Expense.amount)
+    else:
+        query = query.order_by(Expense.date.desc())  # Tri par défaut
     
-    # Pagination
-    page = request.args.get('page', 1, type=int)
-    per_page = 20
-    expenses = query.paginate(page=page, per_page=per_page)
+    # Pagination seulement si aucun filtre n'est appliqué
+    max_per_page = 1000
     
-    # Catégories pour le filtre
+    if not filters_applied:
+        # Pagination standard (20 par page)
+        page = request.args.get('page', 1, type=int)
+        per_page = 20
+        expenses = query.paginate(page=page, per_page=per_page)
+        paginated = True
+    else:
+        # Tous les résultats sur une page (limité à 1000)
+        total_count = query.count()
+        exceeds_limit = total_count > max_per_page
+        
+        # Limiter à max_per_page résultats
+        expenses = query.limit(max_per_page).all()
+        paginated = False
+    
+    # Catégories et flags pour les filtres
     categories = Category.query.all()
+    flags = Flag.query.all()
     
     return render_template('tricount/expenses_list.html',
                           expenses=expenses,
                           categories=categories,
-                          flags=flags)
+                          flags=flags,
+                          selected_category_id=category_id,
+                          selected_flag_id=flag_id,
+                          start_date=start_date,
+                          end_date=end_date,
+                          sort_by=sort_by,
+                          order=order,
+                          filters_applied=filters_applied,
+                          paginated=paginated,
+                          exceeds_limit=exceeds_limit if filters_applied else False,
+                          max_per_page=max_per_page)
 
 @tricount_bp.route('/expenses/update', methods=['POST'])
 def update_expense():
