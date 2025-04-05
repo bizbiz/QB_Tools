@@ -4,10 +4,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount.css') }}">
-<style>
-    /* Include our custom CSS here */
-    {% include 'tricount/category_styles.html' %}
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/qb_tools/categories.css') }}">
 {% endblock %}
 
 {% block content %}
