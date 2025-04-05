@@ -136,3 +136,66 @@ def category_info(category_id):
         'include_in_tricount': category.include_in_tricount,
         'is_professional': category.is_professional
     })
+
+@tricount_bp.route('/find-similar-expenses', methods=['POST'])
+def find_similar_expenses():
+    """API pour trouver des dépenses similaires selon les critères spécifiés"""
+    expense_id = request.json.get('expense_id')
+    merchant_contains = request.json.get('merchant_contains')
+    description_contains = request.json.get('description_contains')
+    frequency_type = request.json.get('frequency_type')
+    frequency_day = request.json.get('frequency_day')
+    
+    # Valider les données reçues
+    if not expense_id or not merchant_contains:
+        return jsonify({
+            'success': False,
+            'error': 'Paramètres manquants'
+        }), 400
+    
+    # Récupérer l'expense de base
+    base_expense = Expense.query.get_or_404(expense_id)
+    
+    # Rechercher des dépenses similaires non catégorisées
+    query = Expense.query.filter(
+        Expense.id != expense_id,
+        Expense.category_id == None  # Non catégorisées
+    )
+    
+    # Appliquer les filtres
+    if merchant_contains:
+        query = query.filter(Expense.merchant.ilike(f'%{merchant_contains}%'))
+        
+    if description_contains:
+        query = query.filter(Expense.description.ilike(f'%{description_contains}%'))
+    
+    # Filtrer par fréquence si elle est spécifiée
+    if frequency_type and frequency_type != 'none' and frequency_day is not None:
+        if frequency_type == 'monthly':
+            # Filtrer par jour du mois
+            from sqlalchemy import extract
+            query = query.filter(extract('day', Expense.date) == frequency_day)
+        elif frequency_type == 'weekly':
+            # Filtrer par jour de la semaine (0=lundi, 6=dimanche)
+            query = query.filter(extract('dow', Expense.date) == frequency_day)
+    
+    # Exécuter la requête
+    similar_expenses = query.all()
+    
+    # Préparer les données pour le JSON
+    expenses_data = []
+    for expense in similar_expenses:
+        expenses_data.append({
+            'id': expense.id,
+            'date': expense.date.strftime('%d/%m/%Y'),
+            'merchant': expense.merchant,
+            'amount': float(expense.amount),
+            'is_debit': expense.is_debit,
+            'description': expense.description
+        })
+    
+    return jsonify({
+        'success': True, 
+        'count': len(similar_expenses),
+        'expenses': expenses_data
+    })

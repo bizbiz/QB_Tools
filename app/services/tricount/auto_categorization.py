@@ -6,37 +6,51 @@ import re
 
 class AutoCategorizationService:
     """Service pour gérer l'auto-catégorisation des dépenses"""
-    
+
     @staticmethod
-    def find_similar_expenses(expense):
+    def find_similar_expenses(expense, filters=None):
         """
-        Trouve des dépenses similaires à celle fournie
+        Trouve des dépenses similaires à celle fournie, avec filtres optionnels
         
         Args:
             expense (Expense): Dépense de référence
+            filters (dict): Filtres supplémentaires (merchant_contains, description_contains, etc.)
             
         Returns:
             list: Liste des dépenses similaires
         """
-        # Créer des expressions régulières pour la recherche de similarité
-        merchant_pattern = expense.merchant.strip().lower()
+        filters = filters or {}
         
-        # Rechercher des dépenses similaires non catégorisées
-        similar_expenses = Expense.query.filter(
+        # Construire la requête de base
+        query = Expense.query.filter(
             Expense.id != expense.id,
-            Expense.category_id == None,  # Non catégorisées
-        ).all()
+            Expense.category_id == None  # Non catégorisées
+        )
         
-        # Filtrer pour ne garder que les dépenses vraiment similaires
-        result = []
-        for candidate in similar_expenses:
-            # Vérifier la similarité du marchand
-            if merchant_pattern in candidate.merchant.lower():
-                # Vérifier la similarité du montant (optionnel)
-                # if abs(candidate.amount - expense.amount) < 5:  # Tolérance de 5€
-                result.append(candidate)
+        # Appliquer les filtres
+        merchant_pattern = filters.get('merchant_contains') or expense.merchant.strip().lower()
+        if merchant_pattern:
+            query = query.filter(Expense.merchant.ilike(f'%{merchant_pattern}%'))
         
-        return result
+        description_pattern = filters.get('description_contains')
+        if description_pattern:
+            query = query.filter(Expense.description.ilike(f'%{description_pattern}%'))
+        
+        # Appliquer les filtres de fréquence
+        frequency_type = filters.get('frequency_type')
+        frequency_day = filters.get('frequency_day')
+        
+        if frequency_type and frequency_type != 'none' and frequency_day is not None:
+            if frequency_type == 'monthly':
+                # Filtrer par jour du mois
+                from sqlalchemy import extract
+                query = query.filter(extract('day', Expense.date) == frequency_day)
+            elif frequency_type == 'weekly':
+                # Filtrer par jour de la semaine (0=lundi, 6=dimanche)
+                query = query.filter(extract('dow', Expense.date) == frequency_day)
+        
+        # Exécuter la requête
+        return query.all()
     
     @staticmethod
     def detect_frequency(expenses):

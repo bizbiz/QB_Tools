@@ -1,0 +1,62 @@
+/* app/static/css/tricount/auto_categorize.css */
+
+/* Style pour le bouton de rafraîchissement */
+.refresh-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+}
+
+/* Style pour indiquer que la liste n'est pas à jour */
+.stale-data {
+    opacity: 0.6;
+    transition: opacity 0.3s ease;
+}
+
+/* Style pour le badge de notification */
+.notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    font-size: 0.7rem;
+    padding: 3px 6px;
+}
+
+/* Style pour l'animation de chargement */
+.loading-indicator {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100px;
+}
+
+/* Style pour la section des données similaires */
+.similar-expenses-section {
+    position: relative;
+}
+
+/* Animation pour les mises à jour */
+.update-transition {
+    transition: all 0.3s ease;
+}
+
+/* Style pour les messages */
+.info-message, .warning-message {
+    margin-top: 15px;
+}
+
+/* Style pour les dépenses à appliquer */
+.apply-expense-row {
+    transition: background-color 0.2s ease;
+}
+
+.apply-expense-row:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+}
+
+/* Style pour les indicateurs de correspondance */
+.match-highlight {
+    background-color: rgba(25, 135, 84, 0.1);
+    font-weight: bold;
+}
