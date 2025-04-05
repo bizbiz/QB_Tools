@@ -10,3 +10,4 @@ from app.routes.tricount.expense_routes import *
 from app.routes.tricount.categorize_routes import *
 from app.routes.tricount.export_routes import *
 from app.routes.tricount.category_routes import *
+from app.routes.tricount.auto_rules_routes import *
