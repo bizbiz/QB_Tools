@@ -8,6 +8,17 @@ from io import StringIO
 @tricount_bp.route('/export')
 def export_options():
     """Page d'options d'exportation pour Tricount et N2F"""
+    # Statistiques des dépenses pour moi
+    for_me_expenses = Expense.query.filter_by(for_me=True).all()
+    for_me_total = sum(expense.amount for expense in for_me_expenses if expense.is_debit)
+    
+    for_me_stats = {
+        'count': len(for_me_expenses),
+        'total': for_me_total,
+        'start_date': min([expense.date.strftime('%d/%m/%Y') for expense in for_me_expenses]) if for_me_expenses else None,
+        'end_date': max([expense.date.strftime('%d/%m/%Y') for expense in for_me_expenses]) if for_me_expenses else None
+    }
+
     # Statistiques des dépenses pour Tricount
     tricount_expenses = Expense.query.filter_by(include_in_tricount=True).all()
     tricount_total = sum(expense.amount for expense in tricount_expenses if expense.is_debit)
@@ -31,12 +42,13 @@ def export_options():
     }
     
     return render_template('tricount/export.html',
+                          for_me_stats=for_me_stats,
                           tricount_stats=tricount_stats,
                           professional_stats=professional_stats)
 
 @tricount_bp.route('/export/tricount', methods=['POST'])
 def export_tricount():
-    """Exporter les dépenses pour Tricount"""
+    """Exporter les dépenses pour Tricount (Emily)"""
     participants = request.form.get('participants', '')
     default_payer = request.form.get('default_payer', '')
     equal_split = request.form.get('equal_split') == 'on'
@@ -45,7 +57,7 @@ def export_tricount():
         flash('Les participants et le payeur par défaut sont requis.', 'warning')
         return redirect(url_for('tricount.export_options'))
     
-    # Récupérer les dépenses pour Tricount
+    # Récupérer les dépenses pour Tricount (Emily)
     expenses = Expense.query.filter_by(include_in_tricount=True).order_by(Expense.date.asc()).all()
     
     if not expenses:

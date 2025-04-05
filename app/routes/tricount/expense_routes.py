@@ -12,6 +12,7 @@ def expenses_list():
     category_id = request.args.get('category_id', type=int)
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
+    for_me = request.args.get('for_me', type=int)
     include_tricount = request.args.get('tricount', type=int)
     is_professional = request.args.get('professional', type=int)
     
@@ -36,6 +37,9 @@ def expenses_list():
             query = query.filter(Expense.date <= end_date)
         except ValueError:
             pass
+    
+    if for_me is not None:
+        query = query.filter_by(for_me=bool(for_me))
     
     if include_tricount is not None:
         query = query.filter_by(include_in_tricount=bool(include_tricount))
@@ -69,6 +73,7 @@ def update_expense():
     """API pour mettre à jour une dépense"""
     expense_id = request.form.get('expense_id', type=int)
     category_id = request.form.get('category_id')
+    for_me = request.form.get('for_me') == 'true'
     include_tricount = request.form.get('include_tricount') == 'true'
     is_professional = request.form.get('is_professional') == 'true'
     
@@ -83,8 +88,24 @@ def update_expense():
     else:
         expense.category_id = None
     
-    expense.include_in_tricount = include_tricount
-    expense.is_professional = is_professional
+    # Assurer qu'un seul flag est actif
+    if for_me:
+        expense.for_me = True
+        expense.include_in_tricount = False
+        expense.is_professional = False
+    elif include_tricount:
+        expense.for_me = False
+        expense.include_in_tricount = True
+        expense.is_professional = False
+    elif is_professional:
+        expense.for_me = False
+        expense.include_in_tricount = False
+        expense.is_professional = True
+    else:
+        # Par défaut, si aucun n'est sélectionné, utiliser "for_me"
+        expense.for_me = True
+        expense.include_in_tricount = False
+        expense.is_professional = False
     
     try:
         db.session.commit()

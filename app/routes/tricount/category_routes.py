@@ -16,6 +16,7 @@ def add_category():
     """Ajouter une nouvelle catégorie"""
     name = request.form.get('name')
     description = request.form.get('description', '')
+    for_me = 'for_me' in request.form
     include_in_tricount = 'include_in_tricount' in request.form
     is_professional = 'is_professional' in request.form
     
@@ -26,6 +27,7 @@ def add_category():
     category = Category(
         name=name, 
         description=description,
+        for_me=for_me,
         include_in_tricount=include_in_tricount,
         is_professional=is_professional
     )
@@ -62,6 +64,7 @@ def update_category(category_id):
     
     name = request.form.get('name')
     description = request.form.get('description', '')
+    for_me = 'for_me' in request.form
     include_in_tricount = 'include_in_tricount' in request.form
     is_professional = 'is_professional' in request.form
     
@@ -72,6 +75,7 @@ def update_category(category_id):
     try:
         category.name = name
         category.description = description
+        category.for_me = for_me
         category.include_in_tricount = include_in_tricount
         category.is_professional = is_professional
         

@@ -79,9 +79,26 @@ def create_auto_rule():
     frequency_type = request.form.get('frequency_type')
     frequency_day = request.form.get('frequency_day', type=int)
     category_id = request.form.get('category_id', type=int)
+    for_me = 'for_me' in request.form
     include_in_tricount = 'include_in_tricount' in request.form
     is_professional = 'is_professional' in request.form
     apply_now = 'apply_now' in request.form
+    
+    # S'assurer qu'un seul flag est actif
+    if for_me:
+        include_in_tricount = False
+        is_professional = False
+    elif include_in_tricount:
+        for_me = False
+        is_professional = False
+    elif is_professional:
+        for_me = False
+        include_in_tricount = False
+    else:
+        # Par défaut, utiliser "for_me"
+        for_me = True
+        include_in_tricount = False
+        is_professional = False
     
     if not rule_name or not merchant_contains or not category_id:
         flash('Le nom de la règle, le filtre de marchand et la catégorie sont requis.', 'warning')
@@ -95,6 +112,7 @@ def create_auto_rule():
         frequency_type=frequency_type if frequency_type != 'none' else None,
         frequency_day=frequency_day if frequency_type != 'none' else None,
         category_id=category_id,
+        for_me=for_me,
         include_in_tricount=include_in_tricount,
         is_professional=is_professional,
         created_by_expense_id=expense_id
@@ -133,6 +151,7 @@ def category_info(category_id):
     
     return jsonify({
         'success': True,
+        'for_me': category.for_me,
         'include_in_tricount': category.include_in_tricount,
         'is_professional': category.is_professional
     })

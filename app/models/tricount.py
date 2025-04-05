@@ -12,9 +12,10 @@ class Category(db.Model):
     description = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # New fields to indicate category usage
-    include_in_tricount = db.Column(db.Boolean, default=True)  # Available in Tricount
-    is_professional = db.Column(db.Boolean, default=True)      # Available for professional expenses
+    # Flags pour les types de dépenses
+    for_me = db.Column(db.Boolean, default=True)               # Disponible pour mes dépenses personnelles
+    include_in_tricount = db.Column(db.Boolean, default=True)  # Disponible pour Tricount (Emily)
+    is_professional = db.Column(db.Boolean, default=True)      # Disponible pour dépenses professionnelles
     
     # Relation avec les dépenses
     expenses = db.relationship('Expense', backref='category', lazy=True)
@@ -45,9 +46,10 @@ class Expense(db.Model):
     # Relations
     category_id = db.Column(db.Integer, db.ForeignKey('expense_categories.id'))
     
-    # Flags pour Tricount et N2F
-    include_in_tricount = db.Column(db.Boolean, default=False)
-    is_professional = db.Column(db.Boolean, default=False)  # Pour N2F
+    # Flags pour le type de dépense (un seul peut être actif à la fois)
+    for_me = db.Column(db.Boolean, default=True)             # Pour moi
+    include_in_tricount = db.Column(db.Boolean, default=False) # Pour Tricount (Emily)
+    is_professional = db.Column(db.Boolean, default=False)   # Pour N2F (professionnel)
     
     # Identifiant unique pour éviter les doublons
     unique_identifier = db.Column(db.String(255), unique=True, index=True)
@@ -80,6 +82,7 @@ class AutoCategorizationRule(db.Model):
     
     # Destination
     category_id = db.Column(db.Integer, db.ForeignKey('expense_categories.id'))
+    for_me = db.Column(db.Boolean, default=True)
     include_in_tricount = db.Column(db.Boolean, default=False)
     is_professional = db.Column(db.Boolean, default=False)
     

@@ -115,6 +115,7 @@ function setupModalEventListeners() {
     const editCategoryForm = document.getElementById('edit-category-form');
     const editNameInput = document.getElementById('edit-name');
     const editDescriptionInput = document.getElementById('edit-description');
+    const editForMeCheckbox = document.getElementById('edit-for-me');
     const editTricountCheckbox = document.getElementById('edit-tricount');
     const editProfessionalCheckbox = document.getElementById('edit-professional');
     const saveCategoryButton = document.getElementById('save-category');
@@ -124,11 +125,13 @@ function setupModalEventListeners() {
             const categoryId = this.dataset.id;
             const categoryName = this.dataset.name;
             const categoryDescription = this.dataset.description;
+            const categoryForMe = this.dataset.forMe === 'true';
             const categoryTricount = this.dataset.tricount === 'true';
             const categoryProfessional = this.dataset.professional === 'true';
             
             editNameInput.value = categoryName;
             editDescriptionInput.value = categoryDescription;
+            editForMeCheckbox.checked = categoryForMe;
             editTricountCheckbox.checked = categoryTricount;
             editProfessionalCheckbox.checked = categoryProfessional;
             

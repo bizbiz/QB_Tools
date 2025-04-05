@@ -34,11 +34,24 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Function to filter categories based on Tricount/Pro checkboxes
+    // Function to filter categories based on type selection
     function filterCategoriesForExpense(expenseId) {
         const select = document.getElementById(`category-${expenseId}`);
+        const isForMe = document.getElementById(`for-me-${expenseId}`).checked;
         const isTricount = document.getElementById(`tricount-${expenseId}`).checked;
         const isProfessional = document.getElementById(`professional-${expenseId}`).checked;
+        
+        // Ensure only one flag is active at a time
+        if (isForMe) {
+            document.getElementById(`tricount-${expenseId}`).checked = false;
+            document.getElementById(`professional-${expenseId}`).checked = false;
+        } else if (isTricount) {
+            document.getElementById(`for-me-${expenseId}`).checked = false;
+            document.getElementById(`professional-${expenseId}`).checked = false;
+        } else if (isProfessional) {
+            document.getElementById(`for-me-${expenseId}`).checked = false;
+            document.getElementById(`tricount-${expenseId}`).checked = false;
+        }
         
         if (!select || !select.originalOptions) return;
         
@@ -68,15 +81,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            // Check if this category should be shown based on Tricount/Pro settings
-            let showCategory = true;
+            // Check if this category should be shown based on the flags
+            let showCategory = false;
             
-            if (isTricount && !categoryInfo.includeInTricount) {
-                showCategory = false;
+            if (isForMe && categoryInfo.forMe) {
+                showCategory = true;
             }
             
-            if (isProfessional && !categoryInfo.isProfessional) {
-                showCategory = false;
+            if (isTricount && categoryInfo.includeInTricount) {
+                showCategory = true;
+            }
+            
+            if (isProfessional && categoryInfo.isProfessional) {
+                showCategory = true;
             }
             
             if (showCategory) {
@@ -105,8 +122,20 @@ document.addEventListener('DOMContentLoaded', function() {
         select.originalOptions = originalOptions;
         
         // Add event listeners to checkboxes
+        const forMeCheckbox = document.getElementById(`for-me-${expenseId}`);
         const tricountCheckbox = document.getElementById(`tricount-${expenseId}`);
         const professionalCheckbox = document.getElementById(`professional-${expenseId}`);
+        
+        // Set default state - "For Me" checked by default
+        if (forMeCheckbox && !tricountCheckbox.checked && !professionalCheckbox.checked) {
+            forMeCheckbox.checked = true;
+        }
+        
+        if (forMeCheckbox) {
+            forMeCheckbox.addEventListener('change', function() {
+                filterCategoriesForExpense(expenseId);
+            });
+        }
         
         if (tricountCheckbox) {
             tricountCheckbox.addEventListener('change', function() {
@@ -154,9 +183,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 const expenseId = card.closest('.expense-card-container').id.replace('expense-container-', '');
                 const select = document.getElementById(`category-${expenseId}`);
                 
-                // Set Tricount and Pro checkboxes appropriately based on the category
+                // Set appropriate flag based on the category
                 const categoryInfo = window.categoryData[categoryId];
                 if (categoryInfo) {
+                    // Set For Me as default if nothing specific is indicated
+                    document.getElementById(`for-me-${expenseId}`).checked = 
+                        categoryInfo.forMe && !categoryInfo.includeInTricount && !categoryInfo.isProfessional;
                     document.getElementById(`tricount-${expenseId}`).checked = categoryInfo.includeInTricount;
                     document.getElementById(`professional-${expenseId}`).checked = categoryInfo.isProfessional;
                     
@@ -186,9 +218,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            // Ajouter les valeurs des checkboxes (même si non cochées)
-            formData.set('include_tricount', form.querySelector(`#tricount-${expenseId}`).checked ? 'true' : 'false');
-            formData.set('is_professional', form.querySelector(`#professional-${expenseId}`).checked ? 'true' : 'false');
+            // Ensure only one flag is set
+            const isForMe = form.querySelector(`#for-me-${expenseId}`).checked;
+            const isTricount = form.querySelector(`#tricount-${expenseId}`).checked;
+            const isProfessional = form.querySelector(`#professional-${expenseId}`).checked;
+            
+            // Default to "for me" if nothing is selected
+            if (!isForMe && !isTricount && !isProfessional) {
+                form.querySelector(`#for-me-${expenseId}`).checked = true;
+                formData.set('for_me', 'true');
+                formData.set('include_tricount', 'false');
+                formData.set('is_professional', 'false');
+            } else {
+                // Add the values of the checkboxes
+                formData.set('for_me', isForMe ? 'true' : 'false');
+                formData.set('include_tricount', isTricount ? 'true' : 'false');
+                formData.set('is_professional', isProfessional ? 'true' : 'false');
+            }
             
             // URL pour l'API mise à jour
             const updateUrl = '/tricount/expenses/update';

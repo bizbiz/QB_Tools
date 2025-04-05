@@ -1,3 +1,4 @@
+<!-- app/templates/tricount/categories.html -->
 {% extends "base.html" %}
 
 {% block title %}QB Tools - Gestion des catégories{% endblock %}
@@ -24,67 +25,100 @@
         </div>
     </div>
     
-    <div class="row">
-        <div class="col-md-4 mb-4">
+    <!-- Formulaire d'ajout déplacé en haut -->
+    <div class="row mb-4">
+        <div class="col">
             <div class="card shadow-sm">
                 <div class="card-header">
                     <h3 class="card-title">Ajouter une catégorie</h3>
                 </div>
                 <div class="card-body">
-                    <form action="{{ url_for('tricount.add_category') }}" method="POST">
-                        <div class="mb-3">
+                    <form action="{{ url_for('tricount.add_category') }}" method="POST" class="row">
+                        <div class="col-md-4 mb-3">
                             <label for="name" class="form-label">Nom de la catégorie</label>
                             <input type="text" class="form-control" id="name" name="name" required>
                         </div>
                         
-                        <div class="mb-3">
+                        <div class="col-md-4 mb-3">
                             <label for="description" class="form-label">Description (optionnelle)</label>
-                            <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                            <input type="text" class="form-control" id="description" name="description">
                         </div>
                         
-                        <div class="mb-3">
+                        <div class="col-md-4 mb-3">
                             <label class="form-label">Disponible pour</label>
-                            <div class="form-check form-switch mb-2">
-                                <input class="form-check-input" type="checkbox" id="tricount" name="include_in_tricount" checked>
-                                <label class="form-check-label" for="tricount">
-                                    <span class="category-badge tricount">Tricount</span> Dépenses partagées
-                                </label>
-                            </div>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="professional" name="is_professional" checked>
-                                <label class="form-check-label" for="professional">
-                                    <span class="category-badge professional">Pro</span> Dépenses professionnelles
-                                </label>
+                            <div class="d-flex gap-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="for_me" name="for_me" checked>
+                                    <label class="form-check-label" for="for_me">
+                                        <span class="category-badge me">Moi</span>
+                                    </label>
+                                </div>
+                                
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="tricount" name="include_in_tricount" checked>
+                                    <label class="form-check-label" for="tricount">
+                                        <span class="category-badge tricount">Emily</span>
+                                    </label>
+                                </div>
+                                
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="professional" name="is_professional" checked>
+                                    <label class="form-check-label" for="professional">
+                                        <span class="category-badge professional">Pro</span>
+                                    </label>
+                                </div>
                             </div>
                         </div>
                         
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="fas fa-plus-circle me-2"></i>Ajouter
-                        </button>
+                        <div class="col-12 mt-3">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus-circle me-2"></i>Ajouter
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>
-            
-            <div class="card shadow-sm mt-4">
+        </div>
+    </div>
+    
+    <!-- Légende des types -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card shadow-sm">
                 <div class="card-header">
                     <h3 class="card-title">Légende</h3>
                 </div>
                 <div class="card-body">
-                    <div class="d-flex align-items-center mb-2">
-                        <div class="indicator tricount me-2"></div>
-                        <span class="category-badge tricount me-2">Tricount</span>
-                        <span>Disponible pour les dépenses partagées</span>
+                    <div class="d-flex flex-wrap">
+                        <div class="d-flex align-items-center me-4 mb-2">
+                            <div class="indicator me me-2"></div>
+                            <span class="category-badge me me-2">Moi</span>
+                            <span>Dépenses personnelles</span>
+                        </div>
+                        <div class="d-flex align-items-center me-4 mb-2">
+                            <div class="indicator tricount me-2"></div>
+                            <span class="category-badge tricount me-2">Emily</span>
+                            <span>Dépenses partagées</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="indicator professional me-2"></div>
+                            <span class="category-badge professional me-2">Pro</span>
+                            <span>Dépenses professionnelles</span>
+                        </div>
                     </div>
-                    <div class="d-flex align-items-center">
-                        <div class="indicator professional me-2"></div>
-                        <span class="category-badge professional me-2">Pro</span>
-                        <span>Disponible pour les dépenses professionnelles</span>
+                    <div class="alert alert-info mt-3 mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Une dépense ne peut être associée qu'à un seul type (Moi, Emily ou Pro). Lors de la catégorisation, 
+                        seules les catégories compatibles avec le type sélectionné seront disponibles.
                     </div>
                 </div>
             </div>
         </div>
-        
-        <div class="col-md-8">
+    </div>
+    
+    <!-- Tableau des catégories -->
+    <div class="row">
+        <div class="col">
             <div class="card shadow-sm">
                 <div class="card-header">
                     <div class="d-flex justify-content-between align-items-center">
@@ -99,7 +133,9 @@
                                 <tr>
                                     <th>Nom</th>
                                     <th>Description</th>
-                                    <th>Type</th>
+                                    <th class="text-center">Moi</th>
+                                    <th class="text-center">Emily</th>
+                                    <th class="text-center">Pro</th>
                                     <th>Date de création</th>
                                     <th>Actions</th>
                                 </tr>
@@ -109,15 +145,14 @@
                                 <tr>
                                     <td>{{ category.name }}</td>
                                     <td>{{ category.description or 'N/A' }}</td>
-                                    <td>
-                                        <div class="category-type-indicators">
-                                            {% if category.include_in_tricount %}
-                                            <div class="indicator tricount" title="Tricount"></div>
-                                            {% endif %}
-                                            {% if category.is_professional %}
-                                            <div class="indicator professional" title="Professionnel"></div>
-                                            {% endif %}
-                                        </div>
+                                    <td class="text-center">
+                                        <i class="fas {% if category.for_me %}fa-check text-success{% else %}fa-times text-muted{% endif %}"></i>
+                                    </td>
+                                    <td class="text-center">
+                                        <i class="fas {% if category.include_in_tricount %}fa-check text-success{% else %}fa-times text-muted{% endif %}"></i>
+                                    </td>
+                                    <td class="text-center">
+                                        <i class="fas {% if category.is_professional %}fa-check text-success{% else %}fa-times text-muted{% endif %}"></i>
                                     </td>
                                     <td>{{ category.created_at.strftime('%d/%m/%Y') }}</td>
                                     <td>
@@ -125,6 +160,7 @@
                                                 data-id="{{ category.id }}"
                                                 data-name="{{ category.name }}"
                                                 data-description="{{ category.description or '' }}"
+                                                data-for-me="{{ category.for_me|lower }}"
                                                 data-tricount="{{ category.include_in_tricount|lower }}"
                                                 data-professional="{{ category.is_professional|lower }}"
                                                 data-bs-toggle="tooltip" 
@@ -144,10 +180,10 @@
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="5" class="text-center py-4">
+                                    <td colspan="7" class="text-center py-4">
                                         <div class="alert alert-info mb-0">
                                             <i class="fas fa-info-circle me-2"></i>
-                                            Aucune catégorie trouvée. Utilisez le formulaire ci-contre pour ajouter votre première catégorie.
+                                            Aucune catégorie trouvée. Utilisez le formulaire ci-dessus pour ajouter votre première catégorie.
                                         </div>
                                     </td>
                                 </tr>
@@ -206,9 +242,15 @@
                     <div class="mb-3">
                         <label class="form-label">Disponible pour</label>
                         <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="edit-for-me" name="for_me">
+                            <label class="form-check-label" for="edit-for-me">
+                                <span class="category-badge me">Moi</span> Dépenses personnelles
+                            </label>
+                        </div>
+                        <div class="form-check form-switch mb-2">
                             <input class="form-check-input" type="checkbox" id="edit-tricount" name="include_in_tricount">
                             <label class="form-check-label" for="edit-tricount">
-                                <span class="category-badge tricount">Tricount</span> Dépenses partagées
+                                <span class="category-badge tricount">Emily</span> Dépenses partagées
                             </label>
                         </div>
                         <div class="form-check form-switch">

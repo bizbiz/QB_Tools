@@ -42,53 +42,27 @@
                     <form id="filter-form" method="GET" action="{{ url_for('tricount.expenses_list') }}">
                         <div class="row">
                             <div class="col-md-3 mb-3">
-                                <label for="category_id" class="form-label">Catégorie</label>
-                                <select class="form-select" id="category_id" name="category_id">
-                                    <option value="">Toutes les catégories</option>
-                                    <option value="0" {% if request.args.get('category_id') == '0' %}selected{% endif %}>Non catégorisé</option>
-                                    {% for category in categories %}
-                                    <option value="{{ category.id }}" {% if request.args.get('category_id')|int == category.id %}selected{% endif %}>
-                                        {{ category.name }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            
-                            <div class="col-md-3 mb-3">
-                                <label for="start_date" class="form-label">Date de début</label>
-                                <input type="date" class="form-control" id="start_date" name="start_date" value="{{ request.args.get('start_date', '') }}">
-                            </div>
-                            
-                            <div class="col-md-3 mb-3">
-                                <label for="end_date" class="form-label">Date de fin</label>
-                                <input type="date" class="form-control" id="end_date" name="end_date" value="{{ request.args.get('end_date', '') }}">
-                            </div>
-                            
-                            <div class="col-md-3 mb-3">
-                                <label for="sort" class="form-label">Trier par</label>
-                                <select class="form-select" id="sort" name="sort">
-                                    <option value="date" {% if request.args.get('sort') == 'date' or not request.args.get('sort') %}selected{% endif %}>Date</option>
-                                    <option value="amount" {% if request.args.get('sort') == 'amount' %}selected{% endif %}>Montant</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="tricount" name="tricount" value="1" {% if request.args.get('tricount') == '1' %}checked{% endif %}>
-                                    <label class="form-check-label" for="tricount">Incluses dans Tricount</label>
+                                    <input class="form-check-input" type="checkbox" id="for_me" name="for_me" value="1" {% if request.args.get('for_me') == '1' %}checked{% endif %}>
+                                    <label class="form-check-label" for="for_me">Mes dépenses personnelles</label>
                                 </div>
                             </div>
                             
-                            <div class="col-md-4 mb-3">
+                            <div class="col-md-3 mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="tricount" name="tricount" value="1" {% if request.args.get('tricount') == '1' %}checked{% endif %}>
+                                    <label class="form-check-label" for="tricount">Dépenses partagées (Emily)</label>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-3 mb-3">
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" id="professional" name="professional" value="1" {% if request.args.get('professional') == '1' %}checked{% endif %}>
                                     <label class="form-check-label" for="professional">Dépenses professionnelles</label>
                                 </div>
                             </div>
                             
-                            <div class="col-md-4 mb-3 text-end">
+                            <div class="col-md-3 mb-3 text-end">
                                 <button type="submit" class="btn btn-primary">
                                     <i class="fas fa-filter me-2"></i>Filtrer
                                 </button>
@@ -121,8 +95,9 @@
                                     <th>Description</th>
                                     <th>Montant</th>
                                     <th>Catégorie</th>
-                                    <th>Tricount</th>
-                                    <th>Pro</th>
+                                    <th class="text-center">Moi</th>
+                                    <th class="text-center">Emily</th>
+                                    <th class="text-center">Pro</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -143,6 +118,9 @@
                                         {% else %}
                                         <span class="badge bg-secondary">Non catégorisé</span>
                                         {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <i class="fas {% if expense.for_me %}fa-check text-success{% else %}fa-times text-muted{% endif %}"></i>
                                     </td>
                                     <td class="text-center">
                                         <i class="fas {% if expense.include_in_tricount %}fa-check text-success{% else %}fa-times text-muted{% endif %}"></i>
@@ -251,17 +229,32 @@
                     </div>
                     
                     <div class="mb-3">
-                        <div class="form-check form-switch">
+                        <label class="form-label">Type de dépense</label>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="edit-for-me" name="for_me">
+                            <label class="form-check-label" for="edit-for-me">
+                                <span class="category-badge me">Moi</span> Dépense personnelle
+                            </label>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-2">
                             <input class="form-check-input" type="checkbox" id="edit-tricount" name="include_tricount">
-                            <label class="form-check-label" for="edit-tricount">Inclure dans Tricount</label>
+                            <label class="form-check-label" for="edit-tricount">
+                                <span class="category-badge tricount">Emily</span> Dépense partagée
+                            </label>
+                        </div>
+                        
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="edit-professional" name="is_professional">
+                            <label class="form-check-label" for="edit-professional">
+                                <span class="category-badge professional">Pro</span> Dépense professionnelle
+                            </label>
                         </div>
                     </div>
                     
-                    <div class="mb-3">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="edit-professional" name="is_professional">
-                            <label class="form-check-label" for="edit-professional">Dépense professionnelle</label>
-                        </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Une dépense ne peut être associée qu'à un seul type (Moi, Emily ou Pro).
                     </div>
                 </form>
             </div>
@@ -301,8 +294,9 @@
                 
                 // Récupérer l'état actuel
                 const categoryBadge = row.querySelector('td:nth-child(4) .badge');
-                const isTricount = row.querySelector('td:nth-child(5) .fa-check') !== null;
-                const isProfessional = row.querySelector('td:nth-child(6) .fa-check') !== null;
+                const isForMe = row.querySelector('td:nth-child(5) .fa-check') !== null;
+                const isTricount = row.querySelector('td:nth-child(6) .fa-check') !== null;
+                const isProfessional = row.querySelector('td:nth-child(7) .fa-check') !== null;
                 
                 // Remplir le formulaire
                 editExpenseId.value = expenseId;
@@ -321,8 +315,33 @@
                     editCategory.value = '';
                 }
                 
+                // Définir les flags (un seul peut être actif)
+                editForMe.checked = isForMe;
                 editTricount.checked = isTricount;
                 editProfessional.checked = isProfessional;
+                
+                // Ajouter des écouteurs pour s'assurer qu'un seul flag est actif
+                const ensureOnlyOneActive = function() {
+                    if (this === editForMe && this.checked) {
+                        editTricount.checked = false;
+                        editProfessional.checked = false;
+                    } else if (this === editTricount && this.checked) {
+                        editForMe.checked = false;
+                        editProfessional.checked = false;
+                    } else if (this === editProfessional && this.checked) {
+                        editForMe.checked = false;
+                        editTricount.checked = false;
+                    }
+                    
+                    // S'assurer qu'au moins un est coché
+                    if (!editForMe.checked && !editTricount.checked && !editProfessional.checked) {
+                        editForMe.checked = true; // Par défaut
+                    }
+                };
+                
+                editForMe.addEventListener('change', ensureOnlyOneActive);
+                editTricount.addEventListener('change', ensureOnlyOneActive);
+                editProfessional.addEventListener('change', ensureOnlyOneActive);
                 
                 // Ouvrir la modal
                 editModal.show();

@@ -109,13 +109,24 @@
                                         
                                         <div class="mb-3 d-flex">
                                             <div class="form-check form-switch me-3">
+                                                <input class="form-check-input" type="checkbox" id="for-me-{{ expense.id }}" name="for_me" checked>
+                                                <label class="form-check-label" for="for-me-{{ expense.id }}">
+                                                    <span class="category-badge me">Moi</span>
+                                                </label>
+                                            </div>
+                                            
+                                            <div class="form-check form-switch me-3">
                                                 <input class="form-check-input" type="checkbox" id="tricount-{{ expense.id }}" name="include_tricount">
-                                                <label class="form-check-label" for="tricount-{{ expense.id }}">Tricount</label>
+                                                <label class="form-check-label" for="tricount-{{ expense.id }}">
+                                                    <span class="category-badge tricount">Emily</span>
+                                                </label>
                                             </div>
                                             
                                             <div class="form-check form-switch">
                                                 <input class="form-check-input" type="checkbox" id="professional-{{ expense.id }}" name="is_professional">
-                                                <label class="form-check-label" for="professional-{{ expense.id }}">Pro</label>
+                                                <label class="form-check-label" for="professional-{{ expense.id }}">
+                                                    <span class="category-badge professional">Pro</span>
+                                                </label>
                                             </div>
                                         </div>
                                         
@@ -148,4 +159,16 @@
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/tricount/categorize.js') }}"></script>
+<script>
+    // Données de catégories pour le filtrage
+    window.categoryData = {
+        {% for category in categories %}
+        "{{ category.id }}": {
+            forMe: {{ category.for_me|lower }},
+            includeInTricount: {{ category.include_in_tricount|lower }},
+            isProfessional: {{ category.is_professional|lower }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+</script>
 {% endblock %}

@@ -339,11 +339,35 @@ document.addEventListener('DOMContentLoaded', function() {
         similarExpensesContainer.appendChild(message);
     }
     
-    // Gestion du lien entre catégorie et options Tricount/Pro
+    // Gestion du lien entre catégorie et options de type
     const categorySelect = document.getElementById('category-id');
+    const forMeCheckbox = document.getElementById('for-me');
     const tricountCheckbox = document.getElementById('include-tricount');
     const professionalCheckbox = document.getElementById('is-professional');
-    
+        
+    // Assurer qu'un seul flag est actif à la fois
+    function ensureOnlyOneActive() {
+        if (this === forMeCheckbox && this.checked) {
+            tricountCheckbox.checked = false;
+            professionalCheckbox.checked = false;
+        } else if (this === tricountCheckbox && this.checked) {
+            forMeCheckbox.checked = false;
+            professionalCheckbox.checked = false;
+        } else if (this === professionalCheckbox && this.checked) {
+            forMeCheckbox.checked = false;
+            tricountCheckbox.checked = false;
+        }
+        
+        // S'assurer qu'au moins un est coché
+        if (!forMeCheckbox.checked && !tricountCheckbox.checked && !professionalCheckbox.checked) {
+            forMeCheckbox.checked = true; // Par défaut
+        }
+    }
+
+    if (forMeCheckbox) forMeCheckbox.addEventListener('change', ensureOnlyOneActive);
+    if (tricountCheckbox) tricountCheckbox.addEventListener('change', ensureOnlyOneActive);
+    if (professionalCheckbox) professionalCheckbox.addEventListener('change', ensureOnlyOneActive);
+
     if (categorySelect) {
         categorySelect.addEventListener('change', function() {
             const categoryId = this.value;
@@ -354,8 +378,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        if (tricountCheckbox) tricountCheckbox.checked = data.include_in_tricount;
-                        if (professionalCheckbox) professionalCheckbox.checked = data.is_professional;
+                        // By default, follow the category's primary purpose
+                        const hasForMe = data.for_me;
+                        const hasTricount = data.include_in_tricount;
+                        const hasProfessional = data.is_professional;
+                        
+                        // Set checkboxes based on priority: Pro > Tricount > For Me
+                        if (hasProfessional) {
+                            if (professionalCheckbox) professionalCheckbox.checked = true;
+                            if (forMeCheckbox) forMeCheckbox.checked = false;
+                            if (tricountCheckbox) tricountCheckbox.checked = false;
+                        } else if (hasTricount) {
+                            if (tricountCheckbox) tricountCheckbox.checked = true;
+                            if (forMeCheckbox) forMeCheckbox.checked = false;
+                            if (professionalCheckbox) professionalCheckbox.checked = false;
+                        } else if (hasForMe) {
+                            if (forMeCheckbox) forMeCheckbox.checked = true;
+                            if (tricountCheckbox) tricountCheckbox.checked = false;
+                            if (professionalCheckbox) professionalCheckbox.checked = false;
+                        } else {
+                            // Default to "for me" if nothing is specified
+                            if (forMeCheckbox) forMeCheckbox.checked = true;
+                            if (tricountCheckbox) tricountCheckbox.checked = false;
+                            if (professionalCheckbox) professionalCheckbox.checked = false;
+                        }
                     }
                 })
                 .catch(error => console.error('Error:', error));
