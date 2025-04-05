@@ -86,6 +86,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Fonction pour obtenir les filtres actuels
     function getFilters() {
+        // Le titre de la règle ne doit pas influer sur le filtrage des dépenses
         return {
             merchant_contains: merchantContains ? merchantContains.value : '',
             description_contains: descriptionContains ? descriptionContains.value : '',

@@ -3,7 +3,7 @@
 {% block title %}QB Tools - Auto-catégorisation{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/main.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/auto_categorize.css') }}">
 {% endblock %}
 
@@ -149,13 +149,16 @@
                 <div class="card-header">
                     <div class="d-flex justify-content-between align-items-center">
                         <h3 class="card-title">Dépenses similaires trouvées</h3>
-                        <span class="badge bg-primary" id="expenses-count">{{ similar_expenses|length }}</span>
                         
-                        <!-- Bouton pour rafraîchir manuellement la liste -->
-                        <button type="button" class="btn btn-sm btn-outline-primary refresh-button" id="refresh-similar-expenses">
-                            <i class="fas fa-sync-alt"></i>
-                            <span class="badge bg-danger d-none notification-badge" id="refresh-needed-badge">!</span>
-                        </button>
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-primary" id="expenses-count">{{ similar_expenses|length }}</span>
+                            
+                            <!-- Bouton pour rafraîchir manuellement la liste -->
+                            <button type="button" class="btn btn-sm btn-outline-primary refresh-button" id="refresh-similar-expenses">
+                                <i class="fas fa-sync-alt"></i>
+                                <span class="badge bg-danger d-none notification-badge" id="refresh-needed-badge">!</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div class="card-body">
