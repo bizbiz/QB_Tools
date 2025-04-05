@@ -74,21 +74,23 @@ function sortTableByColumn(table, colIndex, direction) {
     const tbody = table.querySelector('tbody');
     const rows = Array.from(tbody.rows);
     
-    // Créer un collator pour le tri de texte qui respecte les règles linguistiques
-    const collator = new Intl.Collator(undefined, { 
-        sensitivity: 'base',    // Insensible à la casse et aux accents
-        numeric: true,          // Pour que "10" vienne après "2"
-        usage: 'sort'           // Optimisé pour le tri
+    // Ajouter un data-sort-value aux cellules pour le tri des caractères accentués
+    rows.forEach(row => {
+        const cell = row.cells[colIndex];
+        if (cell && dataType === 'text') {
+            const text = cell.textContent.trim();
+            // Stocker la valeur de tri normalisée
+            cell.dataset.sortValue = getSortValue(text);
+        }
     });
     
+    // Trier les lignes
     rows.sort((rowA, rowB) => {
-        // Extraire les valeurs des cellules
         const cellA = rowA.cells[colIndex];
         const cellB = rowB.cells[colIndex];
         
         if (!cellA || !cellB) return 0;
         
-        // Comparer selon le type de données
         let comparison = 0;
         
         if (dataType === 'number') {
@@ -104,10 +106,10 @@ function sortTableByColumn(table, colIndex, direction) {
             comparison = dateA - dateB;
         } 
         else {
-            // Traiter le texte avec le collator pour un tri correct des accents
-            const textA = getCellTextContent(cellA);
-            const textB = getCellTextContent(cellB);
-            comparison = collator.compare(textA, textB);
+            // Utiliser les valeurs de tri précalculées pour le texte
+            const textA = cellA.dataset.sortValue || getSortValue(cellA.textContent.trim());
+            const textB = cellB.dataset.sortValue || getSortValue(cellB.textContent.trim());
+            comparison = textA.localeCompare(textB);
         }
         
         // Inverser pour le tri descendant
@@ -119,21 +121,40 @@ function sortTableByColumn(table, colIndex, direction) {
 }
 
 /**
- * Extrait le contenu textuel d'une cellule, même si elle contient des éléments HTML
- * @param {HTMLElement} cell - Cellule de tableau
- * @returns {string} - Contenu textuel
+ * Obtient une valeur de tri pour le texte en traitant les caractères spéciaux
+ * @param {string} text - Texte à normaliser
+ * @returns {string} - Valeur de tri
  */
-function getCellTextContent(cell) {
-    // Pour les cellules avec des badges ou autres éléments HTML
-    let text = cell.textContent.trim();
+function getSortValue(text) {
+    if (!text) return '';
     
-    // Pour les cellules avec badges spécifiques
-    const badge = cell.querySelector('.badge, .category-badge, .flag-badge');
-    if (badge) {
-        text = badge.textContent.trim();
+    // Table de correspondance pour les caractères accentués et spéciaux
+    const charMap = {
+        'À': 'A', 'Á': 'A', 'Â': 'A', 'Ã': 'A', 'Ä': 'A', 'Å': 'A',
+        'à': 'a', 'á': 'a', 'â': 'a', 'ã': 'a', 'ä': 'a', 'å': 'a',
+        'Ç': 'C', 'ç': 'c',
+        'È': 'E', 'É': 'E', 'Ê': 'E', 'Ë': 'E',
+        'è': 'e', 'é': 'e', 'ê': 'e', 'ë': 'e',
+        'Ì': 'I', 'Í': 'I', 'Î': 'I', 'Ï': 'I',
+        'ì': 'i', 'í': 'i', 'î': 'i', 'ï': 'i',
+        'Ñ': 'N', 'ñ': 'n',
+        'Ò': 'O', 'Ó': 'O', 'Ô': 'O', 'Õ': 'O', 'Ö': 'O', 'Ø': 'O',
+        'ò': 'o', 'ó': 'o', 'ô': 'o', 'õ': 'o', 'ö': 'o', 'ø': 'o',
+        'Ù': 'U', 'Ú': 'U', 'Û': 'U', 'Ü': 'U',
+        'ù': 'u', 'ú': 'u', 'û': 'u', 'ü': 'u',
+        'Ý': 'Y', 'ý': 'y', 'ÿ': 'y',
+        'Œ': 'OE', 'œ': 'oe'
+    };
+    
+    // Remplacer les caractères accentués par leurs équivalents sans accent
+    let normalizedText = '';
+    for (let i = 0; i < text.length; i++) {
+        const char = text.charAt(i);
+        normalizedText += charMap[char] || char;
     }
     
-    return text;
+    // Convertir en minuscules pour un tri insensible à la casse
+    return normalizedText.toLowerCase();
 }
 
 /**
