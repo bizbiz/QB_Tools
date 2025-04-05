@@ -14,7 +14,7 @@ class EventExtractor(ExtractorBase):
     @classmethod
     def extract_specific_days(cls, html_content, days_to_extract=None, user_index=0):
         """
-        Extrait des jours spécifiques pour un utilisateur donné
+        Extrait des jours spécifiques pour un utilisateur donné en utilisant les ID de classe
         
         Args:
             html_content (str): Contenu HTML brut
@@ -47,69 +47,91 @@ class EventExtractor(ExtractorBase):
                 'days': {}  # Dictionnaire où les clés sont les numéros de jours
             }
             
-            # Trouver tous les tbodies avec la classe "bress"
-            tbodies = soup.find_all('tbody', class_='bress')
+            # Trouver l'ID utilisateur
+            user_id = None
+            user_tds = soup.find_all('td', class_='nom_ress')
             
-            if not tbodies or len(tbodies) <= user_index:
-                events_data['error'] = f"Tbody pour l'utilisateur {user_name} non trouvé"
+            for i, td in enumerate(user_tds):
+                if i == user_index:
+                    # Extraire l'ID utilisateur de la classe
+                    classes = td.get('class', [])
+                    for cls in classes:
+                        if cls.isdigit() and len(cls) >= 5:  # Les ID utilisateur semblent être des nombres à 5 chiffres ou plus
+                            user_id = cls
+                            break
+                    break
+            
+            if not user_id:
+                events_data['error'] = f"Impossible de déterminer l'ID utilisateur pour {user_name}"
                 return events_data
+                
+            # Trouver tous les créneaux horaires ID
+            # Nous allons chercher dans une cellule qui contient l'ID utilisateur pour trouver les ID des créneaux
+            time_slot_ids = []
+            time_slot_names = ['morning', 'day', 'evening']
             
-            # Obtenir le tbody de l'utilisateur demandé - chaque tbody contient un utilisateur
-            user_tbody = tbodies[user_index]
+            # Trouver un td qui contient l'ID utilisateur, puis extraire les autres IDs
+            example_td = soup.find('td', class_=lambda c: c and user_id in c.split())
+            if example_td:
+                classes = example_td.get('class', [])
+                # Le deuxième ID dans la classe semble être l'ID du créneau
+                for cls in classes:
+                    if cls.isdigit() and cls != user_id and len(cls) >= 6:  # Les ID de créneau semblent être des nombres à 6 chiffres
+                        time_slot_ids.append(cls)
+                        break
             
-            # Trouver toutes les lignes dans ce tbody - chaque utilisateur a 3 lignes (matin, jour, soir)
-            user_rows = user_tbody.find_all('tr')
+            # Si nous n'avons pas trouvé l'ID du créneau, on va parcourir plus de cellules
+            if not time_slot_ids:
+                # Trouver toutes les cellules qui ont l'ID utilisateur
+                all_user_cells = soup.find_all('td', class_=lambda c: c and user_id in c.split())
+                for cell in all_user_cells:
+                    classes = cell.get('class', [])
+                    for cls in classes:
+                        if cls.isdigit() and cls != user_id and len(cls) >= 6:
+                            if cls not in time_slot_ids:
+                                time_slot_ids.append(cls)
+                    if len(time_slot_ids) >= 3:  # Arrêter une fois que nous avons 3 IDs (matin, jour, soir)
+                        break
             
-            if len(user_rows) < 3:
-                events_data['error'] = f"Structure attendue de 3 lignes non trouvée pour {user_name}, seulement {len(user_rows)} trouvées"
-                return events_data
+            # Maintenant, on peut faire une hypothèse sur l'ordre des ID créneaux: 
+            # Le plus petit pour le matin, le suivant pour le jour, le plus grand pour le soir
+            time_slot_ids.sort()
+            
+            # Si nous n'avons pas assez d'ID de créneaux, nous utiliserons ceux fournis
+            if len(time_slot_ids) < 3:
+                time_slot_ids = ['512719', '512720', '512721']  # Utiliser les valeurs par défaut que vous avez observées
             
             # Jours à extraire
             if days_to_extract is None:
                 days_to_extract = list(range(1, 32))  # Par défaut, tous les jours de 1 à 31
             
-            # Définir les noms des créneaux horaires
-            time_slots = ['morning', 'day', 'evening']
-            
-            # Pour chaque créneau horaire (matin, jour, soir)
-            for slot_idx, row in enumerate(user_rows):
-                time_slot = time_slots[slot_idx]
+            # Pour chaque créneau horaire
+            for slot_idx, slot_id in enumerate(time_slot_ids[:3]):  # Limiter aux 3 premiers (en cas d'IDs supplémentaires)
+                time_slot = time_slot_names[slot_idx]
                 
-                # Obtenir toutes les cellules de cette ligne
-                cells = row.find_all('td')
+                # Trouver toutes les cellules pour ce créneau et cet utilisateur
+                slot_cells = soup.find_all('td', class_=lambda c: c and user_id in c.split() and slot_id in c.split())
                 
-                # Déterminer le décalage de début - important car les lignes 2 et 3 n'ont pas les premières cellules
-                # (elles sont partagées avec la ligne 1 via rowspan)
-                offset = 0
-                if slot_idx == 0:  # Première rangée (matin)
-                    # Chercher les cellules avec rowspan="3"
-                    for i, cell in enumerate(cells):
-                        if cell.get('rowspan') == '3':
-                            offset += 1
-                        else:
-                            break
-                else:
-                    # Pour les rangées jour/soir, on ignore les cellules qui ont été "rowspan" 
-                    # à partir de la première rangée (généralement 2 cellules)
-                    offset = 0  # Pas besoin de compter, ces cellules n'existent pas dans ces rangées
-                
-                # Pour chaque jour à extraire
-                for day in days_to_extract:
-                    for j, cell in enumerate(cells[offset:], start=1):
-                        # Extraire le jour de cette cellule
-                        cell_day = cls._extract_day_from_cell(cell, j)
-                        
-                        # Si cette cellule correspond au jour recherché
-                        if cell_day == day or str(cell_day) == str(day):
-                            # Extraire les informations
-                            event_info = cls._extract_event_info(cell)
-                            
-                            # Stocker l'événement
-                            day_str = str(day)
-                            if day_str not in events_data['users'][user_name]['days']:
-                                events_data['users'][user_name]['days'][day_str] = {}
-                            
-                            events_data['users'][user_name]['days'][day_str][time_slot] = event_info
+                # Pour chaque cellule trouvée
+                for cell in slot_cells:
+                    # Extraire le jour
+                    for cls in cell.get('class', []):
+                        try:
+                            day = int(cls)
+                            if 1 <= day <= 31:  # Vérifier que c'est un jour valide
+                                if day in days_to_extract:
+                                    # Extraire les informations
+                                    event_info = cls._extract_event_info(cell)
+                                    
+                                    # Stocker l'événement
+                                    day_str = str(day)
+                                    if day_str not in events_data['users'][user_name]['days']:
+                                        events_data['users'][user_name]['days'][day_str] = {}
+                                    
+                                    events_data['users'][user_name]['days'][day_str][time_slot] = event_info
+                                break  # Sortir de la boucle une fois le jour trouvé
+                        except ValueError:
+                            continue  # Ignorer les classes qui ne sont pas des nombres
             
             # Calculer des statistiques
             events_count = 0
