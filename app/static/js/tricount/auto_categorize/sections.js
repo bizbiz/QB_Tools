@@ -41,35 +41,32 @@ AutoCategorize.initActionSections = function() {
      * @param {HTMLElement} section - Section à activer/désactiver
      */
     function updateSectionState(toggle, section) {
-        // Récupérer tous les champs d'entrée dans la section, sauf les checkboxes
-        const inputs = section.querySelectorAll('input:not([type="checkbox"]), select, textarea');
+        // On cible uniquement le contenu de la section, pas son en-tête
+        const sectionContent = section.querySelector('.section-content');
+        const inputs = section.querySelectorAll('.section-content input, .section-content select, .section-content textarea');
         
         if (toggle.checked) {
             // Activer la section
+            if (sectionContent) {
+                sectionContent.classList.remove('disabled');
+            }
             section.classList.remove('disabled-section');
             
             // Activer tous les champs d'entrée
             inputs.forEach(input => {
                 input.disabled = false;
             });
-            
-            // Afficher la section si c'est la section de renommage
-            if (section.id === 'rename-section') {
-                section.style.display = 'block';
-            }
         } else {
             // Désactiver la section
+            if (sectionContent) {
+                sectionContent.classList.add('disabled');
+            }
             section.classList.add('disabled-section');
             
             // Désactiver tous les champs d'entrée
             inputs.forEach(input => {
                 input.disabled = true;
             });
-            
-            // Masquer la section si c'est la section de renommage
-            if (section.id === 'rename-section') {
-                section.style.display = 'none';
-            }
         }
         
         // Signaler un changement dans le formulaire

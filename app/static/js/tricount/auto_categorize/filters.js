@@ -68,6 +68,14 @@ AutoCategorize.initFilters = function() {
     
     // Sauvegarder les filtres initiaux
     AutoCategorize.saveCurrentFilters();
+    
+    // Rafraîchir automatiquement au chargement pour prendre en compte tous les filtres
+    // y compris la description qui pourrait être ignorée au chargement initial
+    setTimeout(function() {
+        if (typeof AutoCategorize.UI !== 'undefined' && typeof AutoCategorize.UI.refreshSimilarExpenses === 'function') {
+            AutoCategorize.UI.refreshSimilarExpenses();
+        }
+    }, 500);
 };
 
 /**
