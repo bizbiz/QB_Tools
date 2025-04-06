@@ -5,6 +5,7 @@ from app.routes.tricount import tricount_bp
 from app.extensions import db
 from app.models.tricount import AutoCategorizationRule, Expense, Category, Flag
 from app.services.tricount.auto_categorization import AutoCategorizationService
+from datetime import datetime
 
 @tricount_bp.route('/auto-rules')
 def auto_rules_list():
@@ -206,33 +207,47 @@ def find_similar_expenses():
     min_amount = data.get('min_amount')
     max_amount = data.get('max_amount')
     
-    # Valider les données essentielles
-    if not expense_id:
-        print("Erreur: ID de dépense manquant")
+    # Mode spécial pour l'édition de règle (pas de dépense réelle)
+    is_edit_mode = expense_id and int(expense_id) > 1000000  # Un ID très grand est probablement notre ID virtuel
+    
+    if not expense_id and not merchant_contains:
+        print("Erreur: Ni ID de dépense ni marchand fournis")
         return jsonify({
             'success': False,
-            'error': 'ID de dépense manquant'
+            'error': 'Critères de recherche insuffisants'
         }), 400
     
-    # Récupérer l'expense de base
-    try:
-        base_expense = Expense.query.get(expense_id)
-        if not base_expense:
-            print(f"Erreur: Dépense {expense_id} non trouvée")
+    # En mode édition, on n'a pas besoin de récupérer une dépense de base
+    if not is_edit_mode and not merchant_contains:
+        try:
+            base_expense = Expense.query.get(expense_id)
+            if not base_expense:
+                print(f"Erreur: Dépense {expense_id} non trouvée")
+                return jsonify({
+                    'success': False,
+                    'error': f'Dépense {expense_id} non trouvée'
+                }), 404
+            
+            # Utiliser le marchand de la dépense si non spécifié
+            if not merchant_contains:
+                merchant_contains = base_expense.merchant
+                
+        except Exception as e:
+            print(f"Erreur lors de la récupération de la dépense: {str(e)}")
             return jsonify({
                 'success': False,
-                'error': f'Dépense {expense_id} non trouvée'
-            }), 404
-    except Exception as e:
-        print(f"Erreur lors de la récupération de la dépense: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': f'Erreur lors de la récupération de la dépense: {str(e)}'
-        }), 500
+                'error': f'Erreur lors de la récupération de la dépense: {str(e)}'
+            }), 500
     
     # Rechercher des dépenses similaires
     try:
-        query = Expense.query.filter(Expense.id != expense_id)
+        # Point de départ de la requête
+        # Si on est en mode édition ou qu'on a fourni un merchant_contains, 
+        # ne pas filtrer sur l'ID de dépense
+        if is_edit_mode or merchant_contains:
+            query = Expense.query
+        else:
+            query = Expense.query.filter(Expense.id != expense_id)
         
         print(f"Filtres appliqués: merchant_contains='{merchant_contains}', "
               f"description_contains='{description_contains}', "
@@ -278,12 +293,33 @@ def find_similar_expenses():
             }
             
             # Vérifier si la dépense est déjà associée à une règle
-            applied_rule = expense.applied_rules.first()
-            if applied_rule:
-                expense_data['conflict'] = {
-                    'rule_id': applied_rule.id,
-                    'rule_name': applied_rule.name
-                }
+            applied_rules = list(expense.applied_rules)
+            if applied_rules:
+                # Récupérer le paramètre current_rule_id (si fourni)
+                current_rule_id = data.get('current_rule_id')
+                
+                # Si on est en mode édition (current_rule_id fourni)
+                if current_rule_id is not None:
+                    # Vérifier si la règle associée est différente de celle en cours d'édition
+                    if any(rule.id != int(current_rule_id) for rule in applied_rules):
+                        # Trouver la première règle qui n'est pas celle en cours d'édition
+                        conflict_rule = next((rule for rule in applied_rules if rule.id != int(current_rule_id)), None)
+                        
+                        if conflict_rule:
+                            expense_data['conflict'] = {
+                                'rule_id': conflict_rule.id,
+                                'rule_name': conflict_rule.name
+                            }
+                    else:
+                        # La dépense est associée uniquement à la règle en cours d'édition
+                        expense_data['current_rule'] = True
+                else:
+                    # Mode création - tout simplement marquer comme conflit
+                    applied_rule = applied_rules[0]
+                    expense_data['conflict'] = {
+                        'rule_id': applied_rule.id,
+                        'rule_name': applied_rule.name
+                    }
             
             expenses_data.append(expense_data)
         
@@ -345,10 +381,39 @@ def edit_auto_rule(rule_id):
     categories = Category.query.all()
     flags = Flag.query.all()
     
+    # Exemple de marchand pour la prévisualisation du renommage
+    example_merchant = rule.merchant_contains
+    
+    # Créer une dépense virtuelle basée sur les critères de la règle pour rechercher des dépenses similaires
+    virtual_expense = Expense(
+        id=-1,  # ID négatif pour être sûr de ne pas avoir de collision
+        merchant=rule.merchant_contains,
+        description=rule.description_contains or "",
+        amount=0,  # Valeur par défaut
+        date=datetime.utcnow(),  # Date actuelle
+        is_debit=True  # Par défaut, c'est une dépense
+    )
+    
+    # Trouver des dépenses similaires en utilisant les critères de la règle
+    filters = {
+        'merchant_contains': rule.merchant_contains,
+        'description_contains': rule.description_contains,
+        'min_amount': float(rule.min_amount) if rule.min_amount else None,
+        'max_amount': float(rule.max_amount) if rule.max_amount else None
+    }
+    
+    similar_expenses = AutoCategorizationService.find_similar_expenses(virtual_expense, filters)
+    
+    # ID unique pour cette requête (pour le JavaScript)
+    virtual_expense_id = abs(hash(rule.merchant_contains + str(datetime.utcnow().timestamp())))
+    
     return render_template('tricount/edit_auto_rule.html',
-                          rule=rule,
-                          categories=categories,
-                          flags=flags)
+                           rule=rule,
+                           categories=categories,
+                           flags=flags,
+                           example_merchant=example_merchant,
+                           similar_expenses=similar_expenses,
+                           virtual_expense_id=virtual_expense_id)
 
 @tricount_bp.route('/expense-rule-conflict/<int:expense_id>')
 def expense_rule_conflict(expense_id):
