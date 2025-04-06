@@ -349,6 +349,7 @@
 {% endblock %}
 
 {% block extra_js %}
+{% block extra_js %}
 <script>
     // Données des flags pour l'affichage et la manipulation en JavaScript
     window.flagData = {
@@ -379,12 +380,20 @@
     };
 </script>
 
-<!-- Inclure tous les scripts nécessaires dans le bon ordre -->
-<script src="{{ url_for('static', filename='js/tricount/auto_categorize/ui.js') }}"></script>
+<!-- Inclure les scripts dans le bon ordre -->
+<!-- 1. Fichier de base qui initialise les structures -->
+<script src="{{ url_for('static', filename='js/tricount/auto_categorize/base.js') }}"></script>
+
+<!-- 2. Modules de base -->
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/filters.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/categories.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/sections.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/rename.js') }}"></script>
+
+<!-- 3. Modules UI et validation -->
+<script src="{{ url_for('static', filename='js/tricount/auto_categorize/ui.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/validation.js') }}"></script>
+
+<!-- 4. Module principal qui initialise tout -->
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/core.js') }}"></script>
 {% endblock %}
