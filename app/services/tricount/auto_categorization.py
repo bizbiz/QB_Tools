@@ -188,3 +188,64 @@ class AutoCategorizationService:
         db.session.commit()
         
         return count
+
+    @staticmethod
+    def find_conflicting_rules(rule_data, expense_id=None):
+        """
+        Trouve les règles existantes qui entreraient en conflit avec une nouvelle règle
+        
+        Args:
+            rule_data (dict): Données de la nouvelle règle
+            expense_id (int, optional): ID de la dépense utilisée pour créer la règle
+            
+        Returns:
+            list: Liste des règles qui entreraient en conflit avec la nouvelle règle
+        """
+        # Créer une instance temporaire pour les vérifications
+        temp_rule = AutoCategorizationRule(
+            name="Règle temporaire",
+            merchant_contains=rule_data.get('merchant_contains', ''),
+            description_contains=rule_data.get('description_contains', ''),
+            min_amount=rule_data.get('min_amount'),
+            max_amount=rule_data.get('max_amount'),
+            frequency_type=rule_data.get('frequency_type'),
+            frequency_day=rule_data.get('frequency_day')
+        )
+        
+        # Récupérer toutes les dépenses non catégorisées
+        uncategorized_expenses = Expense.query.filter_by(category_id=None).all()
+        
+        # Trouver les dépenses qui correspondraient à cette règle
+        matching_expenses = []
+        for expense in uncategorized_expenses:
+            if expense.id != expense_id and temp_rule.matches_expense(expense):
+                matching_expenses.append(expense)
+        
+        # Si aucune dépense ne correspond, il n'y a pas de conflit
+        if not matching_expenses:
+            return []
+        
+        # Trouver les règles existantes qui correspondent à ces dépenses
+        conflicts = []
+        existing_rules = AutoCategorizationRule.query.all()
+        
+        for rule in existing_rules:
+            # Ignorer les règles avec la même destination (catégorie et flag)
+            if (rule.category_id == rule_data.get('category_id') and 
+                rule.flag_id == rule_data.get('flag_id')):
+                continue
+                
+            # Vérifier chaque dépense pour un conflit
+            conflict_expenses = []
+            for expense in matching_expenses:
+                if rule.matches_expense(expense):
+                    conflict_expenses.append(expense)
+                    
+            # S'il y a des dépenses en conflit, ajouter à la liste des conflits
+            if conflict_expenses:
+                conflicts.append({
+                    'rule': rule,
+                    'expenses': conflict_expenses
+                })
+        
+        return conflicts

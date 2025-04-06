@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}QB Tools - Modifier une règle d'auto-catégorisation{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/main.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/auto_categorize.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('tricount.index') }}">Tricount Helper</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('tricount.auto_rules_list') }}">Règles d'auto-catégorisation</a></li>
+                    <li class="breadcrumb-item active">Modifier une règle</li>
+                </ol>
+            </nav>
+            
+            <h1>Modifier une règle d'auto-catégorisation</h1>
+            <p class="lead">Modifiez les paramètres de la règle "{{ rule.name }}"</p>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h3 class="card-title">Configuration de la règle</h3>
+                </div>
+                <div class="card-body">
+                    <form id="rule-form" action="{{ url_for('tricount.edit_auto_rule', rule_id=rule.id) }}" method="POST">
+                        <div class="mb-3">
+                            <label for="rule-name" class="form-label">Nom de la règle</label>
+                            <input type="text" class="form-control rule-input" id="rule-name" name="rule_name" value="{{ rule.name }}">
+                        </div>
+                        
+                        <h4 class="mt-4">Filtres</h4>
+                        
+                        <div class="mb-3">
+                            <label for="merchant-contains" class="form-label">Le marchand contient</label>
+                            <input type="text" class="form-control rule-input" id="merchant-contains" name="merchant_contains" value="{{ rule.merchant_contains }}">
+                            <div class="form-text">Cette règle s'appliquera aux dépenses dont le nom du marchand contient ce texte.</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="description-contains" class="form-label">La description contient (optionnel)</label>
+                            <input type="text" class="form-control rule-input" id="description-contains" name="description_contains" value="{{ rule.description_contains or '' }}">
+                            <div class="form-text">Vous pouvez ajouter une condition sur la description pour être plus précis.</div>
+                        </div>
+                        
+                        <h4 class="mt-4">Filtres de montant (optionnel)</h4>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="min-amount" class="form-label">Montant minimum</label>
+                                <div class="input-group">
+                                    <input type="number" step="0.01" min="0" class="form-control rule-input" id="min-amount" name="min_amount" value="{{ "%.2f"|format(rule.min_amount) if rule.min_amount else '' }}">
+                                    <span class="input-group-text">€</span>
+                                </div>
+                                <div class="form-text">Filtre les dépenses dont le montant est supérieur ou égal à cette valeur</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="max-amount" class="form-label">Montant maximum</label>
+                                <div class="input-group">
+                                    <input type="number" step="0.01" min="0" class="form-control rule-input" id="max-amount" name="max_amount" value="{{ "%.2f"|format(rule.max_amount) if rule.max_amount else '' }}">
+                                    <span class="input-group-text">€</span>
+                                </div>
+                                <div class="form-text">Filtre les dépenses dont le montant est inférieur ou égal à cette valeur</div>
+                            </div>
+                        </div>
+                        
+                        <h4 class="mt-4">Fréquence (optionnel)</h4>
+                        
+                        <div class="mb-3">
+                            <label for="frequency-type" class="form-label">Type de fréquence</label>
+                            <select class="form-select rule-input" id="frequency-type" name="frequency_type">
+                                <option value="none" {% if not rule.frequency_type %}selected{% endif %}>Aucune (toutes les occurrences)</option>
+                                <option value="monthly" {% if rule.frequency_type == 'monthly' %}selected{% endif %}>Mensuelle (même jour chaque mois)</option>
+                                <option value="weekly" {% if rule.frequency_type == 'weekly' %}selected{% endif %}>Hebdomadaire (même jour chaque semaine)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3" id="frequency-day-container" {% if not rule.frequency_type %}style="display: none;"{% endif %}>
+                            <label for="frequency-day" class="form-label">Jour</label>
+                            <input type="number" class="form-control rule-input" id="frequency-day" name="frequency_day" value="{{ rule.frequency_day or '' }}">
+                            <div class="form-text" id="frequency-day-help">
+                                {% if rule.frequency_type == 'monthly' %}
+                                    Jour du mois (1-31) pour la fréquence mensuelle.
+                                {% elif rule.frequency_type == 'weekly' %}
+                                    Jour de la semaine (0=Lundi, 6=Dimanche) pour la fréquence hebdomadaire.
+                                {% else %}
+                                    Jour du mois (1-31) pour la fréquence mensuelle.
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <h4 class="mt-4">Catégorisation</h4>
+                        
+                        <div class="mb-3">
+                            <label for="flag-id" class="form-label">Type de dépense</label>
+                            <select class="form-select rule-input" id="flag-id" name="flag_id" required>
+                                <option value="">Choisir un type de dépense</option>
+                                {% for flag in flags %}
+                                <option value="{{ flag.id }}" {% if rule.flag_id == flag.id %}selected{% endif %}>
+                                    {{ flag.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="mt-2">
+                                <div id="flag-preview" class="d-flex align-items-center mt-2">
+                                    <!-- Prévisualisation du flag sélectionné sera insérée ici par JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="category-id" class="form-label">Catégorie</label>
+                            <select class="form-select rule-input" id="category-id" name="category_id" required>
+                                <option value="">Choisir une catégorie</option>
+                                {% for category in categories|sort(attribute='name') %}
+                                <option value="{{ category.id }}" {% if rule.category_id == category.id %}selected{% endif %}>{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input rule-input" type="checkbox" id="requires-confirmation" name="requires_confirmation" {% if rule.requires_confirmation %}checked{% endif %} value="true">
+                                <label class="form-check-label" for="requires-confirmation">
+                                    Nécessite une confirmation avant application
+                                </label>
+                                <div class="form-text">Si activé, la règle ne sera pas appliquée automatiquement aux nouvelles dépenses et nécessitera une confirmation manuelle.</div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Enregistrer les modifications
+                            </button>
+                            <a href="{{ url_for('tricount.auto_rules_list') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Retour
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Données des flags pour l'affichage et la manipulation en JavaScript
+    window.flagData = {
+        {% for flag in flags %}
+        "{{ flag.id }}": {
+            name: "{{ flag.name }}",
+            color: "{{ flag.color }}",
+            icon: "{{ flag.icon }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+    
+    // Information sur les catégories et les flags associés
+    window.categoryData = {
+        {% for category in categories %}
+        "{{ category.id }}": {
+            name: "{{ category.name }}",
+            flagIds: [{% for flag in category.flags %}{{ flag.id }}{% if not loop.last %},{% endif %}{% endfor %}]
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+</script>
+
+<!-- Fichiers JavaScript -->
+<script src="{{ url_for('static', filename='js/tricount/auto_categorize/core.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tricount/auto_categorize/filters.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tricount/auto_categorize/categories.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tricount/auto_categorize/frequency.js') }}"></script>
+{% endblock %}

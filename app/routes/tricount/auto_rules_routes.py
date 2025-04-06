@@ -231,3 +231,85 @@ def detect_frequency():
         'success': True,
         'frequency': frequency_info
     })
+
+@tricount_bp.route('/check-rule-conflicts', methods=['POST'])
+def check_rule_conflicts():
+    """Vérifie si une règle d'auto-catégorisation entrerait en conflit avec des règles existantes"""
+    rule_data = request.json
+    expense_id = rule_data.get('expense_id')
+    
+    conflicts = AutoCategorizationService.find_conflicting_rules(rule_data, expense_id)
+    
+    # Préparer les données de conflit pour la réponse JSON
+    conflict_data = []
+    for conflict in conflicts:
+        rule = conflict['rule']
+        expenses = conflict['expenses']
+        expenses_data = []
+        
+        for expense in expenses:
+            expenses_data.append({
+                'id': expense.id,
+                'date': expense.date.strftime('%d/%m/%Y'),
+                'merchant': expense.merchant,
+                'amount': float(expense.amount),
+                'is_debit': expense.is_debit
+            })
+        
+        conflict_data.append({
+            'rule': {
+                'id': rule.id,
+                'name': rule.name,
+                'merchant_contains': rule.merchant_contains,
+                'description_contains': rule.description_contains,
+                'min_amount': float(rule.min_amount) if rule.min_amount else None,
+                'max_amount': float(rule.max_amount) if rule.max_amount else None,
+                'category_id': rule.category_id,
+                'category_name': rule.category.name if rule.category else None,
+                'flag_id': rule.flag_id,
+                'flag_name': rule.flag.name if rule.flag else None
+            },
+            'expenses': expenses_data
+        })
+    
+    return jsonify({
+        'success': True,
+        'conflicts': conflict_data,
+        'has_conflicts': len(conflict_data) > 0
+    })
+
+@tricount_bp.route('/auto-rules/edit/<int:rule_id>', methods=['GET', 'POST'])
+def edit_auto_rule(rule_id):
+    """Page pour éditer une règle d'auto-catégorisation existante"""
+    # Récupérer la règle
+    rule = AutoCategorizationRule.query.get_or_404(rule_id)
+    
+    if request.method == 'POST':
+        # Traiter le formulaire d'édition
+        rule.name = request.form.get('rule_name')
+        rule.merchant_contains = request.form.get('merchant_contains')
+        rule.description_contains = request.form.get('description_contains')
+        rule.frequency_type = request.form.get('frequency_type')
+        rule.frequency_day = request.form.get('frequency_day', type=int)
+        rule.category_id = request.form.get('category_id', type=int)
+        rule.flag_id = request.form.get('flag_id', type=int)
+        rule.min_amount = request.form.get('min_amount', type=float)
+        rule.max_amount = request.form.get('max_amount', type=float)
+        rule.requires_confirmation = 'requires_confirmation' in request.form
+        
+        try:
+            db.session.commit()
+            flash(f'Règle "{rule.name}" mise à jour avec succès.', 'success')
+            return redirect(url_for('tricount.auto_rules_list'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erreur lors de la mise à jour de la règle: {str(e)}', 'danger')
+    
+    # Récupérer toutes les catégories et flags pour le formulaire
+    categories = Category.query.all()
+    flags = Flag.query.all()
+    
+    return render_template('tricount/edit_auto_rule.html',
+                          rule=rule,
+                          categories=categories,
+                          flags=flags)

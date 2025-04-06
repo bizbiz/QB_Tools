@@ -15,22 +15,12 @@ document.addEventListener('DOMContentLoaded', function() {
     AutoCategorize.initFlagAndCategory();
     AutoCategorize.initFrequency();
     AutoCategorize.initFormChangeDetection();
+    AutoCategorize.initConflictDetection(); // Nouvelle ligne pour initialiser la détection des conflits
     
     // Bouton de rafraîchissement
     const refreshButton = document.getElementById('refresh-similar-expenses');
     if (refreshButton) {
         refreshButton.addEventListener('click', AutoCategorize.UI.refreshSimilarExpenses);
-    }
-    
-    // Initialisation du formulaire de sauvegarde
-    const ruleForm = document.getElementById('rule-form');
-    if (ruleForm) {
-        ruleForm.addEventListener('submit', function(event) {
-            // Valider le formulaire avant soumission
-            if (!validateRuleForm()) {
-                event.preventDefault();
-            }
-        });
     }
 });
 
