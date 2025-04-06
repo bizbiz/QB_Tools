@@ -3,6 +3,7 @@
 /**
  * Module de gestion des conflits entre règles d'auto-catégorisation
  * Vérifie si une règle en cours de création entrerait en conflit avec des règles existantes
+ * et gère l'affichage des conflits au niveau des dépenses
  */
 
 // Assurer que l'objet global existe
@@ -32,6 +33,111 @@ AutoCategorize.initConflictDetection = function() {
             }
         });
     }
+    
+    // Initialiser les conflits au niveau des dépenses
+    AutoCategorize.initConflicts();
+};
+
+/**
+ * Initialise les badges de conflit sur les dépenses
+ */
+AutoCategorize.initConflicts = function() {
+    // Initialiser les tooltips pour les badges de conflit
+    const conflictBadges = document.querySelectorAll('.conflict-badge');
+    conflictBadges.forEach(badge => {
+        new bootstrap.Tooltip(badge);
+        
+        // Ajouter l'événement de clic pour afficher le détail du conflit
+        badge.addEventListener('click', function(e) {
+            e.preventDefault();
+            const row = this.closest('tr');
+            const expenseId = row.dataset.expenseId;
+            
+            AutoCategorize.showConflictDetails(expenseId);
+        });
+    });
+    
+    // Mettre à jour le compteur de conflits
+    const conflictCount = document.getElementById('conflict-count');
+    if (conflictCount && conflictBadges.length > 0) {
+        conflictCount.textContent = conflictBadges.length;
+        conflictCount.classList.remove('d-none');
+    }
+};
+
+/**
+ * Affiche les détails d'un conflit pour une dépense spécifique
+ * @param {string} expenseId - ID de la dépense en conflit
+ */
+AutoCategorize.showConflictDetails = function(expenseId) {
+    // Récupérer les informations sur le conflit via API
+    fetch('/tricount/expense-rule-conflict/' + expenseId)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Remplir les détails de la règle
+                const ruleDetailsContainer = document.getElementById('conflict-rule-details');
+                if (ruleDetailsContainer) {
+                    let html = `
+                        <div class="card-header">
+                            <h5 class="card-title">${data.rule.name}</h5>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Filtres:</strong></p>
+                            <ul>
+                    `;
+                    
+                    if (data.rule.merchant_contains) {
+                        html += `<li>Marchand contient: ${data.rule.merchant_contains}</li>`;
+                    }
+                    
+                    if (data.rule.description_contains) {
+                        html += `<li>Description contient: ${data.rule.description_contains}</li>`;
+                    }
+                    
+                    html += `
+                            </ul>
+                            <p><strong>Actions:</strong></p>
+                            <ul>
+                    `;
+                    
+                    if (data.rule.apply_category) {
+                        html += `<li>Catégoriser en "${data.rule.category_name}"</li>`;
+                    }
+                    
+                    if (data.rule.apply_flag) {
+                        html += `<li>Appliquer le type "${data.rule.flag_name}"</li>`;
+                    }
+                    
+                    if (data.rule.apply_rename) {
+                        html += `<li>Renommer selon le motif "${data.rule.rename_pattern}"</li>`;
+                    }
+                    
+                    html += `
+                            </ul>
+                        </div>
+                    `;
+                    
+                    ruleDetailsContainer.innerHTML = html;
+                }
+                
+                // Configurer le bouton d'édition
+                const editButton = document.getElementById('edit-conflict-rule-btn');
+                if (editButton) {
+                    editButton.href = '/tricount/auto-rules/edit/' + data.rule.id;
+                }
+                
+                // Afficher la modal
+                const modal = new bootstrap.Modal(document.getElementById('conflict-detail-modal'));
+                modal.show();
+            } else {
+                alert('Erreur lors de la récupération des détails du conflit.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Erreur de communication avec le serveur.');
+        });
 };
 
 /**
@@ -110,7 +216,8 @@ AutoCategorize.getRuleData = function() {
         if (key === 'min_amount' || key === 'max_amount') {
             // Convertir les montants en nombres si présents
             ruleData[key] = value ? parseFloat(value) : null;
-        } else if (key === 'requires_confirmation' || key === 'apply_now') {
+        } else if (key === 'requires_confirmation' || key === 'apply_now' || 
+                   key === 'apply_category' || key === 'apply_flag' || key === 'apply_rename') {
             // Convertir les cases à cocher en booléens
             ruleData[key] = (value === 'true');
         } else {
@@ -243,10 +350,23 @@ AutoCategorize.Conflicts.showConflictModal = function(conflicts, newRuleData, co
                         </ul>
                     </div>
                     <div class="col-md-6">
-                        <p><strong>Catégorisation :</strong></p>
+                        <p><strong>Actions appliquées :</strong></p>
                         <ul>
-                            <li>Catégorie : ${ruleInfo.category_name || 'Non définie'}</li>
-                            <li>Type de dépense : ${ruleInfo.flag_name || 'Non défini'}</li>
+        `;
+        
+        if (ruleInfo.apply_category) {
+            cardContent += `<li>Catégoriser en "${ruleInfo.category_name || 'Non définie'}"</li>`;
+        }
+        
+        if (ruleInfo.apply_flag) {
+            cardContent += `<li>Appliquer le type "${ruleInfo.flag_name || 'Non défini'}"</li>`;
+        }
+        
+        if (ruleInfo.apply_rename) {
+            cardContent += `<li>Renommer selon le motif "${ruleInfo.rename_pattern || ''}"</li>`;
+        }
+        
+        cardContent += `
                         </ul>
                     </div>
                 </div>

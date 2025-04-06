@@ -58,3 +58,25 @@
     background-color: rgba(25, 135, 84, 0.1);
     font-weight: bold;
 }
+
+.disabled-section {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.rule-action-section {
+    transition: opacity 0.3s ease;
+    background-color: #f8f9fa;
+}
+
+.conflict-badge {
+    cursor: pointer;
+}
+
+/* Style pour l'aperçu de renommage */
+#rename-preview {
+    font-weight: bold;
+    padding: 0.25rem 0.5rem;
+    background-color: #f0f8ff;
+    border-radius: 4px;
+}

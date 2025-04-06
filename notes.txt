@@ -52,9 +52,9 @@ Cette commande crée les catégories par défaut dans la base de données.
 
 Pour étendre ce module, vous pouvez:
 
-. Ajouter de nouveaux parsers de relevés bancaires dans le dossier `app/services/tricount/`
-. Personnaliser les formats d'exportation dans `app/routes/tricount.py`
+
 . Vérifier que si on créé une auto rule qu'aucune dépense ne soit impactée par cette auto rule + une des autres déjà présente sinon on demande de préciser une des deux auto rule
+. modifier l'edition de l'auto categorisation pour afficher les résultats comme pour la création (fusionner les deux ? permet de passer des préselection a la regle d'ajout ?)
 . Les regles d'auto catégorisation n'appliquent pas les flags alors qu'ils le devraient
 . On peut rajouter un montant minimum ou maximum ou les deux pour les regles d'auto catégorisation
 . Il faut ajouter une page pour valider les dépenses qui ont été catch par des regles d'auto catégorisation
@@ -67,5 +67,8 @@ Pour étendre ce module, vous pouvez:
 . Il faut trier les listes de catégories par ordre alphabétique
 . Ici /tricount/auto-rules il faut ajouter les flags à la place des occurences
 . Ici le lien d'edition ne fonctionne pas : /tricount/expenses
+
+. Ajouter de nouveaux parsers de relevés bancaires dans le dossier `app/services/tricount/`
+. Personnaliser les formats d'exportation dans `app/routes/tricount.py`
 
 

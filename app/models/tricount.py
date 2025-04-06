@@ -90,12 +90,25 @@ class AutoCategorizationRule(db.Model):
     min_amount = db.Column(db.Numeric(10, 2))
     max_amount = db.Column(db.Numeric(10, 2))
     
+    # Fréquence
+    frequency_type = db.Column(db.String(20))  # monthly, weekly, yearly, etc.
+    frequency_day = db.Column(db.Integer)      # jour du mois/semaine
+    
     # Options
     requires_confirmation = db.Column(db.Boolean, default=True)
     
     # Destination
     category_id = db.Column(db.Integer, db.ForeignKey('expense_categories.id'))
     flag_id = db.Column(db.Integer, db.ForeignKey('expense_flags.id'))
+    
+    # Options d'action - nouveaux champs
+    apply_category = db.Column(db.Boolean, default=True)
+    apply_flag = db.Column(db.Boolean, default=True)
+    apply_rename = db.Column(db.Boolean, default=False)
+    
+    # Configuration de renommage - nouveaux champs
+    rename_pattern = db.Column(db.String(200))
+    rename_replacement = db.Column(db.String(200))
     
     # Métadonnées
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -106,12 +119,16 @@ class AutoCategorizationRule(db.Model):
     category = db.relationship('Category', backref='auto_rules')
     flag = db.relationship('Flag', backref='auto_rules')
     
+    # Nouvelle relation pour suivre les dépenses affectées par cette règle
+    affected_expenses = db.relationship('Expense', 
+                                      secondary='rule_expense_links',
+                                      backref=db.backref('applied_rules', lazy='dynamic'))
+    
     def __repr__(self):
         return f'<AutoCategorizationRule {self.name}>'
     
     def matches_expense(self, expense):
         """Vérifie si la règle correspond à une dépense"""
-        # Vérifier merchant et description
         if self.merchant_contains and self.merchant_contains.lower() not in expense.merchant.lower():
             return False
         
@@ -127,6 +144,13 @@ class AutoCategorizationRule(db.Model):
             return False
         
         return True
+
+# Table de liaison entre règles et dépenses
+rule_expense_links = db.Table('rule_expense_links',
+    db.Column('rule_id', db.Integer, db.ForeignKey('auto_categorization_rules.id'), primary_key=True),
+    db.Column('expense_id', db.Integer, db.ForeignKey('expenses.id'), primary_key=True),
+    db.Column('applied_at', db.DateTime, default=datetime.utcnow)
+)
 
 # Table d'association entre catégories et flags
 category_flags = db.Table('category_flags',

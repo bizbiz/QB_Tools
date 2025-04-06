@@ -71,35 +71,77 @@ def apply_auto_rule(rule_id):
     
     return redirect(url_for('tricount.auto_rules_list'))
 
-@tricount_bp.route('/auto-rules/create', methods=['POST'])
+@tricount_bp.route('/create-auto-rule', methods=['POST'])
 def create_auto_rule():
     """Créer une nouvelle règle d'auto-catégorisation"""
     expense_id = request.form.get('expense_id', type=int)
     rule_name = request.form.get('rule_name')
     merchant_contains = request.form.get('merchant_contains')
     description_contains = request.form.get('description_contains')
-    category_id = request.form.get('category_id', type=int)
-    flag_id = request.form.get('flag_id', type=int)
+    frequency_type = request.form.get('frequency_type')
+    frequency_day = request.form.get('frequency_day', type=int)
+    
+    # Options d'application
+    apply_category = 'apply_category' in request.form
+    apply_flag = 'apply_flag' in request.form
+    apply_rename = 'apply_rename' in request.form
+    
+    # Destination de catégorisation
+    category_id = request.form.get('category_id', type=int) if apply_category else None
+    flag_id = request.form.get('flag_id', type=int) if apply_flag else None
+    
+    # Configuration de renommage
+    rename_pattern = request.form.get('rename_pattern') if apply_rename else None
+    rename_replacement = request.form.get('rename_replacement', '') if apply_rename else None
+    
+    # Autres options
     min_amount = request.form.get('min_amount', type=float)
     max_amount = request.form.get('max_amount', type=float)
     requires_confirmation = 'requires_confirmation' in request.form
     apply_now = 'apply_now' in request.form
     
-    if not rule_name or not merchant_contains or not category_id:
-        flash('Le nom de la règle, le filtre de marchand et la catégorie sont requis.', 'warning')
+    # Validation de base
+    if not rule_name or not merchant_contains:
+        flash('Le nom de la règle et le filtre de marchand sont requis.', 'warning')
         return redirect(url_for('tricount.auto_categorize', expense_id=expense_id))
     
-    # Create rule
+    # Validation des options d'application
+    if not apply_category and not apply_flag and not apply_rename:
+        flash('Vous devez activer au moins une action (catégorie, type ou renommage).', 'warning')
+        return redirect(url_for('tricount.auto_categorize', expense_id=expense_id))
+    
+    # Validation spécifique par type d'action
+    if apply_category and not category_id:
+        flash('Une catégorie doit être sélectionnée si l\'option de catégorisation est activée.', 'warning')
+        return redirect(url_for('tricount.auto_categorize', expense_id=expense_id))
+    
+    if apply_flag and not flag_id:
+        flash('Un type de dépense doit être sélectionné si l\'option de type est activée.', 'warning')
+        return redirect(url_for('tricount.auto_categorize', expense_id=expense_id))
+    
+    if apply_rename and not rename_pattern:
+        flash('Un motif de recherche doit être spécifié si l\'option de renommage est activée.', 'warning')
+        return redirect(url_for('tricount.auto_categorize', expense_id=expense_id))
+    
+    # Créer la règle
     rule = AutoCategorizationRule(
         name=rule_name,
         merchant_contains=merchant_contains,
         description_contains=description_contains,
+        frequency_type=frequency_type if frequency_type != 'none' else None,
+        frequency_day=frequency_day if frequency_type != 'none' else None,
         category_id=category_id,
         flag_id=flag_id,
         min_amount=min_amount,
         max_amount=max_amount,
         requires_confirmation=requires_confirmation,
-        created_by_expense_id=expense_id
+        created_by_expense_id=expense_id,
+        # Nouveaux champs
+        apply_category=apply_category,
+        apply_flag=apply_flag,
+        apply_rename=apply_rename,
+        rename_pattern=rename_pattern,
+        rename_replacement=rename_replacement
     )
     
     db.session.add(rule)
@@ -305,3 +347,37 @@ def edit_auto_rule(rule_id):
                           rule=rule,
                           categories=categories,
                           flags=flags)
+
+@tricount_bp.route('/expense-rule-conflict/<int:expense_id>')
+def expense_rule_conflict(expense_id):
+    """API pour récupérer les informations sur les règles qui affectent une dépense"""
+    expense = Expense.query.get_or_404(expense_id)
+    
+    # Récupérer la première règle appliquée
+    rule = expense.applied_rules.first()
+    
+    if not rule:
+        return jsonify({
+            'success': False,
+            'error': 'Aucune règle trouvée pour cette dépense'
+        })
+    
+    # Formater les données de la règle
+    rule_data = {
+        'id': rule.id,
+        'name': rule.name,
+        'merchant_contains': rule.merchant_contains,
+        'description_contains': rule.description_contains,
+        'apply_category': rule.apply_category,
+        'apply_flag': rule.apply_flag,
+        'apply_rename': rule.apply_rename,
+        'category_name': rule.category.name if rule.category else None,
+        'flag_name': rule.flag.name if rule.flag else None,
+        'rename_pattern': rule.rename_pattern,
+        'rename_replacement': rule.rename_replacement
+    }
+    
+    return jsonify({
+        'success': True,
+        'rule': rule_data
+    })

@@ -130,7 +130,95 @@
                             </div>
                         </div>
 
-                        <!-- Ajout de l'option de confirmation -->
+                        <h4 class="mt-4">Actions à appliquer</h4>
+                    
+                        <div class="mb-3">
+                            <div class="d-flex gap-3 mb-2">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input rule-input" type="checkbox" id="apply-category" name="apply_category" value="true" checked>
+                                    <label class="form-check-label" for="apply-category">
+                                        <i class="fas fa-folder-open me-1"></i> Catégoriser
+                                    </label>
+                                </div>
+                                
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input rule-input" type="checkbox" id="apply-flag" name="apply_flag" value="true" checked>
+                                    <label class="form-check-label" for="apply-flag">
+                                        <i class="fas fa-tag me-1"></i> Appliquer un type
+                                    </label>
+                                </div>
+                                
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input rule-input" type="checkbox" id="apply-rename" name="apply_rename" value="true">
+                                    <label class="form-check-label" for="apply-rename">
+                                        <i class="fas fa-edit me-1"></i> Renommer
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="form-text">Sélectionnez les actions que cette règle doit effectuer.</div>
+                        </div>
+                        
+                        <!-- Section Catégorisation -->
+                        <div id="category-section" class="rule-action-section mb-4 p-3 border rounded">
+                            <h5 class="mb-3">Paramètres de catégorisation</h5>
+                            
+                            <div class="mb-3">
+                                <label for="category-id" class="form-label">Catégorie</label>
+                                <select class="form-select rule-input" id="category-id" name="category_id">
+                                    <option value="">Choisir une catégorie</option>
+                                    {% for category in categories|sort(attribute='name') %}
+                                    <option value="{{ category.id }}">{{ category.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Section Type de dépense -->
+                        <div id="flag-section" class="rule-action-section mb-4 p-3 border rounded">
+                            <h5 class="mb-3">Paramètres de type de dépense</h5>
+                            
+                            <div class="mb-3">
+                                <label for="flag-id" class="form-label">Type de dépense</label>
+                                <select class="form-select rule-input" id="flag-id" name="flag_id">
+                                    <option value="">Choisir un type de dépense</option>
+                                    {% for flag in flags %}
+                                    <option value="{{ flag.id }}" {% if flag.is_default %}selected{% endif %}>
+                                        {{ flag.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="mt-2">
+                                    <div id="flag-preview" class="d-flex align-items-center mt-2">
+                                        <!-- Prévisualisation du flag sélectionné -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Section Renommage -->
+                        <div id="rename-section" class="rule-action-section mb-4 p-3 border rounded" style="display:none;">
+                            <h5 class="mb-3">Paramètres de renommage</h5>
+                            
+                            <div class="mb-3">
+                                <label for="rename-pattern" class="form-label">Motif à rechercher</label>
+                                <input type="text" class="form-control rule-input" id="rename-pattern" name="rename_pattern" placeholder="{{ expense.merchant }}">
+                                <div class="form-text">Texte à rechercher dans le nom du marchand. Peut être une expression régulière.</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="rename-replacement" class="form-label">Texte de remplacement</label>
+                                <input type="text" class="form-control rule-input" id="rename-replacement" name="rename_replacement" placeholder="Nouveau nom">
+                                <div class="form-text">Texte qui remplacera le motif trouvé. Laissez vide pour supprimer le motif.</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="alert alert-info">
+                                    <strong>Aperçu:</strong> <span id="rename-preview">{{ expense.merchant }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        
                         <div class="mb-3">
                             <div class="form-check">
                                 <input class="form-check-input rule-input" type="checkbox" id="requires-confirmation" name="requires_confirmation" value="true" checked>
@@ -171,8 +259,8 @@
                         
                         <div class="d-flex align-items-center">
                             <span class="badge bg-primary" id="expenses-count">{{ similar_expenses|length }}</span>
+                            <span class="badge bg-warning d-none ms-2" id="conflict-count">0</span>
                             
-                            <!-- Bouton pour rafraîchir manuellement la liste -->
                             <button type="button" class="btn btn-sm btn-outline-primary refresh-button" id="refresh-similar-expenses">
                                 <i class="fas fa-sync-alt"></i>
                                 <span class="badge bg-danger d-none notification-badge" id="refresh-needed-badge">!</span>
@@ -190,15 +278,27 @@
                                         <th>Date</th>
                                         <th>Marchand</th>
                                         <th>Montant</th>
+                                        <th>Statut</th>
                                     </tr>
                                 </thead>
                                 <tbody id="similar-expenses-body">
                                     {% for exp in similar_expenses %}
-                                    <tr class="apply-expense-row">
+                                    <tr class="apply-expense-row" data-expense-id="{{ exp.id }}">
                                         <td>{{ exp.date.strftime('%d/%m/%Y') }}</td>
                                         <td>{{ exp.merchant }}</td>
                                         <td class="{% if exp.is_debit %}text-danger{% else %}text-success{% endif %}">
                                             {% if exp.is_debit %}-{% endif %}{{ "%.2f"|format(exp.amount) }} €
+                                        </td>
+                                        <td>
+                                            {% if exp.applied_rules.count() > 0 %}
+                                            <span class="badge bg-warning conflict-badge" data-bs-toggle="tooltip" title="Cette dépense est déjà affectée par une autre règle">
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                            </span>
+                                            {% else %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check"></i>
+                                            </span>
+                                            {% endif %}
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -220,7 +320,40 @@
             </div>
         </div>
     </div>
-</div>
+
+    <!-- Modal de détail de conflit -->
+    <div class="modal fade" id="conflict-detail-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Conflit détecté
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Cette dépense est déjà affectée par une autre règle d'auto-catégorisation :</p>
+                    
+                    <div id="conflict-rule-details" class="card mb-3">
+                        <!-- Les détails de la règle en conflit seront insérés ici par JavaScript -->
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Créer une nouvelle règle qui affecte cette dépense pourrait entraîner un comportement imprévisible.
+                        Nous vous recommandons de modifier la règle existante ou d'ajuster vos filtres pour éviter ce conflit.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a href="#" id="edit-conflict-rule-btn" class="btn btn-primary">
+                        <i class="fas fa-edit me-2"></i>Modifier cette règle
+                    </a>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                </div>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 {% block extra_js %}

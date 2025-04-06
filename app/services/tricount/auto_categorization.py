@@ -100,8 +100,8 @@ class AutoCategorizationService:
         Returns:
             bool: True si une règle a été appliquée, False sinon
         """
-        # Ne pas catégoriser les dépenses déjà catégorisées
-        if expense.category_id is not None:
+        # Ne pas traiter les dépenses déjà catégorisées si nécessaire
+        if expense.category_id is not None and not expense.needs_rename:
             return False
         
         # Récupérer toutes les règles
@@ -109,12 +109,79 @@ class AutoCategorizationService:
         
         for rule in rules:
             if rule.matches_expense(expense):
-                # Appliquer la règle
-                expense.category_id = rule.category_id
-                expense.flag_id = rule.flag_id
+                # Appliquer les modifications selon les options activées
+                if rule.apply_category and rule.category_id:
+                    expense.category_id = rule.category_id
+                
+                if rule.apply_flag and rule.flag_id:
+                    expense.flag_id = rule.flag_id
+                
+                if rule.apply_rename and rule.rename_pattern:
+                    # Appliquer le renommage si configuré
+                    import re
+                    if rule.rename_pattern and expense.merchant:
+                        expense.merchant = re.sub(rule.rename_pattern, 
+                                                 rule.rename_replacement or '', 
+                                                 expense.merchant)
+                
+                # Enregistrer la relation entre la règle et la dépense
+                rule.affected_expenses.append(expense)
+                
                 return True
         
         return False
+    
+    @staticmethod
+    def find_expense_conflicts(expense_id, rule_filters):
+        """
+        Trouve les dépenses qui correspondent aux filtres mais sont déjà affectées par d'autres règles
+        
+        Args:
+            expense_id: ID de la dépense de référence
+            rule_filters: Filtres de la règle en cours de création
+            
+        Returns:
+            dict: Dépenses en conflit organisées par règle
+        """
+        # Créer une règle temporaire pour les tests
+        temp_rule = AutoCategorizationRule(
+            name="Règle temporaire",
+            merchant_contains=rule_filters.get('merchant_contains', ''),
+            description_contains=rule_filters.get('description_contains', ''),
+            min_amount=rule_filters.get('min_amount'),
+            max_amount=rule_filters.get('max_amount'),
+            frequency_type=rule_filters.get('frequency_type'),
+            frequency_day=rule_filters.get('frequency_day')
+        )
+        
+        # Trouver toutes les dépenses qui correspondent à ces filtres
+        matching_expenses = []
+        expenses = Expense.query.filter(Expense.id != expense_id).all()
+        
+        for expense in expenses:
+            if temp_rule.matches_expense(expense):
+                matching_expenses.append(expense)
+        
+        # Vérifier quelles règles existantes affectent déjà ces dépenses
+        conflicts = {}
+        
+        for expense in matching_expenses:
+            for rule in expense.applied_rules.all():
+                # Ne pas compter les règles qui font exactement la même chose
+                if (rule.category_id == rule_filters.get('category_id') and 
+                    rule.flag_id == rule_filters.get('flag_id') and 
+                    rule.rename_pattern == rule_filters.get('rename_pattern')):
+                    continue
+                
+                # Ajouter au dictionnaire des conflits
+                if rule.id not in conflicts:
+                    conflicts[rule.id] = {
+                        'rule': rule,
+                        'expenses': []
+                    }
+                conflicts[rule.id]['expenses'].append(expense)
+        
+        return list(conflicts.values())
     
     @staticmethod
     def process_new_expenses():

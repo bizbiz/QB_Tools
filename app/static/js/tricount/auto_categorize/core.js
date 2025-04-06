@@ -1,93 +1,83 @@
-// app/static/js/tricount/auto_categorize/core.js
-
-/**
- * Module principal pour la fonctionnalité d'auto-catégorisation
- * Initialise et coordonne les autres modules
- */
-
-// Objet global pour stocker l'état et les fonctions
-window.AutoCategorize = window.AutoCategorize || {};
+// app/static/js/tricount/auto_categorize/core.js - Modifications
 
 // Fonction d'initialisation principale
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("Auto-categorize core.js loaded");
-    
-    // S'assurer que les namespaces existent
-    window.AutoCategorize.UI = window.AutoCategorize.UI || {};
-    
-    // Initialiser les composants dans le bon ordre
+    // Initialiser les composants
     AutoCategorize.initFilters();
-    AutoCategorize.initFormChangeDetection();
     AutoCategorize.initFlagAndCategory();
     AutoCategorize.initFrequency();
-    
-    // Initialiser la gestion des conflits si disponible
-    if (typeof AutoCategorize.initConflictDetection === 'function') {
-        AutoCategorize.initConflictDetection();
-    }
+    AutoCategorize.initFormChangeDetection();
+    AutoCategorize.initConflictDetection();
+    AutoCategorize.initRename();
+    AutoCategorize.initActionSections();
+    AutoCategorize.initConflicts();
     
     // Bouton de rafraîchissement
     const refreshButton = document.getElementById('refresh-similar-expenses');
     if (refreshButton) {
-        refreshButton.addEventListener('click', function() {
-            console.log("Manual refresh clicked");
-            AutoCategorize.UI.refreshSimilarExpenses();
-        });
-    }
-    
-    // Effectuer un rafraîchissement initial si on a des filtres préremplis
-    const merchantContains = document.getElementById('merchant-contains');
-    if (merchantContains && merchantContains.value.trim() !== '') {
-        // Attendre que tous les modules soient initialisés
-        setTimeout(function() {
-            console.log("Performing initial refresh");
-            AutoCategorize.UI.refreshSimilarExpenses();
-        }, 100);
+        refreshButton.addEventListener('click', AutoCategorize.UI.refreshSimilarExpenses);
     }
 });
 
 /**
- * Valide le formulaire de règle avant soumission
- * @return {boolean} True si le formulaire est valide, sinon False
+ * Initialise la gestion des sections d'action (catégorie, flag, renommage)
  */
-function validateRuleForm() {
-    const ruleName = document.getElementById('rule-name');
-    const merchantContains = document.getElementById('merchant-contains');
-    const categoryId = document.getElementById('category-id');
-    const flagId = document.getElementById('flag-id');
-    const minAmount = document.getElementById('min-amount');
-    const maxAmount = document.getElementById('max-amount');
+AutoCategorize.initActionSections = function() {
+    // Éléments du DOM
+    const applyCategoryCheckbox = document.getElementById('apply-category');
+    const applyFlagCheckbox = document.getElementById('apply-flag');
+    const applyRenameCheckbox = document.getElementById('apply-rename');
     
-    let isValid = true;
-    let errorMessage = '';
+    const categorySection = document.getElementById('category-section');
+    const flagSection = document.getElementById('flag-section');
+    const renameSection = document.getElementById('rename-section');
     
-    // Vérifier les champs obligatoires
-    if (!ruleName || !ruleName.value.trim()) {
-        errorMessage = 'Le nom de la règle est obligatoire.';
-        isValid = false;
-    } else if (!merchantContains || !merchantContains.value.trim()) {
-        errorMessage = 'Le filtre de marchand est obligatoire.';
-        isValid = false;
-    } else if (!categoryId || !categoryId.value) {
-        errorMessage = 'La catégorie est obligatoire.';
-        isValid = false;
-    } else if (!flagId || !flagId.value) {
-        errorMessage = 'Le type de dépense est obligatoire.';
-        isValid = false;
+    // Fonction pour mettre à jour la visibilité des sections
+    const updateSectionVisibility = function() {
+        if (categorySection && applyCategoryCheckbox) {
+            categorySection.classList.toggle('disabled-section', !applyCategoryCheckbox.checked);
+            
+            // Désactiver les champs dans la section
+            const inputs = categorySection.querySelectorAll('input, select');
+            inputs.forEach(input => {
+                input.disabled = !applyCategoryCheckbox.checked;
+            });
+        }
+        
+        if (flagSection && applyFlagCheckbox) {
+            flagSection.classList.toggle('disabled-section', !applyFlagCheckbox.checked);
+            
+            // Désactiver les champs dans la section
+            const inputs = flagSection.querySelectorAll('input, select');
+            inputs.forEach(input => {
+                input.disabled = !applyFlagCheckbox.checked;
+            });
+        }
+        
+        if (renameSection && applyRenameCheckbox) {
+            renameSection.style.display = applyRenameCheckbox.checked ? 'block' : 'none';
+            
+            // Désactiver les champs dans la section
+            const inputs = renameSection.querySelectorAll('input, select');
+            inputs.forEach(input => {
+                input.disabled = !applyRenameCheckbox.checked;
+            });
+        }
+    };
+    
+    // Ajouter les écouteurs d'événements
+    if (applyCategoryCheckbox) {
+        applyCategoryCheckbox.addEventListener('change', updateSectionVisibility);
     }
     
-    // Vérifier la cohérence des montants
-    if (minAmount && maxAmount && 
-        minAmount.value && maxAmount.value && 
-        parseFloat(minAmount.value) > parseFloat(maxAmount.value)) {
-        errorMessage = 'Le montant minimum ne peut pas être supérieur au montant maximum.';
-        isValid = false;
+    if (applyFlagCheckbox) {
+        applyFlagCheckbox.addEventListener('change', updateSectionVisibility);
     }
     
-    // Afficher l'erreur si nécessaire
-    if (!isValid) {
-        alert(errorMessage);
+    if (applyRenameCheckbox) {
+        applyRenameCheckbox.addEventListener('change', updateSectionVisibility);
     }
     
-    return isValid;
-}
+    // Initialiser l'état des sections
+    updateSectionVisibility();
+};
