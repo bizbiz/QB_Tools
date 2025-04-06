@@ -90,10 +90,6 @@ class AutoCategorizationRule(db.Model):
     min_amount = db.Column(db.Numeric(10, 2))
     max_amount = db.Column(db.Numeric(10, 2))
     
-    # Fréquence
-    frequency_type = db.Column(db.String(20))  # monthly, weekly, yearly, etc.
-    frequency_day = db.Column(db.Integer)      # jour du mois/semaine
-    
     # Options
     requires_confirmation = db.Column(db.Boolean, default=True)
     
@@ -101,12 +97,12 @@ class AutoCategorizationRule(db.Model):
     category_id = db.Column(db.Integer, db.ForeignKey('expense_categories.id'))
     flag_id = db.Column(db.Integer, db.ForeignKey('expense_flags.id'))
     
-    # Options d'action - nouveaux champs
+    # Options d'action
     apply_category = db.Column(db.Boolean, default=True)
     apply_flag = db.Column(db.Boolean, default=True)
     apply_rename = db.Column(db.Boolean, default=False)
     
-    # Configuration de renommage - nouveaux champs
+    # Configuration de renommage
     rename_pattern = db.Column(db.String(200))
     rename_replacement = db.Column(db.String(200))
     
@@ -119,7 +115,7 @@ class AutoCategorizationRule(db.Model):
     category = db.relationship('Category', backref='auto_rules')
     flag = db.relationship('Flag', backref='auto_rules')
     
-    # Nouvelle relation pour suivre les dépenses affectées par cette règle
+    # Relation pour suivre les dépenses affectées par cette règle
     affected_expenses = db.relationship('Expense', 
                                       secondary='rule_expense_links',
                                       backref=db.backref('applied_rules', lazy='dynamic'))

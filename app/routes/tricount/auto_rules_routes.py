@@ -58,8 +58,23 @@ def apply_auto_rule(rule_id):
     
     for expense in uncategorized:
         if rule.matches_expense(expense):
-            expense.category_id = rule.category_id
-            expense.flag_id = rule.flag_id
+            # N'appliquer que les actions activées dans la règle
+            if rule.apply_category and rule.category_id:
+                expense.category_id = rule.category_id
+            
+            if rule.apply_flag and rule.flag_id:
+                expense.flag_id = rule.flag_id
+                
+            if rule.apply_rename and rule.rename_pattern:
+                # Appliquer le renommage si configuré
+                import re
+                if rule.rename_pattern and expense.merchant:
+                    expense.merchant = re.sub(rule.rename_pattern, 
+                                             rule.rename_replacement or '', 
+                                             expense.merchant)
+            
+            # Enregistrer la relation entre la règle et la dépense
+            rule.affected_expenses.append(expense)
             count += 1
     
     try:
@@ -78,8 +93,6 @@ def create_auto_rule():
     rule_name = request.form.get('rule_name')
     merchant_contains = request.form.get('merchant_contains')
     description_contains = request.form.get('description_contains')
-    frequency_type = request.form.get('frequency_type')
-    frequency_day = request.form.get('frequency_day', type=int)
     
     # Options d'application
     apply_category = 'apply_category' in request.form
@@ -128,15 +141,13 @@ def create_auto_rule():
         name=rule_name,
         merchant_contains=merchant_contains,
         description_contains=description_contains,
-        frequency_type=frequency_type if frequency_type != 'none' else None,
-        frequency_day=frequency_day if frequency_type != 'none' else None,
         category_id=category_id,
         flag_id=flag_id,
         min_amount=min_amount,
         max_amount=max_amount,
         requires_confirmation=requires_confirmation,
         created_by_expense_id=expense_id,
-        # Nouveaux champs
+        # Paramètres d'action
         apply_category=apply_category,
         apply_flag=apply_flag,
         apply_rename=apply_rename,
@@ -157,8 +168,22 @@ def create_auto_rule():
             
             for expense in uncategorized:
                 if rule.matches_expense(expense):
-                    expense.category_id = rule.category_id
-                    expense.flag_id = rule.flag_id
+                    # Appliquer les actions activées
+                    if apply_category and category_id:
+                        expense.category_id = category_id
+                    
+                    if apply_flag and flag_id:
+                        expense.flag_id = flag_id
+                    
+                    if apply_rename and rename_pattern:
+                        import re
+                        if rename_pattern and expense.merchant:
+                            expense.merchant = re.sub(rename_pattern, 
+                                                     rename_replacement or '', 
+                                                     expense.merchant)
+                    
+                    # Enregistrer la relation règle-dépense
+                    rule.affected_expenses.append(expense)
                     count += 1
             
             db.session.commit()
@@ -268,52 +293,6 @@ def find_similar_expenses():
             'error': f'Erreur lors de la recherche des dépenses similaires: {str(e)}'
         }), 500
 
-@tricount_bp.route('/check-rule-conflicts', methods=['POST'])
-def check_rule_conflicts():
-    """Vérifie si une règle d'auto-catégorisation entrerait en conflit avec des règles existantes"""
-    rule_data = request.json
-    expense_id = rule_data.get('expense_id')
-    
-    conflicts = AutoCategorizationService.find_conflicting_rules(rule_data, expense_id)
-    
-    # Préparer les données de conflit pour la réponse JSON
-    conflict_data = []
-    for conflict in conflicts:
-        rule = conflict['rule']
-        expenses = conflict['expenses']
-        expenses_data = []
-        
-        for expense in expenses:
-            expenses_data.append({
-                'id': expense.id,
-                'date': expense.date.strftime('%d/%m/%Y'),
-                'merchant': expense.merchant,
-                'amount': float(expense.amount),
-                'is_debit': expense.is_debit
-            })
-        
-        conflict_data.append({
-            'rule': {
-                'id': rule.id,
-                'name': rule.name,
-                'merchant_contains': rule.merchant_contains,
-                'description_contains': rule.description_contains,
-                'min_amount': float(rule.min_amount) if rule.min_amount else None,
-                'max_amount': float(rule.max_amount) if rule.max_amount else None,
-                'category_id': rule.category_id,
-                'category_name': rule.category.name if rule.category else None,
-                'flag_id': rule.flag_id,
-                'flag_name': rule.flag.name if rule.flag else None
-            },
-            'expenses': expenses_data
-        })
-    
-    return jsonify({
-        'success': True,
-        'conflicts': conflict_data,
-        'has_conflicts': len(conflict_data) > 0
-    })
-
 @tricount_bp.route('/auto-rules/edit/<int:rule_id>', methods=['GET', 'POST'])
 def edit_auto_rule(rule_id):
     """Page pour éditer une règle d'auto-catégorisation existante"""
@@ -325,8 +304,24 @@ def edit_auto_rule(rule_id):
         rule.name = request.form.get('rule_name')
         rule.merchant_contains = request.form.get('merchant_contains')
         rule.description_contains = request.form.get('description_contains')
-        rule.category_id = request.form.get('category_id', type=int)
-        rule.flag_id = request.form.get('flag_id', type=int)
+        
+        # Mise à jour des options d'action
+        rule.apply_category = 'apply_category' in request.form
+        rule.apply_flag = 'apply_flag' in request.form
+        rule.apply_rename = 'apply_rename' in request.form
+        
+        # Mise à jour des cibles d'action
+        if rule.apply_category:
+            rule.category_id = request.form.get('category_id', type=int)
+        
+        if rule.apply_flag:
+            rule.flag_id = request.form.get('flag_id', type=int)
+        
+        if rule.apply_rename:
+            rule.rename_pattern = request.form.get('rename_pattern')
+            rule.rename_replacement = request.form.get('rename_replacement', '')
+        
+        # Autres options
         rule.min_amount = request.form.get('min_amount', type=float)
         rule.max_amount = request.form.get('max_amount', type=float)
         rule.requires_confirmation = 'requires_confirmation' in request.form

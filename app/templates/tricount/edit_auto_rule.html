@@ -73,33 +73,97 @@
                             </div>
                         </div>
                         
-                        <h4 class="mt-4">Catégorisation</h4>
+                        <h4 class="mt-4">Actions à appliquer</h4>
                         
-                        <div class="mb-3">
-                            <label for="flag-id" class="form-label">Type de dépense</label>
-                            <select class="form-select rule-input" id="flag-id" name="flag_id" required>
-                                <option value="">Choisir un type de dépense</option>
-                                {% for flag in flags %}
-                                <option value="{{ flag.id }}" {% if rule.flag_id == flag.id %}selected{% endif %}>
-                                    {{ flag.name }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                            <div class="mt-2">
-                                <div id="flag-preview" class="d-flex align-items-center mt-2">
-                                    <!-- Prévisualisation du flag sélectionné sera insérée ici par JavaScript -->
+                        <!-- Section Type de dépense -->
+                        <div id="flag-section" class="rule-action-section mb-4">
+                            <div class="section-header">
+                                <h5 class="mb-0">Type de dépense</h5>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input rule-input" type="checkbox" id="apply-flag" name="apply_flag" value="true" {% if rule.apply_flag %}checked{% endif %}>
+                                    <label class="form-check-label" for="apply-flag">
+                                        <i class="fas fa-tag me-1"></i> Appliquer un type
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3 flag-content">
+                                <label for="flag-id" class="form-label">Type de dépense</label>
+                                <select class="form-select rule-input" id="flag-id" name="flag_id" {% if not rule.apply_flag %}disabled{% endif %}>
+                                    <option value="">Choisir un type de dépense</option>
+                                    {% for flag in flags %}
+                                    <option value="{{ flag.id }}" {% if rule.flag_id == flag.id %}selected{% endif %}>
+                                        {{ flag.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="mt-2">
+                                    <div id="flag-preview" class="d-flex align-items-center mt-2">
+                                        {% if rule.flag %}
+                                        <span class="flag-badge" style="background-color: {{ rule.flag.color }}; color: white; padding: 4px 12px; border-radius: 20px; display: inline-flex; align-items: center;">
+                                            <i class="fas {{ rule.flag.icon }} me-2"></i>
+                                            {{ rule.flag.name }}
+                                        </span>
+                                        {% endif %}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-
-                        <div class="mb-3">
-                            <label for="category-id" class="form-label">Catégorie</label>
-                            <select class="form-select rule-input" id="category-id" name="category_id" required>
-                                <option value="">Choisir une catégorie</option>
-                                {% for category in categories|sort(attribute='name') %}
-                                <option value="{{ category.id }}" {% if rule.category_id == category.id %}selected{% endif %}>{{ category.name }}</option>
-                                {% endfor %}
-                            </select>
+                        
+                        <!-- Section Catégorie -->
+                        <div id="category-section" class="rule-action-section mb-4">
+                            <div class="section-header">
+                                <h5 class="mb-0">Catégorie</h5>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input rule-input" type="checkbox" id="apply-category" name="apply_category" value="true" {% if rule.apply_category %}checked{% endif %}>
+                                    <label class="form-check-label" for="apply-category">
+                                        <i class="fas fa-folder-open me-1"></i> Catégoriser
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3 category-content">
+                                <label for="category-id" class="form-label">Catégorie</label>
+                                <select class="form-select rule-input" id="category-id" name="category_id" {% if not rule.apply_category %}disabled{% endif %}>
+                                    <option value="">Choisir une catégorie</option>
+                                    {% for category in categories|sort(attribute='name') %}
+                                    <option value="{{ category.id }}" {% if rule.category_id == category.id %}selected{% endif %}>{{ category.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Section Renommage -->
+                        <div id="rename-section" class="rule-action-section mb-4" {% if not rule.apply_rename %}style="display: none;"{% endif %}>
+                            <div class="section-header">
+                                <h5 class="mb-0">Renommage</h5>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input rule-input" type="checkbox" id="apply-rename" name="apply_rename" value="true" {% if rule.apply_rename %}checked{% endif %}>
+                                    <label class="form-check-label" for="apply-rename">
+                                        <i class="fas fa-edit me-1"></i> Renommer
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="rename-content">
+                                <div class="mb-3">
+                                    <label for="rename-pattern" class="form-label">Motif à rechercher</label>
+                                    <input type="text" class="form-control rule-input" id="rename-pattern" name="rename_pattern" value="{{ rule.rename_pattern or '' }}" {% if not rule.apply_rename %}disabled{% endif %}>
+                                    <div class="form-text">Texte à rechercher dans le nom du marchand. Peut être une expression régulière.</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="rename-replacement" class="form-label">Texte de remplacement</label>
+                                    <input type="text" class="form-control rule-input" id="rename-replacement" name="rename_replacement" value="{{ rule.rename_replacement or '' }}" {% if not rule.apply_rename %}disabled{% endif %}>
+                                    <div class="form-text">Texte qui remplacera le motif trouvé. Laissez vide pour supprimer le motif.</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div class="alert alert-info">
+                                        <strong>Aperçu:</strong> <span id="rename-preview">{{ example_merchant }}</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         
                         <div class="mb-3">
@@ -150,10 +214,155 @@
         }{% if not loop.last %},{% endif %}
         {% endfor %}
     };
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        // Sélectionner les éléments du DOM
+        const applyCategoryCheckbox = document.getElementById('apply-category');
+        const applyFlagCheckbox = document.getElementById('apply-flag');
+        const applyRenameCheckbox = document.getElementById('apply-rename');
+        
+        const categorySection = document.getElementById('category-section');
+        const flagSection = document.getElementById('flag-section');
+        const renameSection = document.getElementById('rename-section');
+        
+        // Fonction pour mettre à jour l'état des sections
+        function updateSectionState() {
+            // Section Catégorie
+            if (categorySection && applyCategoryCheckbox) {
+                const inputs = categorySection.querySelectorAll('input:not([type="checkbox"]), select');
+                
+                if (applyCategoryCheckbox.checked) {
+                    categorySection.classList.remove('disabled-section');
+                    inputs.forEach(input => { input.disabled = false; });
+                } else {
+                    categorySection.classList.add('disabled-section');
+                    inputs.forEach(input => { input.disabled = true; });
+                }
+            }
+            
+            // Section Flag
+            if (flagSection && applyFlagCheckbox) {
+                const inputs = flagSection.querySelectorAll('input:not([type="checkbox"]), select');
+                
+                if (applyFlagCheckbox.checked) {
+                    flagSection.classList.remove('disabled-section');
+                    inputs.forEach(input => { input.disabled = false; });
+                } else {
+                    flagSection.classList.add('disabled-section');
+                    inputs.forEach(input => { input.disabled = true; });
+                }
+            }
+            
+            // Section Renommage
+            if (renameSection && applyRenameCheckbox) {
+                const inputs = renameSection.querySelectorAll('input:not([type="checkbox"]), select');
+                
+                if (applyRenameCheckbox.checked) {
+                    renameSection.classList.remove('disabled-section');
+                    renameSection.style.display = 'block';
+                    inputs.forEach(input => { input.disabled = false; });
+                } else {
+                    renameSection.classList.add('disabled-section');
+                    renameSection.style.display = 'none';
+                    inputs.forEach(input => { input.disabled = true; });
+                }
+            }
+        }
+        
+        // Mettre à jour la prévisualisation du flag
+        function updateFlagPreview() {
+            const flagSelect = document.getElementById('flag-id');
+            const flagPreview = document.getElementById('flag-preview');
+            
+            if (!flagPreview || !flagSelect) return;
+            
+            const flagId = flagSelect.value;
+            flagPreview.innerHTML = '';
+            
+            if (flagId && window.flagData && window.flagData[flagId]) {
+                const flag = window.flagData[flagId];
+                
+                // Créer le badge de prévisualisation
+                const badge = document.createElement('span');
+                badge.className = 'flag-badge me-2';
+                badge.style.backgroundColor = flag.color;
+                badge.style.color = 'white';
+                badge.style.padding = '4px 12px';
+                badge.style.borderRadius = '20px';
+                badge.style.display = 'inline-flex';
+                badge.style.alignItems = 'center';
+                
+                // Ajouter l'icône
+                const icon = document.createElement('i');
+                icon.className = `fas ${flag.icon} me-2`;
+                badge.appendChild(icon);
+                
+                // Ajouter le nom
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = flag.name;
+                badge.appendChild(nameSpan);
+                
+                flagPreview.appendChild(badge);
+            }
+        }
+        
+        // Mettre à jour l'aperçu de renommage
+        function updateRenamePreview() {
+            const renamePattern = document.getElementById('rename-pattern');
+            const renameReplacement = document.getElementById('rename-replacement');
+            const renamePreview = document.getElementById('rename-preview');
+            
+            if (!renamePattern || !renameReplacement || !renamePreview) return;
+            
+            // Exemple de texte pour l'aperçu
+            const originalText = "{{ rule.merchant_contains }}";
+            
+            try {
+                if (renamePattern.value) {
+                    const regex = new RegExp(renamePattern.value, 'g');
+                    renamePreview.textContent = originalText.replace(regex, renameReplacement.value || '');
+                } else {
+                    renamePreview.textContent = originalText;
+                }
+            } catch (e) {
+                renamePreview.textContent = "Erreur: " + e.message;
+            }
+        }
+        
+        // Ajouter les écouteurs d'événements
+        if (applyCategoryCheckbox) {
+            applyCategoryCheckbox.addEventListener('change', updateSectionState);
+        }
+        
+        if (applyFlagCheckbox) {
+            applyFlagCheckbox.addEventListener('change', updateSectionState);
+        }
+        
+        if (applyRenameCheckbox) {
+            applyRenameCheckbox.addEventListener('change', updateSectionState);
+        }
+        
+        // Écouteurs pour la prévisualisation du flag
+        const flagSelect = document.getElementById('flag-id');
+        if (flagSelect) {
+            flagSelect.addEventListener('change', updateFlagPreview);
+            // Initialiser la prévisualisation
+            updateFlagPreview();
+        }
+        
+        // Écouteurs pour la prévisualisation du renommage
+        const renamePattern = document.getElementById('rename-pattern');
+        const renameReplacement = document.getElementById('rename-replacement');
+        
+        if (renamePattern && renameReplacement) {
+            renamePattern.addEventListener('input', updateRenamePreview);
+            renameReplacement.addEventListener('input', updateRenamePreview);
+            // Initialiser la prévisualisation
+            updateRenamePreview();
+        }
+        
+        // Initialiser l'état des sections
+        updateSectionState();
+    });
 </script>
-
-<!-- Fichiers JavaScript -->
-<script src="{{ url_for('static', filename='js/tricount/auto_categorize/core.js') }}"></script>
-<script src="{{ url_for('static', filename='js/tricount/auto_categorize/filters.js') }}"></script>
-<script src="{{ url_for('static', filename='js/tricount/auto_categorize/categories.js') }}"></script>
 {% endblock %}

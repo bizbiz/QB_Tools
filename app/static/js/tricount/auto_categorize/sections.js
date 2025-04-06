@@ -19,30 +19,52 @@ AutoCategorize.initActionSections = function() {
     // Fonction pour mettre à jour la visibilité et l'état des sections
     const updateSectionState = function() {
         if (categorySection && applyCategoryCheckbox) {
-            categorySection.classList.toggle('disabled-section', !applyCategoryCheckbox.checked);
+            // Modifier la classe directement plutôt que de faire un toggle
+            if (applyCategoryCheckbox.checked) {
+                categorySection.classList.remove('disabled-section');
+            } else {
+                categorySection.classList.add('disabled-section');
+            }
             
-            // Désactiver les champs dans la section
-            categorySection.querySelectorAll('input, select').forEach(input => {
+            // Désactiver/activer les champs dans la section
+            categorySection.querySelectorAll('input:not([type="checkbox"]), select').forEach(input => {
                 input.disabled = !applyCategoryCheckbox.checked;
             });
         }
         
         if (flagSection && applyFlagCheckbox) {
-            flagSection.classList.toggle('disabled-section', !applyFlagCheckbox.checked);
+            // Modifier la classe directement
+            if (applyFlagCheckbox.checked) {
+                flagSection.classList.remove('disabled-section');
+            } else {
+                flagSection.classList.add('disabled-section');
+            }
             
-            // Désactiver les champs dans la section
-            flagSection.querySelectorAll('input, select').forEach(input => {
+            // Désactiver/activer les champs dans la section
+            flagSection.querySelectorAll('input:not([type="checkbox"]), select').forEach(input => {
                 input.disabled = !applyFlagCheckbox.checked;
             });
         }
         
         if (renameSection && applyRenameCheckbox) {
-            renameSection.classList.toggle('disabled-section', !applyRenameCheckbox.checked);
+            // Modifier la classe directement
+            if (applyRenameCheckbox.checked) {
+                renameSection.classList.remove('disabled-section');
+                renameSection.style.display = 'block';
+            } else {
+                renameSection.classList.add('disabled-section');
+                renameSection.style.display = 'none';
+            }
             
-            // Désactiver les champs dans la section
-            renameSection.querySelectorAll('input, select').forEach(input => {
+            // Désactiver/activer les champs dans la section
+            renameSection.querySelectorAll('input:not([type="checkbox"]), select').forEach(input => {
                 input.disabled = !applyRenameCheckbox.checked;
             });
+        }
+        
+        // Signaler un changement dans le formulaire
+        if (typeof AutoCategorize.markFormChanged === 'function') {
+            AutoCategorize.markFormChanged();
         }
     };
     

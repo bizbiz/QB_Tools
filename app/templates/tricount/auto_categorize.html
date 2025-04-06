@@ -99,23 +99,6 @@
                             </div>
                         </div>
                         
-                        <h5 class="mt-4">Fréquence (optionnel)</h5>
-                        
-                        <div class="mb-3">
-                            <label for="frequency-type" class="form-label">Type de fréquence</label>
-                            <select class="form-select rule-input" id="frequency-type" name="frequency_type">
-                                <option value="none">Aucune (toutes les occurrences)</option>
-                                <option value="monthly">Mensuelle (même jour chaque mois)</option>
-                                <option value="weekly">Hebdomadaire (même jour chaque semaine)</option>
-                            </select>
-                        </div>
-                        
-                        <div class="mb-3" id="frequency-day-container" style="display: none;">
-                            <label for="frequency-day" class="form-label">Jour</label>
-                            <input type="number" class="form-control rule-input" id="frequency-day" name="frequency_day" value="{{ expense.date.day }}">
-                            <div class="form-text" id="frequency-day-help">Jour du mois (1-31) pour la fréquence mensuelle.</div>
-                        </div>
-                        
                         <!-- Options d'application -->
                         <div class="mb-3">
                             <div class="form-check">
@@ -372,105 +355,257 @@
         }{% if not loop.last %},{% endif %}
         {% endfor %}
     };
-    
-    // Définir l'objet global AutoCategorize
-    window.AutoCategorize = {
-        initFilters: function() {},
-        initFlagAndCategory: function() {},
-        initFrequency: function() {},
-        initFormChangeDetection: function() {},
-        initConflictDetection: function() {},
-        initRename: function() {},
-        initActionSections: function() {},
-        initConflicts: function() {},
-        markFormChanged: function() {},
-        UI: {},
-        Conflicts: {}
-    };
 </script>
 
-<!-- Inclure les scripts de base -->
+<!-- Inclure tous les scripts nécessaires dans le bon ordre -->
+<script src="{{ url_for('static', filename='js/tricount/auto_categorize/ui.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tricount/auto_categorize/filters.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tricount/auto_categorize/categories.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/sections.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/rename.js') }}"></script>
 
-<!-- Définir les fonctions minimales nécessaires -->
+<!-- Script d'initialisation -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Éléments du DOM
-        const applyRenameCheckbox = document.getElementById('apply-rename');
-        const renameSection = document.getElementById('rename-section');
-        const renamePattern = document.getElementById('rename-pattern');
-        const renameReplacement = document.getElementById('rename-replacement');
-        const renamePreview = document.getElementById('rename-preview');
+        // Initialiser les écouteurs d'événements pour les filtres
+        const merchantContains = document.getElementById('merchant-contains');
+        const descriptionContains = document.getElementById('description-contains');
+        const minAmount = document.getElementById('min-amount');
+        const maxAmount = document.getElementById('max-amount');
         
-        // Masquer/afficher la section de renommage au chargement
-        if (renameSection && applyRenameCheckbox) {
-            renameSection.classList.toggle('disabled-section', !applyRenameCheckbox.checked);
+        if (merchantContains) {
+            merchantContains.addEventListener('input', function() {
+                AutoCategorize.markFormChanged();
+            });
         }
         
-        // Mise à jour de l'aperçu de renommage
-        if (renamePattern && renameReplacement && renamePreview) {
-            const updatePreview = function() {
-                const originalName = "{{ expense.merchant }}";
-                const pattern = renamePattern.value;
-                const replacement = renameReplacement.value;
-                
-                try {
-                    if (pattern) {
-                        const regex = new RegExp(pattern, 'g');
-                        renamePreview.textContent = originalName.replace(regex, replacement);
-                    } else {
-                        renamePreview.textContent = originalName;
-                    }
-                } catch (e) {
-                    renamePreview.textContent = "Erreur: " + e.message;
-                }
+        if (descriptionContains) {
+            descriptionContains.addEventListener('input', function() {
+                AutoCategorize.markFormChanged();
+            });
+        }
+        
+        if (minAmount) {
+            minAmount.addEventListener('input', function() {
+                AutoCategorize.markFormChanged();
+            });
+        }
+        
+        if (maxAmount) {
+            maxAmount.addEventListener('input', function() {
+                AutoCategorize.markFormChanged();
+            });
+        }
+        
+        // Initialiser le rafraîchissement des dépenses similaires
+        const refreshButton = document.getElementById('refresh-similar-expenses');
+        if (refreshButton) {
+            refreshButton.addEventListener('click', function() {
+                refreshSimilarExpenses();
+            });
+        }
+        
+        // Fonction pour obtenir les filtres actuels
+        function getFilters() {
+            return {
+                expense_id: document.querySelector('input[name="expense_id"]').value,
+                merchant_contains: merchantContains ? merchantContains.value : '',
+                description_contains: descriptionContains ? descriptionContains.value : '',
+                min_amount: minAmount && minAmount.value ? parseFloat(minAmount.value) : null,
+                max_amount: maxAmount && maxAmount.value ? parseFloat(maxAmount.value) : null
             };
-            
-            renamePattern.addEventListener('input', updatePreview);
-            renameReplacement.addEventListener('input', updatePreview);
-            
-            // Initialiser l'aperçu
-            updatePreview();
         }
         
-        // Initialiser les sections
-        const applyCategoryCheckbox = document.getElementById('apply-category');
-        const applyFlagCheckbox = document.getElementById('apply-flag');
+        // Fonction de rafraîchissement des dépenses similaires
+        function refreshSimilarExpenses() {
+            const similarExpensesContainer = document.getElementById('similar-expenses-container');
+            if (!similarExpensesContainer) return;
+            
+            // Afficher un indicateur de chargement
+            similarExpensesContainer.innerHTML = `
+                <div class="d-flex justify-content-center align-items-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Chargement...</span>
+                    </div>
+                    <span class="ms-3">Recherche des dépenses correspondantes...</span>
+                </div>
+            `;
+            
+            // Récupérer les filtres actuels
+            const filters = getFilters();
+            
+            // Faire la requête AJAX
+            fetch('/tricount/find-similar-expenses', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(filters)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Réponse du serveur:", data);
+                if (data.success) {
+                    // Vider le conteneur
+                    similarExpensesContainer.innerHTML = '';
+                    
+                    // Mettre à jour le compteur
+                    const expensesCount = document.getElementById('expenses-count');
+                    if (expensesCount) {
+                        expensesCount.textContent = data.count;
+                    }
+                    
+                    if (data.count > 0) {
+                        // Créer le tableau des dépenses
+                        createExpensesTable(data.expenses);
+                        
+                        // Ajouter le message d'information
+                        const infoMessage = document.createElement('div');
+                        infoMessage.className = 'alert alert-info mt-3 info-message';
+                        infoMessage.id = 'similar-expenses-info';
+                        infoMessage.innerHTML = `
+                            <i class="fas fa-info-circle me-2"></i>
+                            Ces dépenses correspondent aux critères spécifiés. Elles seront catégorisées automatiquement si vous activez l'option "Appliquer immédiatement".
+                        `;
+                        similarExpensesContainer.appendChild(infoMessage);
+                    } else {
+                        // Créer le message "aucune dépense"
+                        createNoExpensesMessage();
+                    }
+                    
+                    // Masquer le badge de notification
+                    const refreshNeededBadge = document.getElementById('refresh-needed-badge');
+                    if (refreshNeededBadge) {
+                        refreshNeededBadge.classList.add('d-none');
+                    }
+                    
+                    // Retirer la classe "stale-data"
+                    const similarExpensesTable = document.getElementById('similar-expenses-table');
+                    if (similarExpensesTable) {
+                        similarExpensesTable.classList.remove('stale-data');
+                    }
+                } else {
+                    // En cas d'erreur
+                    showError(data.error || 'Erreur inconnue lors de la recherche');
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                showError('Erreur de communication avec le serveur. Veuillez réessayer.');
+            });
+        }
         
-        const categorySection = document.getElementById('category-section');
-        const flagSection = document.getElementById('flag-section');
+        // Fonction pour créer le tableau des dépenses
+        function createExpensesTable(expenses) {
+            const similarExpensesContainer = document.getElementById('similar-expenses-container');
+            if (!similarExpensesContainer) return;
+            
+            const tableContainer = document.createElement('div');
+            tableContainer.className = 'table-responsive';
+            
+            const table = document.createElement('table');
+            table.className = 'table table-hover';
+            table.id = 'similar-expenses-table';
+            
+            const thead = document.createElement('thead');
+            thead.innerHTML = `
+                <tr>
+                    <th>Date</th>
+                    <th>Marchand</th>
+                    <th>Montant</th>
+                    <th>Statut</th>
+                </tr>
+            `;
+            
+            const tbody = document.createElement('tbody');
+            tbody.id = 'similar-expenses-body';
+            
+            expenses.forEach(expense => {
+                const row = document.createElement('tr');
+                row.className = 'apply-expense-row';
+                row.dataset.expenseId = expense.id;
+                
+                // Cellule de date
+                const dateCell = document.createElement('td');
+                dateCell.textContent = expense.date;
+                row.appendChild(dateCell);
+                
+                // Cellule du marchand
+                const merchantCell = document.createElement('td');
+                merchantCell.textContent = expense.merchant;
+                row.appendChild(merchantCell);
+                
+                // Cellule du montant
+                const amountCell = document.createElement('td');
+                amountCell.textContent = `${expense.is_debit ? '-' : ''}${expense.amount.toFixed(2)} €`;
+                amountCell.className = expense.is_debit ? 'text-danger' : 'text-success';
+                row.appendChild(amountCell);
+                
+                // Cellule de statut
+                const statusCell = document.createElement('td');
+                statusCell.className = 'text-center';
+                statusCell.innerHTML = `
+                    <span class="badge bg-success">
+                        <i class="fas fa-check"></i>
+                    </span>
+                `;
+                row.appendChild(statusCell);
+                
+                tbody.appendChild(row);
+            });
+            
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            tableContainer.appendChild(table);
+            
+            similarExpensesContainer.appendChild(tableContainer);
+        }
         
-        // Fonction pour mettre à jour l'état des sections
-        const updateSectionState = function() {
-            if (categorySection && applyCategoryCheckbox) {
-                categorySection.classList.toggle('disabled-section', !applyCategoryCheckbox.checked);
+        // Fonction pour créer un message "aucune dépense"
+        function createNoExpensesMessage() {
+            const similarExpensesContainer = document.getElementById('similar-expenses-container');
+            if (!similarExpensesContainer) return;
+            
+            const message = document.createElement('div');
+            message.className = 'alert alert-warning warning-message';
+            message.id = 'no-similar-expenses';
+            message.innerHTML = `
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Aucune dépense similaire non catégorisée n'a été trouvée avec ces critères. Essayez de modifier les filtres ou d'élargir vos critères de recherche. Votre règle s'appliquera aux futures dépenses correspondantes.
+            `;
+            
+            similarExpensesContainer.appendChild(message);
+        }
+        
+        // Fonction pour afficher un message d'erreur
+        function showError(errorMessage) {
+            const similarExpensesContainer = document.getElementById('similar-expenses-container');
+            if (!similarExpensesContainer) return;
+            
+            similarExpensesContainer.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    ${errorMessage}
+                </div>
+            `;
+        }
+        
+        // Fonction pour marquer le formulaire comme modifié
+        AutoCategorize.markFormChanged = function() {
+            console.log("Formulaire modifié");
+            
+            // Afficher le badge de notification
+            const refreshNeededBadge = document.getElementById('refresh-needed-badge');
+            if (refreshNeededBadge) {
+                refreshNeededBadge.classList.remove('d-none');
             }
             
-            if (flagSection && applyFlagCheckbox) {
-                flagSection.classList.toggle('disabled-section', !applyFlagCheckbox.checked);
-            }
-            
-            if (renameSection && applyRenameCheckbox) {
-                renameSection.classList.toggle('disabled-section', !applyRenameCheckbox.checked);
+            // Ajouter la classe "stale-data" au tableau
+            const similarExpensesTable = document.getElementById('similar-expenses-table');
+            if (similarExpensesTable) {
+                similarExpensesTable.classList.add('stale-data');
             }
         };
-        
-        // Ajouter les écouteurs d'événements
-        if (applyCategoryCheckbox) {
-            applyCategoryCheckbox.addEventListener('change', updateSectionState);
-        }
-        
-        if (applyFlagCheckbox) {
-            applyFlagCheckbox.addEventListener('change', updateSectionState);
-        }
-        
-        if (applyRenameCheckbox) {
-            applyRenameCheckbox.addEventListener('change', updateSectionState);
-        }
-        
-        // Initialiser l'état des sections
-        updateSectionState();
     });
 </script>
 {% endblock %}
