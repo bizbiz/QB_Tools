@@ -13,9 +13,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialiser les composants
     AutoCategorize.initFilters();
     AutoCategorize.initFlagAndCategory();
-    AutoCategorize.initFrequency();
     AutoCategorize.initFormChangeDetection();
-    AutoCategorize.initConflictDetection(); // Nouvelle ligne pour initialiser la détection des conflits
+    AutoCategorize.initConflictDetection();
     
     // Bouton de rafraîchissement
     const refreshButton = document.getElementById('refresh-similar-expenses');

@@ -22,6 +22,9 @@ AutoCategorize.UI.refreshSimilarExpenses = function() {
     // Ajouter l'ID de la dépense source
     filters.expense_id = document.getElementById('rule-form').querySelector('input[name="expense_id"]').value;
     
+    // DÉBOGAGE: Afficher les filtres envoyés
+    console.log('Filtres envoyés au serveur:', JSON.stringify(filters, null, 2));
+    
     // Afficher un indicateur de chargement
     similarExpensesBody.innerHTML = '<tr><td colspan="3" class="text-center py-3"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Chargement...</span></div></td></tr>';
     
@@ -33,8 +36,15 @@ AutoCategorize.UI.refreshSimilarExpenses = function() {
         },
         body: JSON.stringify(filters)
     })
-    .then(response => response.json())
+    .then(response => {
+        // DÉBOGAGE: Vérifier le statut de la réponse
+        console.log('Statut de la réponse:', response.status);
+        return response.json();
+    })
     .then(data => {
+        // DÉBOGAGE: Afficher les données reçues
+        console.log('Données reçues du serveur:', data);
+        
         if (data.success) {
             // Mettre à jour le tableau
             AutoCategorize.UI.updateSimilarExpensesTable(data.expenses);
@@ -63,13 +73,15 @@ AutoCategorize.UI.refreshSimilarExpenses = function() {
             
             // Sauvegarder les filtres actuels
             AutoCategorize.saveCurrentFilters();
+            console.log('Filtres actuels sauvegardés:', AutoCategorize.currentFilters);
         } else {
             // En cas d'erreur
+            console.error('Erreur retournée par le serveur:', data.error);
             AutoCategorize.UI.showError(data.error || 'Erreur inconnue');
         }
     })
     .catch(error => {
-        console.error('Error:', error);
+        console.error('Erreur de communication avec le serveur:', error);
         AutoCategorize.UI.showError('Erreur de communication avec le serveur. Veuillez réessayer.');
     });
 };

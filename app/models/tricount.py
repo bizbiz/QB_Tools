@@ -87,15 +87,11 @@ class AutoCategorizationRule(db.Model):
     # Filtres
     merchant_contains = db.Column(db.String(200))
     description_contains = db.Column(db.String(200))
-    min_amount = db.Column(db.Numeric(10, 2))  # Nouveau
-    max_amount = db.Column(db.Numeric(10, 2))  # Nouveau
-    
-    # Fréquence
-    frequency_type = db.Column(db.String(20))  # monthly, weekly, yearly, etc.
-    frequency_day = db.Column(db.Integer)      # jour du mois/semaine
+    min_amount = db.Column(db.Numeric(10, 2))
+    max_amount = db.Column(db.Numeric(10, 2))
     
     # Options
-    requires_confirmation = db.Column(db.Boolean, default=True)  # Nouveau
+    requires_confirmation = db.Column(db.Boolean, default=True)
     
     # Destination
     category_id = db.Column(db.Integer, db.ForeignKey('expense_categories.id'))
@@ -122,21 +118,13 @@ class AutoCategorizationRule(db.Model):
         if self.description_contains and self.description_contains.lower() not in expense.description.lower():
             return False
         
-        # Vérifier le montant minimum (Nouveau)
+        # Vérifier le montant minimum
         if self.min_amount is not None and expense.amount < self.min_amount:
             return False
         
-        # Vérifier le montant maximum (Nouveau)
+        # Vérifier le montant maximum
         if self.max_amount is not None and expense.amount > self.max_amount:
             return False
-        
-        # Vérifier la fréquence si définie
-        if self.frequency_type and self.frequency_day:
-            # Vérifier si la dépense correspond à la fréquence définie
-            if self.frequency_type == 'monthly' and expense.date.day != self.frequency_day:
-                return False
-            elif self.frequency_type == 'weekly' and expense.date.weekday() != self.frequency_day:
-                return False
         
         return True
 

@@ -79,23 +79,6 @@
                             <div class="form-text">Vous pouvez ajouter une condition sur la description pour être plus précis.</div>
                         </div>
                         
-                        <h4 class="mt-4">Fréquence (optionnel)</h4>
-                        
-                        <div class="mb-3">
-                            <label for="frequency-type" class="form-label">Type de fréquence</label>
-                            <select class="form-select rule-input" id="frequency-type" name="frequency_type">
-                                <option value="none">Aucune (toutes les occurrences)</option>
-                                <option value="monthly">Mensuelle (même jour chaque mois)</option>
-                                <option value="weekly">Hebdomadaire (même jour chaque semaine)</option>
-                            </select>
-                        </div>
-                        
-                        <div class="mb-3" id="frequency-day-container" style="display: none;">
-                            <label for="frequency-day" class="form-label">Jour</label>
-                            <input type="number" class="form-control rule-input" id="frequency-day" name="frequency_day" value="{{ expense.date.day }}">
-                            <div class="form-text" id="frequency-day-help">Jour du mois (1-31) pour la fréquence mensuelle.</div>
-                        </div>
-                        
                         <h4 class="mt-4">Catégorisation</h4>
                         
                         <!-- Sélection du flag avant la catégorie -->
@@ -264,11 +247,10 @@
     };
 </script>
 
-<!-- Nouveaux fichiers JavaScript organisés -->
+<!-- Fichiers JavaScript organisés -->
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/core.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/filters.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/ui.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/categories.js') }}"></script>
-<script src="{{ url_for('static', filename='js/tricount/auto_categorize/frequency.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/conflicts.js') }}"></script>
 {% endblock %}

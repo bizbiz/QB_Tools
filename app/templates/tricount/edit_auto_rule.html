@@ -73,31 +73,6 @@
                             </div>
                         </div>
                         
-                        <h4 class="mt-4">Fréquence (optionnel)</h4>
-                        
-                        <div class="mb-3">
-                            <label for="frequency-type" class="form-label">Type de fréquence</label>
-                            <select class="form-select rule-input" id="frequency-type" name="frequency_type">
-                                <option value="none" {% if not rule.frequency_type %}selected{% endif %}>Aucune (toutes les occurrences)</option>
-                                <option value="monthly" {% if rule.frequency_type == 'monthly' %}selected{% endif %}>Mensuelle (même jour chaque mois)</option>
-                                <option value="weekly" {% if rule.frequency_type == 'weekly' %}selected{% endif %}>Hebdomadaire (même jour chaque semaine)</option>
-                            </select>
-                        </div>
-                        
-                        <div class="mb-3" id="frequency-day-container" {% if not rule.frequency_type %}style="display: none;"{% endif %}>
-                            <label for="frequency-day" class="form-label">Jour</label>
-                            <input type="number" class="form-control rule-input" id="frequency-day" name="frequency_day" value="{{ rule.frequency_day or '' }}">
-                            <div class="form-text" id="frequency-day-help">
-                                {% if rule.frequency_type == 'monthly' %}
-                                    Jour du mois (1-31) pour la fréquence mensuelle.
-                                {% elif rule.frequency_type == 'weekly' %}
-                                    Jour de la semaine (0=Lundi, 6=Dimanche) pour la fréquence hebdomadaire.
-                                {% else %}
-                                    Jour du mois (1-31) pour la fréquence mensuelle.
-                                {% endif %}
-                            </div>
-                        </div>
-                        
                         <h4 class="mt-4">Catégorisation</h4>
                         
                         <div class="mb-3">
@@ -181,5 +156,4 @@
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/core.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/filters.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/categories.js') }}"></script>
-<script src="{{ url_for('static', filename='js/tricount/auto_categorize/frequency.js') }}"></script>
 {% endblock %}

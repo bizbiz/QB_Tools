@@ -74,22 +74,46 @@ function formatAmountInput(e) {
  * @return {Object} Les filtres formatés pour l'API
  */
 AutoCategorize.getFilters = function() {
-    const frequencyType = document.getElementById('frequency-type');
-    const frequencyDay = document.getElementById('frequency-day');
     const merchantContains = document.getElementById('merchant-contains');
     const descriptionContains = document.getElementById('description-contains');
     const minAmount = document.getElementById('min-amount');
     const maxAmount = document.getElementById('max-amount');
     
-    return {
+    // Obtenir les valeurs des montants uniquement si elles sont valides
+    let minAmountValue = null;
+    if (minAmount && minAmount.value && minAmount.value.trim() !== '') {
+        try {
+            minAmountValue = parseFloat(minAmount.value);
+            if (isNaN(minAmountValue)) {
+                minAmountValue = null;
+            }
+        } catch (e) {
+            console.error("Erreur lors de la conversion de min_amount:", e);
+            minAmountValue = null;
+        }
+    }
+    
+    let maxAmountValue = null;
+    if (maxAmount && maxAmount.value && maxAmount.value.trim() !== '') {
+        try {
+            maxAmountValue = parseFloat(maxAmount.value);
+            if (isNaN(maxAmountValue)) {
+                maxAmountValue = null;
+            }
+        } catch (e) {
+            console.error("Erreur lors de la conversion de max_amount:", e);
+            maxAmountValue = null;
+        }
+    }
+    
+    const filters = {
         merchant_contains: merchantContains ? merchantContains.value : '',
         description_contains: descriptionContains ? descriptionContains.value : '',
-        frequency_type: frequencyType ? frequencyType.value : 'none',
-        frequency_day: (frequencyType && frequencyType.value !== 'none' && frequencyDay) ? 
-            parseInt(frequencyDay.value) : null,
-        min_amount: minAmount && minAmount.value ? parseFloat(minAmount.value) : null,
-        max_amount: maxAmount && maxAmount.value ? parseFloat(maxAmount.value) : null
+        min_amount: minAmountValue,
+        max_amount: maxAmountValue
     };
+    
+    return filters;
 };
 
 /**

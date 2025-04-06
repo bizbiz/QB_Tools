@@ -39,8 +39,8 @@
                     <p>Les règles d'auto-catégorisation permettent de catégoriser automatiquement les dépenses similaires. Par exemple, vous pouvez créer des règles pour :</p>
                     <ul>
                         <li>Catégoriser toutes les dépenses chez un commerçant spécifique</li>
-                        <li>Identifier les abonnements mensuels qui sont facturés le même jour chaque mois</li>
-                        <li>Regrouper les transactions contenant certains mots-clés dans la description</li>
+                        <li>Identifier les transactions contenant certains mots-clés dans la description</li>
+                        <li>Regrouper les dépenses d'un certain montant</li>
                     </ul>
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
@@ -68,10 +68,9 @@
                                 <tr>
                                     <th>Nom</th>
                                     <th>Filtres</th>
-                                    <th>Fréquence</th>
                                     <th>Catégorie</th>
                                     <th>Type</th>
-                                    <th>Confirmation</th> <!-- Nouvelle colonne -->
+                                    <th>Confirmation</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -92,15 +91,6 @@
                                             {% if rule.min_amount and rule.max_amount %} - {% endif %}
                                             {% if rule.max_amount %}max. {{ "%.2f"|format(rule.max_amount) }}€{% endif %}
                                         </div>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if rule.frequency_type == 'monthly' %}
-                                            Mensuelle (jour {{ rule.frequency_day }})
-                                        {% elif rule.frequency_type == 'weekly' %}
-                                            Hebdomadaire ({{ ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'][rule.frequency_day] }})
-                                        {% else %}
-                                            Toutes les occurrences
                                         {% endif %}
                                     </td>
                                     <td>
@@ -133,6 +123,9 @@
                                                 <i class="fas fa-play"></i>
                                             </button>
                                         </form>
+                                        <a href="{{ url_for('tricount.edit_auto_rule', rule_id=rule.id) }}" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" title="Modifier la règle">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
                                         <form method="POST" action="{{ url_for('tricount.delete_auto_rule', rule_id=rule.id) }}" class="d-inline">
                                             <button type="submit" class="btn btn-sm btn-danger" data-bs-toggle="tooltip" title="Supprimer la règle" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette règle ?');">
                                                 <i class="fas fa-trash"></i>

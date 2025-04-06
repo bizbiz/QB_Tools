@@ -45,9 +45,29 @@ AutoCategorize.updateFrequencyDayVisibility = function() {
     if (!frequencyType || !frequencyDayContainer) return;
     
     if (frequencyType.value === 'none') {
+        // Masquer le conteneur du jour de fréquence
         frequencyDayContainer.style.display = 'none';
+        
+        // Réinitialiser la valeur du jour de fréquence à vide pour éviter des inconsistances
+        if (frequencyDay) {
+            // Ne modifions pas directement la valeur de l'input pour éviter de déclencher des événements
+            // mais utilisons un attribut data pour stocker l'ancienne valeur
+            if (!frequencyDay.hasAttribute('data-previous-value')) {
+                frequencyDay.setAttribute('data-previous-value', frequencyDay.value);
+            }
+            // Vider la valeur
+            frequencyDay.value = '';
+            console.log("Jour de fréquence réinitialisé à vide car le type est 'none'");
+        }
     } else {
+        // Afficher le conteneur du jour de fréquence
         frequencyDayContainer.style.display = 'block';
+        
+        // Si une valeur précédente était stockée, la restaurer
+        if (frequencyDay && frequencyDay.hasAttribute('data-previous-value') && !frequencyDay.value) {
+            frequencyDay.value = frequencyDay.getAttribute('data-previous-value');
+            console.log("Jour de fréquence restauré à la valeur précédente:", frequencyDay.value);
+        }
         
         if (frequencyType.value === 'monthly') {
             frequencyDayHelp.textContent = 'Jour du mois (1-31) pour la fréquence mensuelle.';
