@@ -7,7 +7,53 @@
 
 // Assurer que l'objet global existe
 window.AutoCategorize = window.AutoCategorize || {};
-window.AutoCategorize.UI = {};
+window.AutoCategorize.UI = window.AutoCategorize.UI || {};
+
+/**
+ * Initialise les composants UI
+ */
+AutoCategorize.UI.init = function() {
+    // Initialiser le bouton de rafraîchissement
+    const refreshButton = document.getElementById('refresh-similar-expenses');
+    if (refreshButton) {
+        refreshButton.addEventListener('click', AutoCategorize.UI.refreshSimilarExpenses);
+    }
+    
+    // Initialiser les badges de conflit
+    AutoCategorize.UI.initConflictBadges();
+};
+
+/**
+ * Initialise les badges de conflit
+ */
+AutoCategorize.UI.initConflictBadges = function() {
+    // Initialiser les tooltips pour les badges de conflit
+    const conflictBadges = document.querySelectorAll('.conflict-badge');
+    
+    conflictBadges.forEach(badge => {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+            new bootstrap.Tooltip(badge);
+        }
+        
+        // Ajouter l'événement de clic pour afficher le détail du conflit
+        badge.addEventListener('click', function(e) {
+            e.preventDefault();
+            const row = this.closest('tr');
+            const expenseId = row.dataset.expenseId;
+            
+            if (typeof AutoCategorize.UI.showConflictDetails === 'function') {
+                AutoCategorize.UI.showConflictDetails(expenseId);
+            }
+        });
+    });
+    
+    // Mettre à jour le compteur de conflits
+    const conflictCount = document.getElementById('conflict-count');
+    if (conflictCount && conflictBadges.length > 0) {
+        conflictCount.textContent = conflictBadges.length;
+        conflictCount.classList.remove('d-none');
+    }
+};
 
 /**
  * Rafraîchit la liste des dépenses similaires en fonction des filtres
@@ -19,19 +65,6 @@ AutoCategorize.UI.refreshSimilarExpenses = function() {
         return;
     }
     
-    // Obtenir les filtres actuels
-    const filters = AutoCategorize.getFilters();
-    
-    // Ajouter l'ID de la dépense source
-    const expenseIdInput = document.querySelector('input[name="expense_id"]');
-    if (!expenseIdInput) {
-        console.error("Expense ID input not found");
-        return;
-    }
-    
-    filters.expense_id = expenseIdInput.value;
-    console.log("Refreshing with filters:", filters);
-    
     // Afficher un indicateur de chargement
     similarExpensesContainer.innerHTML = `
         <div class="d-flex justify-content-center align-items-center py-4">
@@ -41,6 +74,15 @@ AutoCategorize.UI.refreshSimilarExpenses = function() {
             <span class="ms-3">Recherche des dépenses correspondantes...</span>
         </div>
     `;
+    
+    // Obtenir les filtres actuels
+    const filters = AutoCategorize.getFilters ? AutoCategorize.getFilters() : {
+        expense_id: document.querySelector('input[name="expense_id"]').value,
+        merchant_contains: document.getElementById('merchant-contains')?.value || '',
+        description_contains: document.getElementById('description-contains')?.value || '',
+        min_amount: parseFloat(document.getElementById('min-amount')?.value) || null,
+        max_amount: parseFloat(document.getElementById('max-amount')?.value) || null
+    };
     
     // Faire la requête AJAX
     fetch('/tricount/find-similar-expenses', {
@@ -52,7 +94,7 @@ AutoCategorize.UI.refreshSimilarExpenses = function() {
     })
     .then(response => response.json())
     .then(data => {
-        console.log("Got response:", data);
+        console.log("Response from server:", data);
         if (data.success) {
             // Vider le conteneur
             similarExpensesContainer.innerHTML = '';
@@ -81,20 +123,19 @@ AutoCategorize.UI.refreshSimilarExpenses = function() {
                 AutoCategorize.UI.createNoExpensesMessage();
             }
             
-            // Marquer que les données sont à jour
-            AutoCategorize.formChanged = false;
-            
+            // Masquer le badge de notification
             const refreshNeededBadge = document.getElementById('refresh-needed-badge');
             if (refreshNeededBadge) {
                 refreshNeededBadge.classList.add('d-none');
             }
             
+            // Retirer la classe "stale-data"
             const similarExpensesTable = document.getElementById('similar-expenses-table');
             if (similarExpensesTable) {
                 similarExpensesTable.classList.remove('stale-data');
             }
             
-            // Sauvegarder les filtres actuels
+            // Sauvegarder les filtres actuels si la fonction existe
             if (typeof AutoCategorize.saveCurrentFilters === 'function') {
                 AutoCategorize.saveCurrentFilters();
             }
@@ -130,6 +171,7 @@ AutoCategorize.UI.createExpensesTable = function(expenses) {
             <th>Date</th>
             <th>Marchand</th>
             <th>Montant</th>
+            <th>Statut</th>
         </tr>
     `;
     
@@ -139,6 +181,7 @@ AutoCategorize.UI.createExpensesTable = function(expenses) {
     expenses.forEach(expense => {
         const row = document.createElement('tr');
         row.className = 'apply-expense-row';
+        row.dataset.expenseId = expense.id;
         
         // Cellule de date
         const dateCell = document.createElement('td');
@@ -155,6 +198,16 @@ AutoCategorize.UI.createExpensesTable = function(expenses) {
         amountCell.textContent = `${expense.is_debit ? '-' : ''}${expense.amount.toFixed(2)} €`;
         amountCell.className = expense.is_debit ? 'text-danger' : 'text-success';
         row.appendChild(amountCell);
+        
+        // Cellule de statut
+        const statusCell = document.createElement('td');
+        statusCell.className = 'text-center';
+        statusCell.innerHTML = `
+            <span class="badge bg-success">
+                <i class="fas fa-check"></i>
+            </span>
+        `;
+        row.appendChild(statusCell);
         
         tbody.appendChild(row);
     });
@@ -199,3 +252,85 @@ AutoCategorize.UI.showError = function(errorMessage) {
         </div>
     `;
 };
+
+/**
+ * Affiche les détails d'un conflit pour une dépense spécifique
+ * @param {string} expenseId - ID de la dépense en conflit
+ */
+AutoCategorize.UI.showConflictDetails = function(expenseId) {
+    // Récupérer les informations sur le conflit via API
+    fetch('/tricount/expense-rule-conflict/' + expenseId)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Remplir les détails de la règle
+                const ruleDetailsContainer = document.getElementById('conflict-rule-details');
+                if (ruleDetailsContainer) {
+                    let html = `
+                        <div class="card-header">
+                            <h5 class="card-title">${data.rule.name}</h5>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Filtres:</strong></p>
+                            <ul>
+                    `;
+                    
+                    if (data.rule.merchant_contains) {
+                        html += `<li>Marchand contient: ${data.rule.merchant_contains}</li>`;
+                    }
+                    
+                    if (data.rule.description_contains) {
+                        html += `<li>Description contient: ${data.rule.description_contains}</li>`;
+                    }
+                    
+                    html += `
+                            </ul>
+                            <p><strong>Actions:</strong></p>
+                            <ul>
+                    `;
+                    
+                    if (data.rule.apply_category) {
+                        html += `<li>Catégoriser en "${data.rule.category_name}"</li>`;
+                    }
+                    
+                    if (data.rule.apply_flag) {
+                        html += `<li>Appliquer le type "${data.rule.flag_name}"</li>`;
+                    }
+                    
+                    if (data.rule.apply_rename) {
+                        html += `<li>Renommer selon le motif "${data.rule.rename_pattern}"</li>`;
+                    }
+                    
+                    html += `
+                            </ul>
+                        </div>
+                    `;
+                    
+                    ruleDetailsContainer.innerHTML = html;
+                }
+                
+                // Configurer le bouton d'édition
+                const editButton = document.getElementById('edit-conflict-rule-btn');
+                if (editButton) {
+                    editButton.href = '/tricount/auto-rules/edit/' + data.rule.id;
+                }
+                
+                // Afficher la modal
+                const modal = new bootstrap.Modal(document.getElementById('conflict-detail-modal'));
+                modal.show();
+            } else {
+                alert('Erreur lors de la récupération des détails du conflit.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Erreur de communication avec le serveur.');
+        });
+};
+
+// Initialiser au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof AutoCategorize.UI.init === 'function') {
+        AutoCategorize.UI.init();
+    }
+});

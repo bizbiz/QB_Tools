@@ -32,6 +32,40 @@ AutoCategorize.initFilters = function() {
         maxAmount.addEventListener('input', formatAmountInput);
     }
     
+    // Détecter les changements dans les filtres pour le badge de notification
+    if (merchantContains) {
+        merchantContains.addEventListener('input', AutoCategorize.markFormChanged);
+    }
+    
+    if (descriptionContains) {
+        descriptionContains.addEventListener('input', AutoCategorize.markFormChanged);
+    }
+    
+    if (minAmount) {
+        minAmount.addEventListener('input', AutoCategorize.markFormChanged);
+    }
+    
+    if (maxAmount) {
+        maxAmount.addEventListener('input', AutoCategorize.markFormChanged);
+    }
+    
+    // Ajouter un délai de rafraîchissement automatique
+    if (merchantContains) {
+        merchantContains.addEventListener('input', AutoCategorize.debounceRefresh);
+    }
+    
+    if (descriptionContains) {
+        descriptionContains.addEventListener('input', AutoCategorize.debounceRefresh);
+    }
+    
+    if (minAmount) {
+        minAmount.addEventListener('input', AutoCategorize.debounceRefresh);
+    }
+    
+    if (maxAmount) {
+        maxAmount.addEventListener('input', AutoCategorize.debounceRefresh);
+    }
+    
     // Sauvegarder les filtres initiaux
     AutoCategorize.saveCurrentFilters();
 };
@@ -75,19 +109,16 @@ function formatAmountInput(e) {
  * @return {Object} Les filtres formatés pour l'API
  */
 AutoCategorize.getFilters = function() {
-    const frequencyType = document.getElementById('frequency-type');
-    const frequencyDay = document.getElementById('frequency-day');
     const merchantContains = document.getElementById('merchant-contains');
     const descriptionContains = document.getElementById('description-contains');
     const minAmount = document.getElementById('min-amount');
     const maxAmount = document.getElementById('max-amount');
+    const expenseId = document.querySelector('input[name="expense_id"]');
     
     return {
+        expense_id: expenseId ? expenseId.value : null,
         merchant_contains: merchantContains ? merchantContains.value : '',
         description_contains: descriptionContains ? descriptionContains.value : '',
-        frequency_type: frequencyType ? frequencyType.value : 'none',
-        frequency_day: (frequencyType && frequencyType.value !== 'none' && frequencyDay) ? 
-            parseInt(frequencyDay.value) : null,
         min_amount: minAmount && minAmount.value ? parseFloat(minAmount.value) : null,
         max_amount: maxAmount && maxAmount.value ? parseFloat(maxAmount.value) : null
     };
@@ -101,88 +132,11 @@ AutoCategorize.saveCurrentFilters = function() {
 };
 
 /**
- * Initialise la détection des changements du formulaire
- */
-AutoCategorize.initFormChangeDetection = function() {
-    // Détecter les changements dans tous les champs du formulaire
-    document.querySelectorAll('.rule-input').forEach(input => {
-        input.addEventListener('input', AutoCategorize.markFormChanged);
-        input.addEventListener('change', AutoCategorize.markFormChanged);
-    });
-    
-    // Ajouter des écouteurs spécifiques pour les filtres principaux avec auto-refresh
-    const merchantContains = document.getElementById('merchant-contains');
-    const descriptionContains = document.getElementById('description-contains');
-    
-    if (merchantContains) {
-        merchantContains.addEventListener('input', AutoCategorize.debounceRefresh);
-    }
-    
-    if (descriptionContains) {
-        descriptionContains.addEventListener('input', AutoCategorize.debounceRefresh);
-    }
-    
-    // Ajouter un écouteur aux contrôles de fréquence avec auto-refresh
-    const frequencyType = document.getElementById('frequency-type');
-    if (frequencyType) {
-        frequencyType.addEventListener('change', AutoCategorize.triggerRefresh);
-    }
-    
-    const frequencyDay = document.getElementById('frequency-day');
-    if (frequencyDay) {
-        frequencyDay.addEventListener('input', AutoCategorize.debounceRefresh);
-    }
-    
-    // Ajouter un écouteur aux montants avec auto-refresh
-    const minAmount = document.getElementById('min-amount');
-    const maxAmount = document.getElementById('max-amount');
-    
-    if (minAmount) {
-        minAmount.addEventListener('input', AutoCategorize.debounceRefresh);
-    }
-    
-    if (maxAmount) {
-        maxAmount.addEventListener('input', AutoCategorize.debounceRefresh);
-    }
-};
-
-/**
- * Déclencher un rafraîchissement avec un délai (debounce)
- */
-AutoCategorize.debounceRefresh = function() {
-    // Marquer le formulaire comme modifié
-    AutoCategorize.markFormChanged();
-    
-    // Annuler le timer précédent s'il existe
-    if (AutoCategorize.refreshTimeout) {
-        clearTimeout(AutoCategorize.refreshTimeout);
-    }
-    
-    // Définir un nouveau timer pour le rafraîchissement
-    AutoCategorize.refreshTimeout = setTimeout(function() {
-        console.log("Auto-refreshing after input change");
-        if (AutoCategorize.formChanged) {
-            AutoCategorize.triggerRefresh();
-        }
-    }, 500); // Délai de 500ms après la dernière modification
-};
-
-/**
- * Déclenche immédiatement un rafraîchissement des dépenses similaires
- */
-AutoCategorize.triggerRefresh = function() {
-    console.log("Triggering refresh");
-    if (typeof AutoCategorize.UI !== 'undefined' && typeof AutoCategorize.UI.refreshSimilarExpenses === 'function') {
-        AutoCategorize.UI.refreshSimilarExpenses();
-    } else {
-        console.warn("AutoCategorize.UI.refreshSimilarExpenses is not available");
-    }
-};
-
-/**
  * Marque le formulaire comme modifié si les filtres ont changé
  */
 AutoCategorize.markFormChanged = function() {
+    console.log("Form change detected");
+    
     // Vérifier si les filtres ont réellement changé
     const newFilters = AutoCategorize.getFilters();
     const hasChanges = JSON.stringify(newFilters) !== JSON.stringify(AutoCategorize.currentFilters);
@@ -202,3 +156,33 @@ AutoCategorize.markFormChanged = function() {
         }
     }
 };
+
+/**
+ * Déclenche un rafraîchissement avec un délai (debounce)
+ */
+AutoCategorize.debounceRefresh = function() {
+    // Marquer le formulaire comme modifié
+    AutoCategorize.markFormChanged();
+    
+    // Annuler le timer précédent s'il existe
+    if (AutoCategorize.refreshTimeout) {
+        clearTimeout(AutoCategorize.refreshTimeout);
+    }
+    
+    // Définir un nouveau timer pour le rafraîchissement
+    AutoCategorize.refreshTimeout = setTimeout(function() {
+        console.log("Auto-refreshing after input change");
+        if (AutoCategorize.formChanged) {
+            if (typeof AutoCategorize.UI !== 'undefined' && typeof AutoCategorize.UI.refreshSimilarExpenses === 'function') {
+                AutoCategorize.UI.refreshSimilarExpenses();
+            }
+        }
+    }, 800); // Délai plus long (800ms) après la dernière modification
+};
+
+// Le module s'initialise au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof AutoCategorize.initFilters === 'function') {
+        AutoCategorize.initFilters();
+    }
+});

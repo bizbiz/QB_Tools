@@ -133,7 +133,7 @@
                             <div class="section-header">
                                 <h5 class="mb-0">Type de dépense</h5>
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input rule-input" type="checkbox" id="apply-flag" name="apply_flag" value="true" checked>
+                                    <input class="form-check-input section-toggle" type="checkbox" id="apply-flag" name="apply_flag" value="true" checked>
                                     <label class="form-check-label" for="apply-flag">
                                         <i class="fas fa-tag me-1"></i> Appliquer un type
                                     </label>
@@ -163,7 +163,7 @@
                             <div class="section-header">
                                 <h5 class="mb-0">Catégorie</h5>
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input rule-input" type="checkbox" id="apply-category" name="apply_category" value="true" checked>
+                                    <input class="form-check-input section-toggle" type="checkbox" id="apply-category" name="apply_category" value="true" checked>
                                     <label class="form-check-label" for="apply-category">
                                         <i class="fas fa-folder-open me-1"></i> Catégoriser
                                     </label>
@@ -186,7 +186,7 @@
                             <div class="section-header">
                                 <h5 class="mb-0">Renommage</h5>
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input rule-input" type="checkbox" id="apply-rename" name="apply_rename" value="true">
+                                    <input class="form-check-input section-toggle" type="checkbox" id="apply-rename" name="apply_rename" value="true">
                                     <label class="form-check-label" for="apply-rename">
                                         <i class="fas fa-edit me-1"></i> Renommer
                                     </label>
@@ -355,6 +355,13 @@
         }{% if not loop.last %},{% endif %}
         {% endfor %}
     };
+    
+    // Information sur la dépense source
+    window.sourceExpenseData = {
+        id: {{ expense.id }},
+        merchant: "{{ expense.merchant|escapejs }}",
+        description: "{{ expense.description|escapejs }}"
+    };
 </script>
 
 <!-- Inclure tous les scripts nécessaires dans le bon ordre -->
@@ -363,249 +370,5 @@
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/categories.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/sections.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/rename.js') }}"></script>
-
-<!-- Script d'initialisation -->
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialiser les écouteurs d'événements pour les filtres
-        const merchantContains = document.getElementById('merchant-contains');
-        const descriptionContains = document.getElementById('description-contains');
-        const minAmount = document.getElementById('min-amount');
-        const maxAmount = document.getElementById('max-amount');
-        
-        if (merchantContains) {
-            merchantContains.addEventListener('input', function() {
-                AutoCategorize.markFormChanged();
-            });
-        }
-        
-        if (descriptionContains) {
-            descriptionContains.addEventListener('input', function() {
-                AutoCategorize.markFormChanged();
-            });
-        }
-        
-        if (minAmount) {
-            minAmount.addEventListener('input', function() {
-                AutoCategorize.markFormChanged();
-            });
-        }
-        
-        if (maxAmount) {
-            maxAmount.addEventListener('input', function() {
-                AutoCategorize.markFormChanged();
-            });
-        }
-        
-        // Initialiser le rafraîchissement des dépenses similaires
-        const refreshButton = document.getElementById('refresh-similar-expenses');
-        if (refreshButton) {
-            refreshButton.addEventListener('click', function() {
-                refreshSimilarExpenses();
-            });
-        }
-        
-        // Fonction pour obtenir les filtres actuels
-        function getFilters() {
-            return {
-                expense_id: document.querySelector('input[name="expense_id"]').value,
-                merchant_contains: merchantContains ? merchantContains.value : '',
-                description_contains: descriptionContains ? descriptionContains.value : '',
-                min_amount: minAmount && minAmount.value ? parseFloat(minAmount.value) : null,
-                max_amount: maxAmount && maxAmount.value ? parseFloat(maxAmount.value) : null
-            };
-        }
-        
-        // Fonction de rafraîchissement des dépenses similaires
-        function refreshSimilarExpenses() {
-            const similarExpensesContainer = document.getElementById('similar-expenses-container');
-            if (!similarExpensesContainer) return;
-            
-            // Afficher un indicateur de chargement
-            similarExpensesContainer.innerHTML = `
-                <div class="d-flex justify-content-center align-items-center py-4">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Chargement...</span>
-                    </div>
-                    <span class="ms-3">Recherche des dépenses correspondantes...</span>
-                </div>
-            `;
-            
-            // Récupérer les filtres actuels
-            const filters = getFilters();
-            
-            // Faire la requête AJAX
-            fetch('/tricount/find-similar-expenses', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(filters)
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log("Réponse du serveur:", data);
-                if (data.success) {
-                    // Vider le conteneur
-                    similarExpensesContainer.innerHTML = '';
-                    
-                    // Mettre à jour le compteur
-                    const expensesCount = document.getElementById('expenses-count');
-                    if (expensesCount) {
-                        expensesCount.textContent = data.count;
-                    }
-                    
-                    if (data.count > 0) {
-                        // Créer le tableau des dépenses
-                        createExpensesTable(data.expenses);
-                        
-                        // Ajouter le message d'information
-                        const infoMessage = document.createElement('div');
-                        infoMessage.className = 'alert alert-info mt-3 info-message';
-                        infoMessage.id = 'similar-expenses-info';
-                        infoMessage.innerHTML = `
-                            <i class="fas fa-info-circle me-2"></i>
-                            Ces dépenses correspondent aux critères spécifiés. Elles seront catégorisées automatiquement si vous activez l'option "Appliquer immédiatement".
-                        `;
-                        similarExpensesContainer.appendChild(infoMessage);
-                    } else {
-                        // Créer le message "aucune dépense"
-                        createNoExpensesMessage();
-                    }
-                    
-                    // Masquer le badge de notification
-                    const refreshNeededBadge = document.getElementById('refresh-needed-badge');
-                    if (refreshNeededBadge) {
-                        refreshNeededBadge.classList.add('d-none');
-                    }
-                    
-                    // Retirer la classe "stale-data"
-                    const similarExpensesTable = document.getElementById('similar-expenses-table');
-                    if (similarExpensesTable) {
-                        similarExpensesTable.classList.remove('stale-data');
-                    }
-                } else {
-                    // En cas d'erreur
-                    showError(data.error || 'Erreur inconnue lors de la recherche');
-                }
-            })
-            .catch(error => {
-                console.error('Erreur:', error);
-                showError('Erreur de communication avec le serveur. Veuillez réessayer.');
-            });
-        }
-        
-        // Fonction pour créer le tableau des dépenses
-        function createExpensesTable(expenses) {
-            const similarExpensesContainer = document.getElementById('similar-expenses-container');
-            if (!similarExpensesContainer) return;
-            
-            const tableContainer = document.createElement('div');
-            tableContainer.className = 'table-responsive';
-            
-            const table = document.createElement('table');
-            table.className = 'table table-hover';
-            table.id = 'similar-expenses-table';
-            
-            const thead = document.createElement('thead');
-            thead.innerHTML = `
-                <tr>
-                    <th>Date</th>
-                    <th>Marchand</th>
-                    <th>Montant</th>
-                    <th>Statut</th>
-                </tr>
-            `;
-            
-            const tbody = document.createElement('tbody');
-            tbody.id = 'similar-expenses-body';
-            
-            expenses.forEach(expense => {
-                const row = document.createElement('tr');
-                row.className = 'apply-expense-row';
-                row.dataset.expenseId = expense.id;
-                
-                // Cellule de date
-                const dateCell = document.createElement('td');
-                dateCell.textContent = expense.date;
-                row.appendChild(dateCell);
-                
-                // Cellule du marchand
-                const merchantCell = document.createElement('td');
-                merchantCell.textContent = expense.merchant;
-                row.appendChild(merchantCell);
-                
-                // Cellule du montant
-                const amountCell = document.createElement('td');
-                amountCell.textContent = `${expense.is_debit ? '-' : ''}${expense.amount.toFixed(2)} €`;
-                amountCell.className = expense.is_debit ? 'text-danger' : 'text-success';
-                row.appendChild(amountCell);
-                
-                // Cellule de statut
-                const statusCell = document.createElement('td');
-                statusCell.className = 'text-center';
-                statusCell.innerHTML = `
-                    <span class="badge bg-success">
-                        <i class="fas fa-check"></i>
-                    </span>
-                `;
-                row.appendChild(statusCell);
-                
-                tbody.appendChild(row);
-            });
-            
-            table.appendChild(thead);
-            table.appendChild(tbody);
-            tableContainer.appendChild(table);
-            
-            similarExpensesContainer.appendChild(tableContainer);
-        }
-        
-        // Fonction pour créer un message "aucune dépense"
-        function createNoExpensesMessage() {
-            const similarExpensesContainer = document.getElementById('similar-expenses-container');
-            if (!similarExpensesContainer) return;
-            
-            const message = document.createElement('div');
-            message.className = 'alert alert-warning warning-message';
-            message.id = 'no-similar-expenses';
-            message.innerHTML = `
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                Aucune dépense similaire non catégorisée n'a été trouvée avec ces critères. Essayez de modifier les filtres ou d'élargir vos critères de recherche. Votre règle s'appliquera aux futures dépenses correspondantes.
-            `;
-            
-            similarExpensesContainer.appendChild(message);
-        }
-        
-        // Fonction pour afficher un message d'erreur
-        function showError(errorMessage) {
-            const similarExpensesContainer = document.getElementById('similar-expenses-container');
-            if (!similarExpensesContainer) return;
-            
-            similarExpensesContainer.innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-circle me-2"></i>
-                    ${errorMessage}
-                </div>
-            `;
-        }
-        
-        // Fonction pour marquer le formulaire comme modifié
-        AutoCategorize.markFormChanged = function() {
-            console.log("Formulaire modifié");
-            
-            // Afficher le badge de notification
-            const refreshNeededBadge = document.getElementById('refresh-needed-badge');
-            if (refreshNeededBadge) {
-                refreshNeededBadge.classList.remove('d-none');
-            }
-            
-            // Ajouter la classe "stale-data" au tableau
-            const similarExpensesTable = document.getElementById('similar-expenses-table');
-            if (similarExpensesTable) {
-                similarExpensesTable.classList.add('stale-data');
-            }
-        };
-    });
-</script>
+<script src="{{ url_for('static', filename='js/tricount/auto_categorize/core.js') }}"></script>
 {% endblock %}
