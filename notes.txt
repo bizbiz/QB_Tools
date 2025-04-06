@@ -72,3 +72,6 @@ Pour étendre ce module, vous pouvez:
 . Personnaliser les formats d'exportation dans `app/routes/tricount.py`
 
 
+De plus on essaye d'éviter que l'utilisateur puisse créer deux regles qui se superposent en affichant dans la liste "**Dépenses similaires trouvées"** mais actuellement si j'essaye de faire deux regles qui catch la même chose, lorsque je fais la deuxieme je n'ai aucun résultat, il faut afficher les dépenses qui seraient catch mais au lieu d'une croix verte valide, il faut mettre une croix rouge pour signifier qu'il y a un probleme
+
+En cas de conflit de regle, il faut proposer d'editer l'autre regle ou de continuer a modifier cette regle, mais on ne peut pas laisser l'utilisatuer créer une regle qui se superpose

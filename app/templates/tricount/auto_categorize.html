@@ -5,40 +5,6 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/main.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/auto_categorize.css') }}">
-<style>
-    /* Styles supplémentaires pour l'interface améliorée */
-    .section-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1rem;
-        padding: 0.5rem 0;
-        border-bottom: 1px solid #eee;
-    }
-    
-    .section-title {
-        display: flex;
-        align-items: center;
-    }
-    
-    .section-title i {
-        margin-right: 0.5rem;
-    }
-    
-    .section-content {
-        transition: opacity 0.3s ease;
-    }
-    
-    .section-content.disabled {
-        opacity: 0.5;
-        pointer-events: none;
-    }
-    
-    /* Pour éviter de griser le header */
-    .rule-action-section.disabled-section {
-        background-color: transparent;
-    }
-</style>
 {% endblock %}
 
 {% block content %}
@@ -97,14 +63,16 @@
                         
                         <div class="mb-3">
                             <label for="rule-name" class="form-label">Nom de la règle</label>
-                            <input type="text" class="form-control rule-input" id="rule-name" name="rule_name" placeholder="Règle pour {{ expense.merchant }}" value="Règle pour {{ expense.merchant }}">
+                            <input type="text" class="form-control rule-input" id="rule-name" name="rule_name" placeholder="Règle pour {{ expense.merchant }}" value="Règle pour {{ expense.merchant }}" data-required="true">
+                            <div id="rule-name-error" class="validation-error">Le nom de la règle est requis</div>
                         </div>
                         
                         <h5 class="mt-4">Filtres</h5>
                         
                         <div class="mb-3">
                             <label for="merchant-contains" class="form-label">Le marchand contient</label>
-                            <input type="text" class="form-control rule-input" id="merchant-contains" name="merchant_contains" value="{{ expense.merchant }}">
+                            <input type="text" class="form-control rule-input" id="merchant-contains" name="merchant_contains" value="{{ expense.merchant }}" data-required="true">
+                            <div id="merchant-contains-error" class="validation-error">Ce champ est requis</div>
                             <div class="form-text">Cette règle s'appliquera aux dépenses dont le nom du marchand contient ce texte.</div>
                         </div>
                         
@@ -162,6 +130,12 @@
                     <h3 class="card-title">Actions à appliquer</h3>
                 </div>
                 <div class="card-body">
+                        <!-- Message d'erreur général pour les actions -->
+                        <div id="actions-error" class="alert alert-danger mb-3 d-none">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            Veuillez activer au moins une action (catégorie, type ou renommage).
+                        </div>
+
                         <!-- Section Type de dépense -->
                         <div id="flag-section" class="rule-action-section mb-4">
                             <div class="section-header">
@@ -175,8 +149,8 @@
                             </div>
                             
                             <div class="section-content mb-3">
-                                <label for="flag-id" class="form-label">Sélectionner un type</label>
-                                <select class="form-select rule-input" id="flag-id" name="flag_id">
+                                <label for="flag-id" class="form-label">Type de dépense</label>
+                                <select class="form-select rule-input" id="flag-id" name="flag_id" data-required="true">
                                     <option value="">Choisir un type de dépense</option>
                                     {% for flag in flags %}
                                     <option value="{{ flag.id }}" {% if flag.is_default %}selected{% endif %}>
@@ -184,6 +158,7 @@
                                     </option>
                                     {% endfor %}
                                 </select>
+                                <div id="flag-id-error" class="validation-error">Veuillez sélectionner un type de dépense</div>
                                 <div class="mt-2">
                                     <div id="flag-preview" class="d-flex align-items-center mt-2">
                                         <!-- Prévisualisation du flag sélectionné -->
@@ -205,13 +180,14 @@
                             </div>
                             
                             <div class="section-content mb-3">
-                                <label for="category-id" class="form-label">Sélectionner une catégorie</label>
-                                <select class="form-select rule-input" id="category-id" name="category_id">
+                                <label for="category-id" class="form-label">Catégorie</label>
+                                <select class="form-select rule-input" id="category-id" name="category_id" data-required="true">
                                     <option value="">Choisir une catégorie</option>
                                     {% for category in categories|sort(attribute='name') %}
                                     <option value="{{ category.id }}">{{ category.name }}</option>
                                     {% endfor %}
                                 </select>
+                                <div id="category-id-error" class="validation-error">Veuillez sélectionner une catégorie</div>
                             </div>
                         </div>
                         
@@ -230,7 +206,8 @@
                             <div class="section-content">
                                 <div class="mb-3">
                                     <label for="rename-pattern" class="form-label">Motif à rechercher</label>
-                                    <input type="text" class="form-control rule-input" id="rename-pattern" name="rename_pattern" placeholder="{{ expense.merchant }}">
+                                    <input type="text" class="form-control rule-input" id="rename-pattern" name="rename_pattern" placeholder="{{ expense.merchant }}" data-required="true">
+                                    <div id="rename-pattern-error" class="validation-error">Le motif de recherche est requis</div>
                                     <div class="form-text">Texte à rechercher dans le nom du marchand. Peut être une expression régulière.</div>
                                 </div>
                                 
@@ -301,8 +278,12 @@
                                         </td>
                                         <td class="text-center">
                                             {% if exp.applied_rules.count() > 0 %}
-                                            <span class="badge bg-warning conflict-badge" data-bs-toggle="tooltip" title="Cette dépense est déjà affectée par une autre règle">
-                                                <i class="fas fa-exclamation-triangle"></i>
+                                            {% set rule = exp.applied_rules.first() %}
+                                            <span class="badge bg-danger conflict-badge" 
+                                                  data-bs-toggle="tooltip" 
+                                                  data-rule-id="{{ rule.id }}"
+                                                  data-tooltip="<strong>Conflit</strong><br>Cette dépense est déjà affectée par la règle:<br><strong>{{ rule.name }}</strong><br>Cliquez pour plus de détails">
+                                                <i class="fas fa-times"></i>
                                             </span>
                                             {% else %}
                                             <span class="badge bg-success">
@@ -404,5 +385,6 @@
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/categories.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/sections.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/rename.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tricount/auto_categorize/validation.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/core.js') }}"></script>
 {% endblock %}

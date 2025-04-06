@@ -43,5 +43,11 @@ document.addEventListener('DOMContentLoaded', function() {
         AutoCategorize.UI.init();
     }
     
+    // 6. La validation du formulaire (nouveau module)
+    if (typeof AutoCategorize.Validation !== 'undefined' && typeof AutoCategorize.Validation.init === 'function') {
+        console.log("Initializing form validation...");
+        AutoCategorize.Validation.init();
+    }
+    
     console.log("All AutoCategorize modules initialized.");
 });

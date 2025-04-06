@@ -230,12 +230,9 @@ def find_similar_expenses():
             'error': f'Erreur lors de la récupération de la dépense: {str(e)}'
         }), 500
     
-    # Rechercher des dépenses similaires non catégorisées
+    # Rechercher des dépenses similaires
     try:
-        query = Expense.query.filter(
-            Expense.id != expense_id,
-            Expense.category_id == None  # Non catégorisées
-        )
+        query = Expense.query.filter(Expense.id != expense_id)
         
         print(f"Filtres appliqués: merchant_contains='{merchant_contains}', "
               f"description_contains='{description_contains}', "
@@ -271,14 +268,24 @@ def find_similar_expenses():
         # Préparer les données pour le JSON
         expenses_data = []
         for expense in similar_expenses:
-            expenses_data.append({
+            expense_data = {
                 'id': expense.id,
                 'date': expense.date.strftime('%d/%m/%Y'),
                 'merchant': expense.merchant,
                 'amount': float(expense.amount),
                 'is_debit': expense.is_debit,
                 'description': expense.description
-            })
+            }
+            
+            # Vérifier si la dépense est déjà associée à une règle
+            applied_rule = expense.applied_rules.first()
+            if applied_rule:
+                expense_data['conflict'] = {
+                    'rule_id': applied_rule.id,
+                    'rule_name': applied_rule.name
+                }
+            
+            expenses_data.append(expense_data)
         
         return jsonify({
             'success': True, 
@@ -375,4 +382,135 @@ def expense_rule_conflict(expense_id):
     return jsonify({
         'success': True,
         'rule': rule_data
+    })
+
+@tricount_bp.route('/rule-details/<int:rule_id>')
+def get_rule_details(rule_id):
+    """API pour récupérer les détails d'une règle d'auto-catégorisation"""
+    rule = AutoCategorizationRule.query.get_or_404(rule_id)
+    expense_id = request.args.get('expense_id', type=int)
+    
+    # Informations de base sur la règle
+    rule_data = {
+        'id': rule.id,
+        'name': rule.name,
+        'merchant_contains': rule.merchant_contains,
+        'description_contains': rule.description_contains,
+        'min_amount': float(rule.min_amount) if rule.min_amount else None,
+        'max_amount': float(rule.max_amount) if rule.max_amount else None,
+        'apply_category': rule.apply_category,
+        'apply_flag': rule.apply_flag,
+        'apply_rename': rule.apply_rename,
+        'category_name': rule.category.name if rule.category else None,
+        'flag_name': rule.flag.name if rule.flag else None,
+        'rename_pattern': rule.rename_pattern,
+        'rename_replacement': rule.rename_replacement
+    }
+    
+    # Si un expense_id est fourni, vérifier si cette dépense est affectée par la règle
+    affected_expense = None
+    if expense_id:
+        expense = Expense.query.get(expense_id)
+        if expense and rule.matches_expense(expense):
+            affected_expense = {
+                'id': expense.id,
+                'date': expense.date.strftime('%d/%m/%Y'),
+                'merchant': expense.merchant,
+                'amount': float(expense.amount),
+                'is_debit': expense.is_debit
+            }
+    
+    return jsonify({
+        'success': True,
+        'rule': rule_data,
+        'affected_expense': affected_expense
+    })
+
+@tricount_bp.route('/check-rule-conflicts', methods=['POST'])
+def check_rule_conflicts():
+    """API pour vérifier si une règle entrerait en conflit avec des règles existantes"""
+    data = request.json
+    
+    if not data:
+        return jsonify({
+            'success': False,
+            'error': 'Aucune donnée reçue'
+        }), 400
+    
+    # Extraire les données pour le test de conflit
+    merchant_contains = data.get('merchant_contains', '')
+    description_contains = data.get('description_contains', '')
+    min_amount = data.get('min_amount')
+    max_amount = data.get('max_amount')
+    expense_id = data.get('expense_id')
+    
+    # Créer une règle temporaire pour tester les conflits
+    temp_rule = AutoCategorizationRule(
+        name="Règle temporaire",
+        merchant_contains=merchant_contains,
+        description_contains=description_contains,
+        min_amount=min_amount,
+        max_amount=max_amount
+    )
+    
+    # Trouver toutes les dépenses correspondant à ces critères
+    query = Expense.query
+    
+    if merchant_contains:
+        query = query.filter(Expense.merchant.ilike(f'%{merchant_contains}%'))
+    
+    if description_contains:
+        query = query.filter(Expense.description.ilike(f'%{description_contains}%'))
+    
+    if min_amount is not None:
+        query = query.filter(Expense.amount >= min_amount)
+    
+    if max_amount is not None:
+        query = query.filter(Expense.amount <= max_amount)
+    
+    matching_expenses = query.all()
+    
+    # Chercher les règles qui affectent déjà ces dépenses
+    conflicts = {}
+    
+    for expense in matching_expenses:
+        # Vérifier si la règle temporaire correspond à cette dépense
+        if temp_rule.matches_expense(expense):
+            # Vérifier les règles existantes qui affectent cette dépense
+            for rule in expense.applied_rules:
+                # Ajouter au dictionnaire des conflits
+                if rule.id not in conflicts:
+                    conflicts[rule.id] = {
+                        'rule': {
+                            'id': rule.id,
+                            'name': rule.name,
+                            'merchant_contains': rule.merchant_contains,
+                            'apply_category': rule.apply_category,
+                            'category_name': rule.category.name if rule.category else None,
+                            'apply_flag': rule.apply_flag,
+                            'flag_name': rule.flag.name if rule.flag else None
+                        },
+                        'expenses': []
+                    }
+                
+                # Ajouter la dépense au conflit
+                expense_data = {
+                    'id': expense.id,
+                    'date': expense.date.strftime('%d/%m/%Y'),
+                    'merchant': expense.merchant,
+                    'amount': float(expense.amount),
+                    'is_debit': expense.is_debit
+                }
+                
+                # Éviter les doublons
+                if not any(e['id'] == expense_data['id'] for e in conflicts[rule.id]['expenses']):
+                    conflicts[rule.id]['expenses'].append(expense_data)
+    
+    # Convertir le dictionnaire en liste
+    conflict_list = list(conflicts.values())
+    
+    return jsonify({
+        'success': True,
+        'has_conflicts': len(conflict_list) > 0,
+        'conflicts': conflict_list
     })
