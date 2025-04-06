@@ -10,16 +10,39 @@ window.AutoCategorize = window.AutoCategorize || {};
 
 // Fonction d'initialisation principale
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialiser les composants
+    console.log("Auto-categorize core.js loaded");
+    
+    // S'assurer que les namespaces existent
+    window.AutoCategorize.UI = window.AutoCategorize.UI || {};
+    
+    // Initialiser les composants dans le bon ordre
     AutoCategorize.initFilters();
-    AutoCategorize.initFlagAndCategory();
     AutoCategorize.initFormChangeDetection();
-    AutoCategorize.initConflictDetection();
+    AutoCategorize.initFlagAndCategory();
+    AutoCategorize.initFrequency();
+    
+    // Initialiser la gestion des conflits si disponible
+    if (typeof AutoCategorize.initConflictDetection === 'function') {
+        AutoCategorize.initConflictDetection();
+    }
     
     // Bouton de rafraîchissement
     const refreshButton = document.getElementById('refresh-similar-expenses');
     if (refreshButton) {
-        refreshButton.addEventListener('click', AutoCategorize.UI.refreshSimilarExpenses);
+        refreshButton.addEventListener('click', function() {
+            console.log("Manual refresh clicked");
+            AutoCategorize.UI.refreshSimilarExpenses();
+        });
+    }
+    
+    // Effectuer un rafraîchissement initial si on a des filtres préremplis
+    const merchantContains = document.getElementById('merchant-contains');
+    if (merchantContains && merchantContains.value.trim() !== '') {
+        // Attendre que tous les modules soient initialisés
+        setTimeout(function() {
+            console.log("Performing initial refresh");
+            AutoCategorize.UI.refreshSimilarExpenses();
+        }, 100);
     }
 });
 

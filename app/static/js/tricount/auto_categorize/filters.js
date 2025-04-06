@@ -11,6 +11,7 @@ window.AutoCategorize = window.AutoCategorize || {};
 // Variables globales
 AutoCategorize.formChanged = false;
 AutoCategorize.currentFilters = {};
+AutoCategorize.refreshTimeout = null; // Pour le délai avant rafraîchissement automatique
 
 /**
  * Initialise les éléments des filtres et sauvegarde l'état initial
@@ -74,46 +75,22 @@ function formatAmountInput(e) {
  * @return {Object} Les filtres formatés pour l'API
  */
 AutoCategorize.getFilters = function() {
+    const frequencyType = document.getElementById('frequency-type');
+    const frequencyDay = document.getElementById('frequency-day');
     const merchantContains = document.getElementById('merchant-contains');
     const descriptionContains = document.getElementById('description-contains');
     const minAmount = document.getElementById('min-amount');
     const maxAmount = document.getElementById('max-amount');
     
-    // Obtenir les valeurs des montants uniquement si elles sont valides
-    let minAmountValue = null;
-    if (minAmount && minAmount.value && minAmount.value.trim() !== '') {
-        try {
-            minAmountValue = parseFloat(minAmount.value);
-            if (isNaN(minAmountValue)) {
-                minAmountValue = null;
-            }
-        } catch (e) {
-            console.error("Erreur lors de la conversion de min_amount:", e);
-            minAmountValue = null;
-        }
-    }
-    
-    let maxAmountValue = null;
-    if (maxAmount && maxAmount.value && maxAmount.value.trim() !== '') {
-        try {
-            maxAmountValue = parseFloat(maxAmount.value);
-            if (isNaN(maxAmountValue)) {
-                maxAmountValue = null;
-            }
-        } catch (e) {
-            console.error("Erreur lors de la conversion de max_amount:", e);
-            maxAmountValue = null;
-        }
-    }
-    
-    const filters = {
+    return {
         merchant_contains: merchantContains ? merchantContains.value : '',
         description_contains: descriptionContains ? descriptionContains.value : '',
-        min_amount: minAmountValue,
-        max_amount: maxAmountValue
+        frequency_type: frequencyType ? frequencyType.value : 'none',
+        frequency_day: (frequencyType && frequencyType.value !== 'none' && frequencyDay) ? 
+            parseInt(frequencyDay.value) : null,
+        min_amount: minAmount && minAmount.value ? parseFloat(minAmount.value) : null,
+        max_amount: maxAmount && maxAmount.value ? parseFloat(maxAmount.value) : null
     };
-    
-    return filters;
 };
 
 /**
@@ -132,6 +109,74 @@ AutoCategorize.initFormChangeDetection = function() {
         input.addEventListener('input', AutoCategorize.markFormChanged);
         input.addEventListener('change', AutoCategorize.markFormChanged);
     });
+    
+    // Ajouter des écouteurs spécifiques pour les filtres principaux avec auto-refresh
+    const merchantContains = document.getElementById('merchant-contains');
+    const descriptionContains = document.getElementById('description-contains');
+    
+    if (merchantContains) {
+        merchantContains.addEventListener('input', AutoCategorize.debounceRefresh);
+    }
+    
+    if (descriptionContains) {
+        descriptionContains.addEventListener('input', AutoCategorize.debounceRefresh);
+    }
+    
+    // Ajouter un écouteur aux contrôles de fréquence avec auto-refresh
+    const frequencyType = document.getElementById('frequency-type');
+    if (frequencyType) {
+        frequencyType.addEventListener('change', AutoCategorize.triggerRefresh);
+    }
+    
+    const frequencyDay = document.getElementById('frequency-day');
+    if (frequencyDay) {
+        frequencyDay.addEventListener('input', AutoCategorize.debounceRefresh);
+    }
+    
+    // Ajouter un écouteur aux montants avec auto-refresh
+    const minAmount = document.getElementById('min-amount');
+    const maxAmount = document.getElementById('max-amount');
+    
+    if (minAmount) {
+        minAmount.addEventListener('input', AutoCategorize.debounceRefresh);
+    }
+    
+    if (maxAmount) {
+        maxAmount.addEventListener('input', AutoCategorize.debounceRefresh);
+    }
+};
+
+/**
+ * Déclencher un rafraîchissement avec un délai (debounce)
+ */
+AutoCategorize.debounceRefresh = function() {
+    // Marquer le formulaire comme modifié
+    AutoCategorize.markFormChanged();
+    
+    // Annuler le timer précédent s'il existe
+    if (AutoCategorize.refreshTimeout) {
+        clearTimeout(AutoCategorize.refreshTimeout);
+    }
+    
+    // Définir un nouveau timer pour le rafraîchissement
+    AutoCategorize.refreshTimeout = setTimeout(function() {
+        console.log("Auto-refreshing after input change");
+        if (AutoCategorize.formChanged) {
+            AutoCategorize.triggerRefresh();
+        }
+    }, 500); // Délai de 500ms après la dernière modification
+};
+
+/**
+ * Déclenche immédiatement un rafraîchissement des dépenses similaires
+ */
+AutoCategorize.triggerRefresh = function() {
+    console.log("Triggering refresh");
+    if (typeof AutoCategorize.UI !== 'undefined' && typeof AutoCategorize.UI.refreshSimilarExpenses === 'function') {
+        AutoCategorize.UI.refreshSimilarExpenses();
+    } else {
+        console.warn("AutoCategorize.UI.refreshSimilarExpenses is not available");
+    }
 };
 
 /**
@@ -143,6 +188,7 @@ AutoCategorize.markFormChanged = function() {
     const hasChanges = JSON.stringify(newFilters) !== JSON.stringify(AutoCategorize.currentFilters);
     
     if (hasChanges) {
+        console.log("Filters changed:", newFilters);
         AutoCategorize.formChanged = true;
         
         const refreshNeededBadge = document.getElementById('refresh-needed-badge');
