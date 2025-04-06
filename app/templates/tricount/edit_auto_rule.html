@@ -436,4 +436,52 @@
         }
     });
 </script>
+<script>
+    // Modifier le comportement de validation des conflits pour le mode édition
+    document.addEventListener('DOMContentLoaded', function() {
+        // S'assurer que nous sommes dans le mode édition
+        if (typeof window.virtualExpenseId !== 'undefined') {
+            // Trouver la fonction de vérification des conflits
+            if (window.AutoCategorize.Validation && window.AutoCategorize.Validation.checkRuleConflicts) {
+                // Stocker la fonction originale
+                const originalCheckConflicts = window.AutoCategorize.Validation.checkRuleConflicts;
+                
+                // Remplacer par notre fonction adaptée qui ajoute current_rule_id aux données
+                window.AutoCategorize.Validation.checkRuleConflicts = async function() {
+                    // Récupérer les données du formulaire avec la méthode existante
+                    const formData = window.AutoCategorize.getFilters ? window.AutoCategorize.getFilters() : {};
+                    
+                    // S'assurer que current_rule_id est bien passé à l'API
+                    formData.current_rule_id = {{ rule.id }};
+                    
+                    try {
+                        // Appeler l'API de vérification des conflits
+                        const response = await fetch('/tricount/check-rule-conflicts', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(formData)
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success && data.has_conflicts && data.conflicts && data.conflicts.length > 0) {
+                            // Afficher l'alerte de conflit
+                            if (typeof window.AutoCategorize.Validation.showConflictAlert === 'function') {
+                                window.AutoCategorize.Validation.showConflictAlert(data.conflicts);
+                            }
+                            return true;
+                        }
+                        
+                        return false;
+                    } catch (error) {
+                        console.error('Error checking for conflicts:', error);
+                        return false; // En cas d'erreur, ne pas bloquer la soumission
+                    }
+                };
+            }
+        }
+    });
+</script>
 {% endblock %}

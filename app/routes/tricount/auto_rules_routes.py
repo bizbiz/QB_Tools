@@ -509,6 +509,9 @@ def check_rule_conflicts():
     max_amount = data.get('max_amount')
     expense_id = data.get('expense_id')
     
+    # IMPORTANT: Récupérer l'ID de la règle en cours d'édition s'il existe
+    current_rule_id = data.get('current_rule_id')
+    
     # Créer une règle temporaire pour tester les conflits
     temp_rule = AutoCategorizationRule(
         name="Règle temporaire",
@@ -543,6 +546,10 @@ def check_rule_conflicts():
         if temp_rule.matches_expense(expense):
             # Vérifier les règles existantes qui affectent cette dépense
             for rule in expense.applied_rules:
+                # Ignorer la règle en cours d'édition si on est en mode édition
+                if current_rule_id and rule.id == int(current_rule_id):
+                    continue
+                    
                 # Ajouter au dictionnaire des conflits
                 if rule.id not in conflicts:
                     conflicts[rule.id] = {
