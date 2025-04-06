@@ -157,18 +157,18 @@
         
         alertContent += `
             </ul>
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                <strong>Attention:</strong> Vous devez résoudre ce conflit avant de pouvoir créer la règle.
+            </div>
             <p>Options pour résoudre ce conflit:</p>
             <ol>
                 <li>Modifier vos filtres actuels pour éviter le chevauchement</li>
                 <li>Modifier la ou les règles existantes pour limiter leur portée</li>
-                <li>Continuer malgré tout (les nouvelles valeurs remplaceront les anciennes pour les dépenses en conflit)</li>
             </ol>
             <div class="d-flex justify-content-end mt-3">
-                <button type="button" id="resolve-conflict-btn" class="btn btn-primary me-2">
+                <button type="button" id="resolve-conflict-btn" class="btn btn-primary">
                     <i class="fas fa-wrench me-1"></i>Modifier mes filtres
-                </button>
-                <button type="button" id="ignore-conflict-btn" class="btn btn-warning">
-                    <i class="fas fa-exclamation-triangle me-1"></i>Continuer malgré le conflit
                 </button>
             </div>
         `;
@@ -184,9 +184,8 @@
             // Scroll jusqu'à l'alerte
             alertContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
             
-            // Ajouter les écouteurs d'événements
+            // Ajouter l'écouteur d'événement au bouton de modification
             const resolveBtn = document.getElementById('resolve-conflict-btn');
-            const ignoreBtn = document.getElementById('ignore-conflict-btn');
             
             if (resolveBtn) {
                 resolveBtn.addEventListener('click', function() {
@@ -194,21 +193,6 @@
                     alertContainer.remove();
                     document.getElementById('merchant-contains').scrollIntoView({ behavior: 'smooth', block: 'center' });
                     document.getElementById('merchant-contains').focus();
-                });
-            }
-            
-            if (ignoreBtn) {
-                ignoreBtn.addEventListener('click', function() {
-                    // Ajouter un champ caché pour indiquer d'ignorer les conflits
-                    const ignoreConflictInput = document.createElement('input');
-                    ignoreConflictInput.type = 'hidden';
-                    ignoreConflictInput.name = 'ignore_conflicts';
-                    ignoreConflictInput.value = 'true';
-                    document.getElementById('rule-form').appendChild(ignoreConflictInput);
-                    
-                    // Fermer l'alerte et soumettre le formulaire
-                    alertContainer.remove();
-                    document.getElementById('rule-form').submit();
                 });
             }
         }
