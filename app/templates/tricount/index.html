@@ -115,6 +115,12 @@
                         <a href="{{ url_for('tricount.flags_list') }}" class="list-group-item list-group-item-action">
                             <i class="fas fa-tags me-2"></i>Gérer les types de dépenses
                         </a>
+                        <a href="{{ url_for('tricount.pending_rules_list') }}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-tasks me-2"></i>Règles en attente
+                            {% if pending_count > 0 %}
+                            <span class="badge bg-warning float-end">{{ pending_count }}</span>
+                            {% endif %}
+                        </a>
                     </div>
                 </div>
             </div>

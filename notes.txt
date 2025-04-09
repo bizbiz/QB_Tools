@@ -53,8 +53,6 @@ Cette commande crée les catégories par défaut dans la base de données.
 Pour étendre ce module, vous pouvez:
 
 
-. modifier l'edition de l'auto categorisation pour afficher les résultats comme pour la création (fusionner les deux ? permet de passer des préselection a la regle d'ajout ?)
-
 . Il faut ajouter une page pour valider les dépenses qui ont été catch par des regles d'auto catégorisation
 . Il faut ajouter un 3 eme bloc qui permet de gérer l'auto catégorisation
 . Il faut pouvoir lancer l'auto catégorisation avec toutes les regles via un bouton sur la page d'accueil avec un témoin de chargement

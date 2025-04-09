@@ -141,6 +141,22 @@ class AutoCategorizationRule(db.Model):
         
         return True
 
+class PendingRuleApplication(db.Model):
+    """Modèle pour stocker les applications de règles en attente de confirmation"""
+    __tablename__ = 'pending_rule_applications'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    rule_id = db.Column(db.Integer, db.ForeignKey('auto_categorization_rules.id'), nullable=False)
+    expense_id = db.Column(db.Integer, db.ForeignKey('expenses.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relations
+    rule = db.relationship('AutoCategorizationRule', backref=db.backref('pending_applications', lazy=True))
+    expense = db.relationship('Expense', backref=db.backref('pending_rules', lazy=True))
+    
+    def __repr__(self):
+        return f'<PendingRuleApplication rule={self.rule_id} expense={self.expense_id}>'
+
 # Table de liaison entre règles et dépenses
 rule_expense_links = db.Table('rule_expense_links',
     db.Column('rule_id', db.Integer, db.ForeignKey('auto_categorization_rules.id'), primary_key=True),

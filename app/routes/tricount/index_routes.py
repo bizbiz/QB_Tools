@@ -1,8 +1,7 @@
 # app/routes/tricount/index_routes.py
 from flask import render_template
 from app.routes.tricount import tricount_bp
-from app.models.tricount import Expense
-from app.models.tricount import Flag
+from app.models.tricount import Expense, Flag, PendingRuleApplication
 
 @tricount_bp.route('/')
 def index():
@@ -21,7 +20,11 @@ def index():
     # Récupérer les dernières dépenses
     recent_expenses = Expense.query.order_by(Expense.date.desc()).limit(5).all()
     
+    # Compter les règles en attente de confirmation
+    pending_count = PendingRuleApplication.query.count()
+    
     return render_template('tricount/index.html', 
                            expenses_stats=expenses_stats,
                            flags=flags,
-                           recent_expenses=recent_expenses)
+                           recent_expenses=recent_expenses,
+                           pending_count=pending_count)

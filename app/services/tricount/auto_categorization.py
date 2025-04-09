@@ -1,5 +1,5 @@
 # app/services/tricount/auto_categorization.py
-from app.models.tricount import Expense, AutoCategorizationRule
+from app.models.tricount import Expense, AutoCategorizationRule, PendingRuleApplication
 from app.extensions import db
 from datetime import datetime
 import re
@@ -104,38 +104,61 @@ class AutoCategorizationService:
             expense (Expense): Dépense à catégoriser
             
         Returns:
-            bool: True si une règle a été appliquée, False sinon
+            dict: Résultat de l'application des règles
         """
-        # Ne pas traiter les dépenses déjà catégorisées si nécessaire
-        if expense.category_id is not None and not expense.needs_rename:
-            return False
+        # Ne pas traiter les dépenses déjà catégorisées
+        if expense.category_id is not None:
+            return {'applied': False, 'pending': False}
         
         # Récupérer toutes les règles
         rules = AutoCategorizationRule.query.all()
         
+        applied = False
+        pending = False
+        
         for rule in rules:
             if rule.matches_expense(expense):
-                # Appliquer les modifications selon les options activées
-                if rule.apply_category and rule.category_id:
-                    expense.category_id = rule.category_id
-                
-                if rule.apply_flag and rule.flag_id:
-                    expense.flag_id = rule.flag_id
-                
-                if rule.apply_rename and rule.rename_pattern:
-                    # Appliquer le renommage si configuré
-                    import re
-                    if rule.rename_pattern and expense.merchant:
-                        expense.merchant = re.sub(rule.rename_pattern, 
-                                                 rule.rename_replacement or '', 
-                                                 expense.merchant)
-                
-                # Enregistrer la relation entre la règle et la dépense
-                rule.affected_expenses.append(expense)
-                
-                return True
+                # Si la règle nécessite une confirmation, l'ajouter aux applications en attente
+                if rule.requires_confirmation:
+                    # Vérifier si cette règle n'est pas déjà en attente pour cette dépense
+                    existing = PendingRuleApplication.query.filter_by(
+                        rule_id=rule.id, 
+                        expense_id=expense.id
+                    ).first()
+                    
+                    if not existing:
+                        pending_application = PendingRuleApplication(
+                            rule_id=rule.id,
+                            expense_id=expense.id
+                        )
+                        db.session.add(pending_application)
+                        pending = True
+                else:
+                    # Appliquer directement les modifications selon les options activées
+                    if rule.apply_category and rule.category_id:
+                        expense.category_id = rule.category_id
+                    
+                    if rule.apply_flag and rule.flag_id:
+                        expense.flag_id = rule.flag_id
+                    
+                    if rule.apply_rename and rule.rename_pattern:
+                        # Appliquer le renommage si configuré
+                        if rule.rename_pattern and expense.merchant:
+                            expense.merchant = re.sub(rule.rename_pattern, 
+                                                    rule.rename_replacement or '', 
+                                                    expense.merchant)
+                    
+                    # Enregistrer la relation entre la règle et la dépense
+                    rule.affected_expenses.append(expense)
+                    applied = True
+                    
+                    # Sortir de la boucle après la première règle appliquée
+                    break
         
-        return False
+        if pending or applied:
+            db.session.commit()
+            
+        return {'applied': applied, 'pending': pending}
     
     @staticmethod
     def find_expense_conflicts(expense_id, rule_filters):

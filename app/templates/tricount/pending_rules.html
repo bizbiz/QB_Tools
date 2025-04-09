@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}QB Tools - Règles en attente de confirmation{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/main.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('tricount.index') }}">Tricount Helper</a></li>
+                    <li class="breadcrumb-item active">Règles en attente de confirmation</li>
+                </ol>
+            </nav>
+            
+            <div class="d-flex justify-content-between align-items-center">
+                <h1>Règles en attente de confirmation</h1>
+                <div>
+                    <a href="{{ url_for('tricount.auto_rules_list') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-list me-2"></i>Liste des règles
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h3 class="card-title">Instructions</h3>
+                </div>
+                <div class="card-body">
+                    <p>Cette page affiche les règles d'auto-catégorisation qui nécessitent votre confirmation avant d'être appliquées. Pour chaque règle :</p>
+                    <ol>
+                        <li>Vérifiez les dépenses qui seraient affectées</li>
+                        <li>Confirmez l'application de la règle pour toutes les dépenses ou individuellement</li>
+                        <li>Rejetez l'application si les dépenses ne doivent pas être catégorisées par cette règle</li>
+                    </ol>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Vous pouvez modifier le paramètre "Nécessite une confirmation" dans les détails d'une règle pour automatiser complètement l'application des règles à l'avenir.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% if grouped_applications %}
+        {% for rule_id, group in grouped_applications.items() %}
+        <div class="row mb-4">
+            <div class="col">
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h3 class="card-title">{{ group.rule.name }}</h3>
+                            <div>
+                                <form method="POST" action="{{ url_for('tricount.confirm_rule_application', rule_id=rule_id) }}" class="d-inline">
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="fas fa-check-circle me-2"></i>Confirmer tout
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ url_for('tricount.reject_rule_application', rule_id=rule_id) }}" class="d-inline ms-2">
+                                    <button type="submit" class="btn btn-danger">
+                                        <i class="fas fa-times-circle me-2"></i>Rejeter tout
+                                    </button>
+                                </form>
+                                <a href="{{ url_for('tricount.edit_auto_rule', rule_id=rule_id) }}" class="btn btn-primary ms-2">
+                                    <i class="fas fa-edit me-2"></i>Modifier la règle
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <h5>Critères de la règle</h5>
+                                <ul>
+                                    {% if group.rule.merchant_contains %}
+                                    <li><strong>Marchand contient :</strong> {{ group.rule.merchant_contains }}</li>
+                                    {% endif %}
+                                    
+                                    {% if group.rule.description_contains %}
+                                    <li><strong>Description contient :</strong> {{ group.rule.description_contains }}</li>
+                                    {% endif %}
+                                    
+                                    {% if group.rule.min_amount or group.rule.max_amount %}
+                                    <li><strong>Montant :</strong> 
+                                        {% if group.rule.min_amount %}min. {{ "%.2f"|format(group.rule.min_amount) }}€{% endif %}
+                                        {% if group.rule.min_amount and group.rule.max_amount %} - {% endif %}
+                                        {% if group.rule.max_amount %}max. {{ "%.2f"|format(group.rule.max_amount) }}€{% endif %}
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h5>Actions à appliquer</h5>
+                                <ul>
+                                    {% if group.rule.apply_category %}
+                                    <li><strong>Catégorie :</strong> {{ group.rule.category.name if group.rule.category else 'Non définie' }}</li>
+                                    {% endif %}
+                                    
+                                    {% if group.rule.apply_flag %}
+                                    <li><strong>Type :</strong> 
+                                        {% if group.rule.flag %}
+                                        <span class="flag-badge" style="background-color: {{ group.rule.flag.color }}">
+                                            <i class="fas {{ group.rule.flag.icon }}"></i>
+                                            {{ group.rule.flag.name }}
+                                        </span>
+                                        {% else %}
+                                        Non défini
+                                        {% endif %}
+                                    </li>
+                                    {% endif %}
+                                    
+                                    {% if group.rule.apply_rename %}
+                                    <li><strong>Renommage :</strong> Motif "{{ group.rule.rename_pattern }}" remplacé par "{{ group.rule.rename_replacement or '(vide)' }}"</li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <h5>Dépenses à traiter ({{ group.expenses|length }})</h5>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Marchand</th>
+                                        <th>Description</th>
+                                        <th>Montant</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for expense in group.expenses %}
+                                    <tr>
+                                        <td>{{ expense.date.strftime('%d/%m/%Y') }}</td>
+                                        <td>{{ expense.merchant }}</td>
+                                        <td>{{ expense.description|truncate(50) }}</td>
+                                        <td class="{% if expense.is_debit %}text-danger{% else %}text-success{% endif %}">
+                                            {% if expense.is_debit %}-{% endif %}{{ "%.2f"|format(expense.amount) }} €
+                                        </td>
+                                        <td>
+                                            {% set pending_index = loop.index0 %}
+                                            {% if pending_index < group.pending_ids|length %}
+                                                {% set pending_id = group.pending_ids[pending_index] %}
+                                                <form method="POST" action="{{ url_for('tricount.confirm_expense_rule', pending_id=pending_id) }}" class="d-inline">
+                                                    <button type="submit" class="btn btn-sm btn-success" data-bs-toggle="tooltip" title="Confirmer">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                </form>
+                                                <form method="POST" action="{{ url_for('tricount.reject_expense_rule', pending_id=pending_id) }}" class="d-inline">
+                                                    <button type="submit" class="btn btn-sm btn-danger" data-bs-toggle="tooltip" title="Rejeter">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                </form>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+    <div class="row">
+        <div class="col">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Aucune règle en attente de confirmation pour le moment.
+                    </div>
+                    <div class="text-center mt-3">
+                        <a href="{{ url_for('tricount.auto_rules_list') }}" class="btn btn-primary">
+                            <i class="fas fa-list me-2"></i>Voir toutes les règles
+                        </a>
+                        <a href="{{ url_for('tricount.categorize_expenses') }}" class="btn btn-outline-primary ms-2">
+                            <i class="fas fa-tags me-2"></i>Catégoriser les dépenses
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+    });
+</script>
+{% endblock %}
