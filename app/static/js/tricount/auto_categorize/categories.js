@@ -14,22 +14,6 @@ window.AutoCategorize = window.AutoCategorize || {};
 AutoCategorize.initFlagAndCategory = function() {
     // Sélecteurs de flag et de catégorie
     const flagSelect = document.getElementById('flag-id');
-    const categorySelect = document.getElementById('category-id');
-    
-    // Stocker les options de catégorie originales pour le filtrage
-    if (categorySelect) {
-        categorySelect.originalOptions = Array.from(categorySelect.options).map(option => {
-            return {
-                value: option.value,
-                text: option.text,
-                selected: option.selected,
-                originallySelected: option.selected // Conserver l'état initial de sélection
-            };
-        });
-        
-        // Stocker la valeur initiale sélectionnée
-        categorySelect.initialValue = categorySelect.value;
-    }
     
     // Mettre à jour la prévisualisation initiale du flag
     updateFlagPreview();
@@ -37,7 +21,9 @@ AutoCategorize.initFlagAndCategory = function() {
     if (flagSelect) {
         flagSelect.addEventListener('change', function() {
             updateFlagPreview();
-            filterCategoriesByFlag();
+            
+            // COMMENTÉ : Ne plus appeler ce filtrage car il est géré par category_select.js
+            // filterCategoriesByFlag();
             
             // Signaler un changement dans le formulaire
             if (typeof AutoCategorize.markFormChanged === 'function') {
@@ -45,19 +31,6 @@ AutoCategorize.initFlagAndCategory = function() {
             }
         });
     }
-    
-    // Ajouter un écouteur pour le changement de catégorie
-    if (categorySelect) {
-        categorySelect.addEventListener('change', function() {
-            // Signaler un changement dans le formulaire
-            if (typeof AutoCategorize.markFormChanged === 'function') {
-                AutoCategorize.markFormChanged();
-            }
-        });
-    }
-    
-    // Filtrer les catégories par flag au chargement
-    filterCategoriesByFlag();
     
     /**
      * Met à jour la prévisualisation du flag sélectionné
