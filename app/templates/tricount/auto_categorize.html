@@ -1,3 +1,5 @@
+{% from "macros/tricount/category_select.html" import category_select_with_js %}
+
 {% extends "base.html" %}
 
 {% block title %}QB Tools - Auto-catégorisation{% endblock %}
@@ -5,6 +7,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/main.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/auto_categorize.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/category_select.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -150,14 +153,14 @@
                             
                             <div class="section-content mb-3">
                                 <label for="flag-id" class="form-label">Type de dépense</label>
-                                <select class="form-select rule-input" id="flag-id" name="flag_id" data-required="true">
-                                    <option value="">Choisir un type de dépense</option>
-                                    {% for flag in flags %}
-                                    <option value="{{ flag.id }}" {% if flag.is_default %}selected{% endif %}>
-                                        {{ flag.name }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
+                                    <select class="form-select rule-input" id="flag-id" name="flag_id" data-required="true" data-flag-select="true">
+                                        <option value="">Choisir un type de dépense</option>
+                                        {% for flag in flags %}
+                                        <option value="{{ flag.id }}" {% if flag.is_default %}selected{% endif %}>
+                                            {{ flag.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
                                 <div id="flag-id-error" class="validation-error">Veuillez sélectionner un type de dépense</div>
                                 <div class="mt-2">
                                     <div id="flag-preview" class="d-flex align-items-center mt-2">
@@ -181,12 +184,17 @@
                             
                             <div class="section-content mb-3">
                                 <label for="category-id" class="form-label">Catégorie</label>
-                                <select class="form-select rule-input" id="category-id" name="category_id" data-required="true">
-                                    <option value="">Choisir une catégorie</option>
-                                    {% for category in categories|sort(attribute='name') %}
-                                    <option value="{{ category.id }}">{{ category.name }}</option>
-                                    {% endfor %}
-                                </select>
+                                {{ category_select_with_js(
+                                    name="category_id", 
+                                    id="category-id", 
+                                    selected_category=None,
+                                    classes="rule-input",
+                                    required=true,
+                                    placeholder="Choisir une catégorie",
+                                    all_categories=categories,
+                                    show_icons=true,
+                                    flag_select_id="flag-id"
+                                ) }}
                                 <div id="category-id-error" class="validation-error">Veuillez sélectionner une catégorie</div>
                             </div>
                         </div>
@@ -388,6 +396,7 @@
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/categories.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/sections.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/rename.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tricount/category_select.js') }}"></script>
 
 <!-- 3. Modules UI et validation -->
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/ui.js') }}"></script>

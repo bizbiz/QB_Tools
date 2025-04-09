@@ -1,0 +1,61 @@
+/* app/static/css/tricount/category_select.css */
+
+/* Styles pour les sélecteurs de catégories améliorés */
+.category-select-container {
+    position: relative;
+    width: 100%;
+}
+
+/* Style pour l'affichage des catégories avec icônes dans un select standard */
+.category-select option[data-icon]:before {
+    content: attr(data-icon);
+    margin-right: 0.5rem;
+}
+
+/* Support des badges de catégories */
+.category-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    margin-right: 0.5rem;
+    background-color: #f8f9fa;
+    border: 1px solid #ced4da;
+}
+
+.category-badge i {
+    margin-right: 0.5rem;
+    font-size: 1rem;
+}
+
+/* Classes spécifiques pour les catégories avec icônes dans des contextes autres que les select */
+.category-with-icon {
+    display: inline-flex;
+    align-items: center;
+}
+
+.category-icon {
+    margin-right: 0.5rem;
+    width: 16px;
+    text-align: center;
+}
+
+/* Style pour sélection active */
+.category-select option:checked {
+    background-color: #007bff;
+    color: white;
+}
+
+/* Support pour les attributs disabled */
+.category-select:disabled,
+.category-select[disabled] {
+    background-color: #e9ecef;
+    opacity: 1;
+}
+
+/* Style pour les filtres actifs */
+.category-filter-active {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}

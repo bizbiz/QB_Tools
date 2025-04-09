@@ -103,7 +103,11 @@ AutoCategorize.initFlagAndCategory = function() {
     function filterCategoriesByFlag() {
         if (!categorySelect || !categorySelect.originalOptions || !flagSelect) return;
         
+        // Récupérer l'ID du flag sélectionné et le convertir en nombre
         const flagId = parseInt(flagSelect.value);
+        console.log(`Filtrage des catégories pour flag_id=${flagId}`);
+        
+        // Sauvegarder la valeur actuelle
         const currentValue = categorySelect.value;
         
         // Vider les options actuelles
@@ -115,11 +119,8 @@ AutoCategorize.initFlagAndCategory = function() {
         defaultOption.text = 'Choisir une catégorie';
         categorySelect.appendChild(defaultOption);
         
-        // Déterminer s'il y a une valeur initiale à préserver
-        const valueToPreserve = categorySelect.initialValue;
-        
-        // Variable pour vérifier si on a conservé la valeur
-        let preservedValueExists = false;
+        // Variable pour vérifier si on a conservé la valeur actuelle
+        let currentValueExists = false;
         
         // Filtrer et ajouter les catégories compatibles
         categorySelect.originalOptions.forEach(option => {
@@ -129,25 +130,26 @@ AutoCategorize.initFlagAndCategory = function() {
             const categoryId = option.value;
             let shouldInclude = false;
             
-            // Cas 1: C'est la valeur initiale sélectionnée (à conserver)
-            if (categoryId === valueToPreserve) {
-                shouldInclude = true;
-                preservedValueExists = true;
-            }
-            // Cas 2: C'est l'option actuellement sélectionnée (à conserver)
-            else if (categoryId === currentValue && currentValue !== '') {
+            // Si aucun flag n'est sélectionné, inclure toutes les catégories
+            if (!flagId) {
                 shouldInclude = true;
             }
-            // Cas 3: Si un flag est sélectionné, vérifier si la catégorie est compatible
-            else if (flagId && window.categoryData && window.categoryData[categoryId]) {
+            // Si un flag est sélectionné, vérifier si la catégorie est compatible
+            else if (window.categoryData && window.categoryData[categoryId]) {
                 const category = window.categoryData[categoryId];
-                if (category.flagIds && category.flagIds.includes(flagId)) {
-                    shouldInclude = true;
+                if (category.flagIds && Array.isArray(category.flagIds)) {
+                    // Vérifier si le flagId est dans le tableau des flags de la catégorie
+                    shouldInclude = category.flagIds.includes(flagId);
+                    
+                    // Debug 
+                    console.debug(`Catégorie ${categoryId} (${option.text}): flagIds=${JSON.stringify(category.flagIds)}, flagId=${flagId}, includes=${shouldInclude}`);
                 }
             }
-            // Cas 4: Si aucun flag n'est sélectionné, inclure toutes les catégories
-            else if (!flagId) {
+            
+            // Si c'est la valeur actuellement sélectionnée, l'inclure quand même
+            if (categoryId === currentValue && currentValue !== '') {
                 shouldInclude = true;
+                currentValueExists = true;
             }
             
             if (shouldInclude) {
@@ -155,38 +157,18 @@ AutoCategorize.initFlagAndCategory = function() {
                 newOption.value = option.value;
                 newOption.text = option.text;
                 
-                // Si c'est la valeur initiale ou celle sélectionnée, marquer comme "préservée"
-                if (option.value === valueToPreserve || option.value === currentValue) {
-                    newOption.className = 'preserved-category';
-                    if (option.value === valueToPreserve) {
-                        newOption.selected = true;
-                    }
+                // Si c'est la valeur actuelle, la sélectionner
+                if (option.value === currentValue) {
+                    newOption.selected = true;
                 }
                 
                 categorySelect.appendChild(newOption);
             }
         });
         
-        // Si aucune option correspondant à la valeur initiale n'a été ajoutée mais qu'elle existe
-        if (!preservedValueExists && valueToPreserve && valueToPreserve !== '') {
-            // Chercher les infos de la catégorie
-            const categoryName = window.categoryData && window.categoryData[valueToPreserve] ? 
-                window.categoryData[valueToPreserve].name : "Catégorie initiale";
-            
-            // Créer l'option
-            const preservedOption = document.createElement('option');
-            preservedOption.value = valueToPreserve;
-            preservedOption.text = categoryName + " (conservé)";
-            preservedOption.className = 'preserved-category';
-            preservedOption.selected = true;
-            
-            // Ajouter l'option
-            categorySelect.appendChild(preservedOption);
-        }
-        
-        // Si aucune valeur n'est sélectionnée mais qu'il y avait une valeur initiale, la sélectionner
-        if ((categorySelect.value === '' || !categorySelect.value) && valueToPreserve) {
-            categorySelect.value = valueToPreserve;
+        // Si la valeur actuelle n'existe plus dans les options, sélectionner la première option
+        if (!currentValueExists && categorySelect.options.length > 1) {
+            categorySelect.selectedIndex = 1;
         }
     }
 };

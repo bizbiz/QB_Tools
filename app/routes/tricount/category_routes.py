@@ -17,6 +17,7 @@ def add_category():
     """Ajouter une nouvelle catégorie"""
     name = request.form.get('name')
     description = request.form.get('description', '')
+    icon = request.form.get('icon', '')  # Récupération de l'icône
     flag_ids = request.form.getlist('flags')
     
     if not name:
@@ -25,7 +26,8 @@ def add_category():
     
     category = Category(
         name=name, 
-        description=description
+        description=description,
+        icon=icon  # Ajout de l'icône
     )
     
     # Associer les flags sélectionnés
@@ -66,6 +68,7 @@ def update_category(category_id):
     
     name = request.form.get('name')
     description = request.form.get('description', '')
+    icon = request.form.get('icon', '')  # Récupération de l'icône
     flag_ids = request.form.getlist('flags')
     
     if not name:
@@ -75,6 +78,7 @@ def update_category(category_id):
     try:
         category.name = name
         category.description = description
+        category.icon = icon  # Mise à jour de l'icône
         
         # Mettre à jour les flags
         if flag_ids:

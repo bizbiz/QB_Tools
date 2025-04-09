@@ -25,6 +25,7 @@ class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False, unique=True)
     description = db.Column(db.String(255))
+    icon = db.Column(db.String(50))  # Nouvel attribut pour l'icône (fa-xxxx)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Association many-to-many avec les flags
