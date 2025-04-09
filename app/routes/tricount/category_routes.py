@@ -109,3 +109,53 @@ def delete_category(category_id):
         flash(f'Erreur lors de la suppression de la catégorie: {str(e)}', 'danger')
     
     return redirect(url_for('tricount.categories_list'))
+
+
+# À ajouter à app/routes/tricount/category_routes.py
+
+@tricount_bp.route('/diagnostic/categories-flags')
+def diagnostic_categories_flags():
+    """Endpoint de diagnostic pour vérifier les associations catégories-flags"""
+    # Récupération des données
+    categories = Category.query.all()
+    flags = Flag.query.all()
+    
+    # Préparation de l'affichage
+    data = {
+        'categories': [],
+        'flags': [],
+        'associations': []
+    }
+    
+    # Récupérer les infos des catégories
+    for category in categories:
+        cat_info = {
+            'id': category.id,
+            'name': category.name,
+            'icon': category.icon,
+            'flags': [flag.id for flag in category.flags]
+        }
+        data['categories'].append(cat_info)
+    
+    # Récupérer les infos des flags
+    for flag in flags:
+        flag_info = {
+            'id': flag.id,
+            'name': flag.name,
+            'is_default': flag.is_default
+        }
+        data['flags'].append(flag_info)
+    
+    # Vérifier la table d'association directement
+    from sqlalchemy import text
+    
+    # Requête SQL directe sur la table d'association
+    result = db.session.execute(text("SELECT category_id, flag_id FROM category_flags"))
+    for row in result:
+        data['associations'].append({
+            'category_id': row[0],
+            'flag_id': row[1]
+        })
+    
+    from flask import jsonify
+    return jsonify(data)

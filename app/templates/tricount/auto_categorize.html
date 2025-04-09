@@ -153,14 +153,14 @@
                             
                             <div class="section-content mb-3">
                                 <label for="flag-id" class="form-label">Type de dépense</label>
-                                    <select class="form-select rule-input" id="flag-id" name="flag_id" data-required="true" data-flag-select="true">
-                                        <option value="">Choisir un type de dépense</option>
-                                        {% for flag in flags %}
-                                        <option value="{{ flag.id }}" {% if flag.is_default %}selected{% endif %}>
-                                            {{ flag.name }}
-                                        </option>
-                                        {% endfor %}
-                                    </select>
+                                <select class="form-select rule-input" id="flag-id" name="flag_id" data-required="true" data-flag-select="true">
+                                    <option value="">Choisir un type de dépense</option>
+                                    {% for flag in flags %}
+                                    <option value="{{ flag.id }}" {% if flag.is_default %}selected{% endif %}>
+                                        {{ flag.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
                                 <div id="flag-id-error" class="validation-error">Veuillez sélectionner un type de dépense</div>
                                 <div class="mt-2">
                                     <div id="flag-preview" class="d-flex align-items-center mt-2">
@@ -184,6 +184,8 @@
                             
                             <div class="section-content mb-3">
                                 <label for="category-id" class="form-label">Catégorie</label>
+                                
+                                {# Utilisation de la macro #}
                                 {{ category_select_with_js(
                                     name="category_id", 
                                     id="category-id", 
@@ -195,6 +197,7 @@
                                     show_icons=true,
                                     flag_select_id="flag-id"
                                 ) }}
+                                
                                 <div id="category-id-error" class="validation-error">Veuillez sélectionner une catégorie</div>
                             </div>
                         </div>
@@ -357,6 +360,7 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ super() }}
 <script>
     // Données des flags pour l'affichage et la manipulation en JavaScript
     window.flagData = {
@@ -394,6 +398,7 @@
 <!-- 2. Modules de base -->
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/filters.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/categories.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tricount/category_select.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/sections.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/rename.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/category_select.js') }}"></script>
@@ -404,4 +409,36 @@
 
 <!-- 4. Module principal qui initialise tout -->
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/core.js') }}"></script>
+<script>
+    // Données des flags pour l'affichage et la manipulation en JavaScript
+    window.flagData = {
+        {% for flag in flags %}
+        "{{ flag.id }}": {
+            name: "{{ flag.name }}",
+            color: "{{ flag.color }}",
+            icon: "{{ flag.icon }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+    
+    // Version corrigée de categoryData pour s'assurer que les IDs des flags sont des nombres
+    window.categoryData = {
+        {% for category in categories %}
+        "{{ category.id }}": {
+            name: "{{ category.name }}",
+            flagIds: [{% for flag in category.flags %}{{ flag.id }}{% if not loop.last %},{% endif %}{% endfor %}]
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+
+    // Ajouter debugging info
+    console.log("DEBUG - Catégories disponibles:", window.categoryData);
+    console.log("DEBUG - Flags disponibles:", window.flagData);
+    
+    // Afficher les associations de flags pour chaque catégorie
+    console.log("DEBUG - Associations catégories-flags:");
+    for (const [categoryId, categoryInfo] of Object.entries(window.categoryData)) {
+        console.log(`Catégorie ${categoryId} (${categoryInfo.name}):`, categoryInfo.flagIds);
+    }
+</script>
 {% endblock %}

@@ -100,15 +100,28 @@ AutoCategorize.initFlagAndCategory = function() {
     /**
      * Filtre les catégories disponibles en fonction du flag sélectionné
      */
-    function filterCategoriesByFlag() {
-        if (!categorySelect || !categorySelect.originalOptions || !flagSelect) return;
+    function filterCategoriesByFlag(categorySelect, flagSelect) {
+        // Vérifier que les sélecteurs et les options originales existent
+        if (!categorySelect || !categorySelect.originalOptions) {
+            console.error("categorySelect ou ses options originales sont manquants");
+            return;
+        }
         
-        // Récupérer l'ID du flag sélectionné et le convertir en nombre
+        if (!flagSelect) {
+            console.error("flagSelect est manquant");
+            return;
+        }
+        
+        // Récupérer l'ID du flag sélectionné
         const flagId = parseInt(flagSelect.value);
-        console.log(`Filtrage des catégories pour flag_id=${flagId}`);
+        console.log(`Filtrage des catégories pour flag_id=${flagId} (type: ${typeof flagId})`);
+        
+        // Debug: Afficher les données de catégories
+        console.log("CategoryData:", window.categoryData);
         
         // Sauvegarder la valeur actuelle
         const currentValue = categorySelect.value;
+        console.log(`Valeur actuelle du select de catégories: ${currentValue}`);
         
         // Vider les options actuelles
         categorySelect.innerHTML = '';
@@ -116,40 +129,51 @@ AutoCategorize.initFlagAndCategory = function() {
         // Ajouter l'option "Choisir une catégorie"
         const defaultOption = document.createElement('option');
         defaultOption.value = '';
-        defaultOption.text = 'Choisir une catégorie';
+        defaultOption.text = categorySelect.dataset.placeholder || 'Choisir une catégorie';
         categorySelect.appendChild(defaultOption);
         
-        // Variable pour vérifier si on a conservé la valeur actuelle
-        let currentValueExists = false;
+        // Compte le nombre d'options ajoutées
+        let addedOptions = 0;
         
         // Filtrer et ajouter les catégories compatibles
         categorySelect.originalOptions.forEach(option => {
-            // Toujours inclure l'option vide
+            // Ne pas traiter l'option vide
             if (option.value === '') return;
             
             const categoryId = option.value;
+            console.log(`Traitement de la catégorie ${categoryId} (${option.text})`);
+            
             let shouldInclude = false;
             
-            // Si aucun flag n'est sélectionné, inclure toutes les catégories
-            if (!flagId) {
+            // Cas 1: Si aucun flag n'est sélectionné, inclure toutes les catégories
+            if (!flagId || isNaN(flagId)) {
                 shouldInclude = true;
+                console.log(`  Aucun flag sélectionné, toutes les catégories incluses`);
             }
-            // Si un flag est sélectionné, vérifier si la catégorie est compatible
+            // Cas 2: Si un flag est sélectionné, vérifier si la catégorie est compatible
             else if (window.categoryData && window.categoryData[categoryId]) {
-                const category = window.categoryData[categoryId];
-                if (category.flagIds && Array.isArray(category.flagIds)) {
-                    // Vérifier si le flagId est dans le tableau des flags de la catégorie
-                    shouldInclude = category.flagIds.includes(flagId);
+                const categoryInfo = window.categoryData[categoryId];
+                console.log(`  Données de la catégorie:`, categoryInfo);
+                
+                if (categoryInfo.flagIds && Array.isArray(categoryInfo.flagIds)) {
+                    // Convertir tous les IDs en nombres pour la comparaison
+                    const flagIdsAsNumbers = categoryInfo.flagIds.map(id => 
+                        typeof id === 'string' ? parseInt(id) : id
+                    );
                     
-                    // Debug 
-                    console.debug(`Catégorie ${categoryId} (${option.text}): flagIds=${JSON.stringify(category.flagIds)}, flagId=${flagId}, includes=${shouldInclude}`);
+                    shouldInclude = flagIdsAsNumbers.includes(flagId);
+                    console.log(`  flagIds=${JSON.stringify(flagIdsAsNumbers)}, flagId=${flagId}, includes=${shouldInclude}`);
+                } else {
+                    console.log(`  Pas de flagIds valides pour cette catégorie`);
                 }
+            } else {
+                console.log(`  Catégorie ${categoryId} non trouvée dans categoryData`);
             }
             
-            // Si c'est la valeur actuellement sélectionnée, l'inclure quand même
-            if (categoryId === currentValue && currentValue !== '') {
+            // Cas 3: Toujours inclure la valeur actuellement sélectionnée
+            if (option.value === currentValue && currentValue !== '') {
                 shouldInclude = true;
-                currentValueExists = true;
+                console.log(`  C'est la valeur actuellement sélectionnée, inclure quand même`);
             }
             
             if (shouldInclude) {
@@ -157,19 +181,38 @@ AutoCategorize.initFlagAndCategory = function() {
                 newOption.value = option.value;
                 newOption.text = option.text;
                 
-                // Si c'est la valeur actuelle, la sélectionner
+                // Ajouter les data attributes
+                if (option.flags) {
+                    newOption.dataset.flags = JSON.stringify(option.flags);
+                }
+                
+                if (option.icon) {
+                    newOption.dataset.icon = option.icon;
+                }
+                
+                // Sélectionner si c'était l'option sélectionnée
                 if (option.value === currentValue) {
                     newOption.selected = true;
+                    console.log(`  Option marquée comme sélectionnée`);
                 }
                 
                 categorySelect.appendChild(newOption);
+                addedOptions++;
+            } else {
+                console.log(`  Option exclue du filtrage`);
             }
         });
         
-        // Si la valeur actuelle n'existe plus dans les options, sélectionner la première option
-        if (!currentValueExists && categorySelect.options.length > 1) {
+        console.log(`Total d'options ajoutées: ${addedOptions}`);
+        
+        // Si aucune option n'a été sélectionnée, essayer de sélectionner la première non vide
+        if (categorySelect.value === '' && categorySelect.options.length > 1) {
             categorySelect.selectedIndex = 1;
+            console.log(`Aucune option sélectionnée, sélection automatique de la première option: ${categorySelect.value}`);
         }
+        
+        // Déclencher un événement change pour informer d'autres listeners
+        categorySelect.dispatchEvent(new Event('change'));
     }
 };
 
