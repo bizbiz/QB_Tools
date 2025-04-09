@@ -206,6 +206,7 @@ def find_similar_expenses():
     description_contains = data.get('description_contains', '')
     min_amount = data.get('min_amount')
     max_amount = data.get('max_amount')
+    current_rule_id = data.get('current_rule_id')  # ID de la règle en cours d'édition
     
     # Mode spécial pour l'édition de règle (pas de dépense réelle)
     is_edit_mode = expense_id and int(expense_id) > 1000000  # Un ID très grand est probablement notre ID virtuel
@@ -252,6 +253,9 @@ def find_similar_expenses():
         print(f"Filtres appliqués: merchant_contains='{merchant_contains}', "
               f"description_contains='{description_contains}', "
               f"min_amount={min_amount}, max_amount={max_amount}")
+        
+        # Flag pour indiquer si nous sommes en mode édition de règle avec renommage
+        search_original_text = is_edit_mode and current_rule_id is not None
         
         # Appliquer les filtres uniquement s'ils sont non vides
         if merchant_contains and merchant_contains.strip():
@@ -395,11 +399,13 @@ def edit_auto_rule(rule_id):
     )
     
     # Trouver des dépenses similaires en utilisant les critères de la règle
+    # MODIFICATION : Utiliser le merchant_contains au lieu du pattern de renommage
     filters = {
-        'merchant_contains': rule.merchant_contains,
+        'merchant_contains': rule.merchant_contains,  # Important: utiliser merchant_contains et non le pattern de renommage
         'description_contains': rule.description_contains,
         'min_amount': float(rule.min_amount) if rule.min_amount else None,
-        'max_amount': float(rule.max_amount) if rule.max_amount else None
+        'max_amount': float(rule.max_amount) if rule.max_amount else None,
+        'search_original_text': True  # Nouveau flag pour indiquer de chercher dans le texte original
     }
     
     similar_expenses = AutoCategorizationService.find_similar_expenses(virtual_expense, filters)
