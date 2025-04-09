@@ -27,26 +27,22 @@ class AutoCategorizationService:
             Expense.category_id == None  # Non catégorisées
         )
         
-        # Vérifier si on doit chercher dans le texte original
-        search_original_text = filters.get('search_original_text', False)
-        
         # Appliquer les filtres
         merchant_pattern = filters.get('merchant_contains') or expense.merchant.strip().lower()
         if merchant_pattern:
-            # Si chercher dans le texte original est activé, on cherche dans le texte original
-            # Pour le cas des règles qui font du renommage et où on édite les règles
-            # On utilise alors merchant_contains (le texte de recherche) et non le texte renommé
-            if search_original_text:
-                query = query.filter(Expense.merchant.ilike(f'%{merchant_pattern}%'))
-            else:
-                # Comportement standard - recherche normale
-                query = query.filter(Expense.merchant.ilike(f'%{merchant_pattern}%'))
+            # Chercher à la fois dans merchant ET original_text pour maximiser les chances de trouver
+            # les dépenses correspondantes, qu'elles aient été renommées ou non
+            from sqlalchemy import or_
+            query = query.filter(or_(
+                Expense.merchant.ilike(f'%{merchant_pattern}%'),
+                Expense.original_text.ilike(f'%{merchant_pattern}%')
+            ))
         
         description_pattern = filters.get('description_contains')
         if description_pattern:
             query = query.filter(Expense.description.ilike(f'%{description_pattern}%'))
         
-        # Filtrer par montant si spécifié
+        # Autres filtres...
         min_amount = filters.get('min_amount')
         if min_amount is not None:
             query = query.filter(Expense.amount >= min_amount)

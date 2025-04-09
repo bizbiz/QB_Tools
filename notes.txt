@@ -68,8 +68,10 @@ Pour étendre ce module, vous pouvez:
 
 . Ajouter de nouveaux parsers de relevés bancaires dans le dossier `app/services/tricount/`
 . Personnaliser les formats d'exportation dans `app/routes/tricount.py`
+. Pour dépenses similaires trouvées :
 
+Si vous souhaitez pousser cette amélioration plus loin à l'avenir, vous pourriez :
 
-De plus on essaye d'éviter que l'utilisateur puisse créer deux regles qui se superposent en affichant dans la liste "**Dépenses similaires trouvées"** mais actuellement si j'essaye de faire deux regles qui catch la même chose, lorsque je fais la deuxieme je n'ai aucun résultat, il faut afficher les dépenses qui seraient catch mais au lieu d'une croix verte valide, il faut mettre une croix rouge pour signifier qu'il y a un probleme
-
-En cas de conflit de regle, il faut proposer d'editer l'autre regle ou de continuer a modifier cette regle, mais on ne peut pas laisser l'utilisatuer créer une regle qui se superpose
+Ajouter une infobulle (tooltip) qui explique cette différence
+Proposer une option pour choisir sur quel champ filtrer (original ou renommé)
+Permettre la prévisualisation de l'effet du renommage sur les dépenses détectées

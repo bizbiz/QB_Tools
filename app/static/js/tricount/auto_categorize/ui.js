@@ -310,7 +310,15 @@
             
             // Cellule du marchand
             const merchantCell = document.createElement('td');
-            merchantCell.textContent = expense.merchant;
+            if (expense.renamed_by_rule && expense.original_merchant) {
+                // Afficher le texte original en grand et le texte renommé comme indication
+                merchantCell.innerHTML = `
+                    <div class="original-merchant">${expense.original_merchant}</div>
+                    <div class="renamed-merchant"><small><em>Renommé en: ${expense.merchant}</em></small></div>
+                `;
+            } else {
+                merchantCell.textContent = expense.merchant;
+            }
             row.appendChild(merchantCell);
             
             // Cellule du montant

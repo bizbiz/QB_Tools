@@ -259,7 +259,11 @@ def find_similar_expenses():
         
         # Appliquer les filtres uniquement s'ils sont non vides
         if merchant_contains and merchant_contains.strip():
-            query = query.filter(Expense.merchant.ilike(f'%{merchant_contains}%'))
+            from sqlalchemy import or_
+            query = query.filter(or_(
+                Expense.merchant.ilike(f'%{merchant_contains}%'),
+                Expense.original_text.ilike(f'%{merchant_contains}%')
+            ))
         
         if description_contains and description_contains.strip():
             query = query.filter(Expense.description.ilike(f'%{description_contains}%'))
@@ -287,10 +291,27 @@ def find_similar_expenses():
         # Préparer les données pour le JSON
         expenses_data = []
         for expense in similar_expenses:
+            # Déterminer si l'expense a été renommée par une règle
+            renamed_by_rule = False
+            original_merchant = None
+            
+            # Vérifier si cette dépense a été renommée
+            for rule in expense.applied_rules:
+                if rule.apply_rename and rule.rename_pattern:
+                    renamed_by_rule = True
+                    # Utiliser le texte original s'il est disponible
+                    if expense.original_text:
+                        # Extraire le marchand d'origine du texte original
+                        # C'est une approximation - nous utilisons le texte avant renommage
+                        original_merchant = expense.original_text.split('\n')[0] if '\n' in expense.original_text else expense.original_text
+                    break
+            
             expense_data = {
                 'id': expense.id,
                 'date': expense.date.strftime('%d/%m/%Y'),
                 'merchant': expense.merchant,
+                'original_merchant': original_merchant,
+                'renamed_by_rule': renamed_by_rule,
                 'amount': float(expense.amount),
                 'is_debit': expense.is_debit,
                 'description': expense.description
