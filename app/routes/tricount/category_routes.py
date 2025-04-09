@@ -159,3 +159,68 @@ def diagnostic_categories_flags():
     
     from flask import jsonify
     return jsonify(data)
+
+# À ajouter à app/routes/tricount/category_routes.py
+
+@tricount_bp.route('/maintenance/fix-category-flags')
+def fix_category_flags():
+    """Endpoint de maintenance pour vérifier et réparer les associations catégories-flags"""
+    # Récupération des données
+    categories = Category.query.all()
+    flags = Flag.query.all()
+    
+    # Vérifier l'état actuel
+    current_associations = []
+    for category in categories:
+        cat_info = {
+            'id': category.id,
+            'name': category.name,
+            'flags': [{'id': flag.id, 'name': flag.name} for flag in category.flags]
+        }
+        current_associations.append(cat_info)
+    
+    # Créer un dictionnaire des catégories par ID pour faciliter la manipulation
+    categories_dict = {cat.id: cat for cat in categories}
+    flags_dict = {flag.id: flag for flag in flags}
+    
+    # Vérifier la table d'association directement
+    from sqlalchemy import text
+    
+    # Vérifier les incohérences en base de données (par exemple, associations vers des IDs inexistants)
+    result = db.session.execute(text("SELECT category_id, flag_id FROM category_flags"))
+    invalid_associations = []
+    for row in result:
+        cat_id, flag_id = row[0], row[1]
+        
+        if cat_id not in categories_dict:
+            invalid_associations.append(f"Catégorie ID {cat_id} inexistante associée au flag ID {flag_id}")
+        
+        if flag_id not in flags_dict:
+            invalid_associations.append(f"Flag ID {flag_id} inexistant associé à la catégorie ID {cat_id}")
+    
+    # Si demandé, réparer les catégories qui doivent être associées au flag "Logement"
+    # Cette partie est spécifique au bug mentionné
+    fix_requested = request.args.get('fix', False)
+    fixed_items = []
+    
+    if fix_requested:
+        # Exemple: Associer le flag 2 (Tricount Emily) à la catégorie "Logement"
+        logement = Category.query.filter_by(name="Logement").first()
+        tricount_flag = Flag.query.filter_by(name="Tricount Emily").first()
+        
+        if logement and tricount_flag and tricount_flag not in logement.flags:
+            logement.flags.append(tricount_flag)
+            db.session.commit()
+            fixed_items.append(f"Catégorie 'Logement' associée au flag 'Tricount Emily'")
+        
+        # Vous pouvez ajouter d'autres corrections spécifiques ici
+    
+    # Réponse JSON avec les données
+    from flask import jsonify
+    return jsonify({
+        'categories': len(categories),
+        'flags': len(flags),
+        'current_associations': current_associations,
+        'invalid_associations': invalid_associations,
+        'fixed_items': fixed_items if fix_requested else "Aucune réparation effectuée (ajoutez ?fix=1 à l'URL pour réparer)"
+    })

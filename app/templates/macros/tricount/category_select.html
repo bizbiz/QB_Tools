@@ -4,11 +4,14 @@
 {% macro category_select(name='category_id', id=None, selected_category=None, selected_flag=None, classes='', required=False, placeholder='Choisir une catégorie', all_categories=None, show_icons=True) %}
     {# Générer un ID unique si non fourni #}
     {% set select_id = id if id else 'category-' ~ name %}
+    
+    {# Trier les catégories par ordre alphabétique #}
+    {% set sorted_categories = all_categories|sort(attribute='name') %}
 
     <select name="{{ name }}" id="{{ select_id }}" class="form-select {{ classes }}" {% if required %}required{% endif %}>
         <option value="">{{ placeholder }}</option>
         
-        {% for category in all_categories %}
+        {% for category in sorted_categories %}
             {% set display = true %}
             
             {# Si un flag est sélectionné, ne montrer que les catégories compatibles #}
@@ -37,6 +40,9 @@
 {% macro category_select_with_js(name='category_id', id=None, selected_category=None, classes='', required=False, placeholder='Choisir une catégorie', all_categories=None, show_icons=True, flag_select_id=None) %}
     {# Générer un ID unique si non fourni #}
     {% set select_id = id if id else 'category-' ~ name %}
+    
+    {# Trier les catégories par ordre alphabétique #}
+    {% set sorted_categories = all_categories|sort(attribute='name') %}
 
     <select name="{{ name }}" 
             id="{{ select_id }}" 
@@ -47,7 +53,7 @@
             {% if required %}required{% endif %}>
         <option value="">{{ placeholder }}</option>
         
-        {% for category in all_categories %}
+        {% for category in sorted_categories %}
             <option value="{{ category.id }}" 
                     {% if selected_category == category.id %}selected{% endif %}
                     data-flags="[{% for flag in category.flags %}{{ flag.id }}{% if not loop.last %},{% endif %}{% endfor %}]"

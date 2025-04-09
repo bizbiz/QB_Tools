@@ -71,7 +71,10 @@
      */
     function filterCategoriesByFlag(categorySelect, flagSelect) {
         // Vérifier que les sélecteurs et les options originales existent
-        if (!categorySelect || !categorySelect.originalOptions || !flagSelect) return;
+        if (!categorySelect || !categorySelect.originalOptions || !flagSelect) {
+            console.error("Erreur: Sélecteurs ou options originales manquants");
+            return;
+        }
         
         // Récupérer l'ID du flag sélectionné
         const flagId = parseInt(flagSelect.value);
@@ -80,8 +83,10 @@
         // Sauvegarder la valeur actuelle
         const currentValue = categorySelect.value;
         
-        // Vider les options actuelles
-        categorySelect.innerHTML = '';
+        // Supprimer toutes les options actuelles
+        while (categorySelect.options.length > 0) {
+            categorySelect.remove(0);
+        }
         
         // Ajouter l'option "Choisir une catégorie"
         const defaultOption = document.createElement('option');
@@ -89,52 +94,74 @@
         defaultOption.text = categorySelect.dataset.placeholder || 'Choisir une catégorie';
         categorySelect.appendChild(defaultOption);
         
-        // Filtrer et ajouter les catégories compatibles
-        categorySelect.originalOptions.forEach(option => {
-            // Ne pas traiter l'option vide
+        // Filtrer les catégories qui correspondent au flag sélectionné
+        const filteredOptions = categorySelect.originalOptions.filter(option => {
+            // Toujours inclure l'option vide
+            if (option.value === '') return true;
+            
+            // Si aucun flag n'est sélectionné, inclure toutes les catégories
+            if (!flagId || isNaN(flagId)) return true;
+            
+            // Si c'est la valeur actuellement sélectionnée, l'inclure quand même
+            if (option.value === currentValue && currentValue !== '') return true;
+            
+            // Vérifier si la catégorie est compatible avec le flag
+            if (option.flags && Array.isArray(option.flags)) {
+                const flagsAsNumbers = option.flags.map(id => typeof id === 'string' ? parseInt(id) : id);
+                const includes = flagsAsNumbers.includes(flagId);
+                console.log(`Catégorie ${option.value} (${option.text}): flags=${JSON.stringify(flagsAsNumbers)}, flagId=${flagId}, includes=${includes}`);
+                return includes;
+            } else if (window.categoryData && window.categoryData[option.value]) {
+                // Alternative: chercher dans window.categoryData
+                const categoryInfo = window.categoryData[option.value];
+                if (categoryInfo.flagIds && Array.isArray(categoryInfo.flagIds)) {
+                    const flagIdsAsNumbers = categoryInfo.flagIds.map(id => typeof id === 'string' ? parseInt(id) : id);
+                    const includes = flagIdsAsNumbers.includes(flagId);
+                    console.log(`Catégorie ${option.value} (${option.text}): flagIds=${JSON.stringify(flagIdsAsNumbers)}, flagId=${flagId}, includes=${includes}`);
+                    return includes;
+                }
+            }
+            
+            return false;
+        });
+        
+        // Trier les options par ordre alphabétique
+        filteredOptions.sort((a, b) => {
+            // L'option vide reste toujours en premier
+            if (a.value === '') return -1;
+            if (b.value === '') return 1;
+            
+            // Sinon tri alphabétique par texte
+            return a.text.localeCompare(b.text);
+        });
+        
+        // Ajouter les options filtrées au sélecteur
+        filteredOptions.forEach(option => {
+            // Skip vide car déjà ajoutée
             if (option.value === '') return;
             
-            let shouldInclude = false;
+            const newOption = document.createElement('option');
+            newOption.value = option.value;
+            newOption.text = option.text;
             
-            // Cas 1: C'est la valeur actuelle sélectionnée (à conserver)
-            if (option.value === currentValue && currentValue !== '') {
-                shouldInclude = true;
-            }
-            // Cas 2: Si un flag est sélectionné, vérifier si la catégorie est compatible
-            else if (flagId && option.flags) {
-                // Vérifier si le flagId est inclus dans les flags de la catégorie
-                shouldInclude = option.flags.includes(flagId);
-                
-                // Log de débogage
-                console.debug(`Catégorie ${option.value} (${option.text}): flags=${JSON.stringify(option.flags)}, flagId=${flagId}, includes=${shouldInclude}`);
-            }
-            // Cas 3: Si aucun flag n'est sélectionné, inclure toutes les catégories
-            else if (!flagId) {
-                shouldInclude = true;
+            // Ajouter les data attributes
+            if (option.flags) {
+                newOption.dataset.flags = JSON.stringify(option.flags);
             }
             
-            if (shouldInclude) {
-                const newOption = document.createElement('option');
-                newOption.value = option.value;
-                newOption.text = option.text;
-                
-                // Ajouter les data attributes
-                if (option.flags) {
-                    newOption.dataset.flags = JSON.stringify(option.flags);
-                }
-                
-                if (option.icon) {
-                    newOption.dataset.icon = option.icon;
-                }
-                
-                // Sélectionner si c'était l'option sélectionnée
-                if (option.value === currentValue) {
-                    newOption.selected = true;
-                }
-                
-                categorySelect.appendChild(newOption);
+            if (option.icon) {
+                newOption.dataset.icon = option.icon;
             }
+            
+            // Sélectionner si c'était l'option sélectionnée
+            if (option.value === currentValue) {
+                newOption.selected = true;
+            }
+            
+            categorySelect.appendChild(newOption);
         });
+        
+        console.log(`Options filtrées ajoutées: ${filteredOptions.length - 1}`); // -1 pour l'option vide
         
         // Si aucune option n'a été sélectionnée, essayer de sélectionner la première non vide
         if (categorySelect.value === '' && categorySelect.options.length > 1) {
