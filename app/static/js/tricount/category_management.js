@@ -120,13 +120,20 @@ function setupModalEventListeners() {
     const editCategoryForm = document.getElementById('edit-category-form');
     const editNameInput = document.getElementById('edit-name');
     const editDescriptionInput = document.getElementById('edit-description');
+    const editIconSelect = document.getElementById('edit-icon');  // Ajouté
     const saveCategoryButton = document.getElementById('save-category');
-    
+
     editButtons.forEach(button => {
         button.addEventListener('click', function() {
             const categoryId = this.dataset.id;
             const categoryName = this.dataset.name;
             const categoryDescription = this.dataset.description;
+            const categoryIcon = this.dataset.icon || '';  // Ajouté
+            
+            // Remplir le formulaire
+            editNameInput.value = categoryName;
+            editDescriptionInput.value = categoryDescription;
+            editIconSelect.value = categoryIcon;  // Ajouté
             
             // Récupérer les flags de cette catégorie
             const row = this.closest('tr');
@@ -146,11 +153,10 @@ function setupModalEventListeners() {
                 }
             });
             
-            editNameInput.value = categoryName;
-            editDescriptionInput.value = categoryDescription;
-            
+            // Définir l'URL de soumission
             editCategoryForm.action = window.categoryUpdateUrl.replace('0', categoryId);
             
+            // Ouvrir la modal
             editModal.show();
         });
     });

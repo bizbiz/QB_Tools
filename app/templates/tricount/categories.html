@@ -149,27 +149,34 @@
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover table-striped mb-0 sortable-table">
-                            <thead>
-                                <tr>
-                                    <th data-type="text">Nom</th>
-                                    <th data-type="text">Description</th>
-                                    <th data-type="date">Date de création</th>
-                                    {% for flag in flags %}
-                                    <th class="text-center" data-type="text" title="{{ flag.name }}">
-                                        <span class="flag-icon" style="background-color: {{ flag.color }}">
-                                            <i class="fas {{ flag.icon }}"></i>
-                                        </span>
-                                    </th>
-                                    {% endfor %}
-                                    <th class="no-sort">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for category in categories %}
-                                <tr>
-                                    <td>{{ category.name }}</td>
-                                    <td>{{ category.description or 'N/A' }}</td>
+                        <thead>
+                            <tr>
+                                <th data-type="icon" class="text-center" style="width: 50px;">Icône</th>
+                                <th data-type="text">Nom</th>
+                                <th data-type="text">Description</th>
+                                <th data-type="date">Date de création</th>
+                                {% for flag in flags %}
+                                <th class="text-center" data-type="text" title="{{ flag.name }}">
+                                    <span class="flag-icon" style="background-color: {{ flag.color }}">
+                                        <i class="fas {{ flag.icon }}"></i>
+                                    </span>
+                                </th>
+                                {% endfor %}
+                                <th class="no-sort">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for category in categories %}
+                            <tr>
+                                <td class="text-center">
+                                    {% if category.icon %}
+                                    <i class="fas {{ category.icon }} fa-lg text-secondary"></i>
+                                    {% else %}
+                                    <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ category.name }}</td>
+                                <td>{{ category.description or 'N/A' }}</td>
                                     <td>{{ category.created_at.strftime('%d/%m/%Y') }}</td>
                                     {% for flag in flags %}
                                     <td class="text-center">
@@ -185,6 +192,7 @@
                                                 data-id="{{ category.id }}"
                                                 data-name="{{ category.name }}"
                                                 data-description="{{ category.description or '' }}"
+                                                data-icon="{{ category.icon or '' }}"  <!-- Ajouté l'attribut data-icon -->
                                                 data-bs-toggle="tooltip" 
                                                 data-bs-placement="top" 
                                                 title="Modifier">
@@ -199,10 +207,10 @@
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </td>
-                                </tr>
+                                    </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="{{ 4 + flags|length }}" class="text-center py-4">
+                                    <td colspan="{{ 5 + flags|length }}" class="text-center py-4">
                                         <div class="alert alert-info mb-0">
                                             <i class="fas fa-info-circle me-2"></i>
                                             Aucune catégorie trouvée. Utilisez le formulaire ci-dessus pour ajouter votre première catégorie.
@@ -259,6 +267,33 @@
                     <div class="mb-3">
                         <label for="edit-description" class="form-label">Description (optionnelle)</label>
                         <textarea class="form-control" id="edit-description" name="description" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit-icon" class="form-label">Icône</label>
+                        <select class="form-select" id="edit-icon" name="icon">
+                            <option value="">Aucune icône</option>
+                            <option value="fa-shopping-cart">🛒 Panier</option>
+                            <option value="fa-utensils">🍽️ Nourriture</option>
+                            <option value="fa-home">🏠 Maison</option>
+                            <option value="fa-car">🚗 Voiture</option>
+                            <option value="fa-plane">✈️ Avion</option>
+                            <option value="fa-credit-card">💳 Carte</option>
+                            <option value="fa-money-bill">💵 Argent</option>
+                            <option value="fa-gift">🎁 Cadeau</option>
+                            <option value="fa-film">🎬 Film</option>
+                            <option value="fa-music">🎵 Musique</option>
+                            <option value="fa-hospital">🏥 Santé</option>
+                            <option value="fa-graduation-cap">🎓 Éducation</option>
+                            <option value="fa-gas-pump">⛽ Essence</option>
+                            <option value="fa-bus">🚌 Transport</option>
+                            <option value="fa-building">🏢 Immeuble</option>
+                            <option value="fa-wrench">🔧 Services</option>
+                            <option value="fa-tshirt">👕 Vêtements</option>
+                            <option value="fa-dumbbell">🏋️ Sport</option>
+                            <option value="fa-umbrella-beach">🏖️ Vacances</option>
+                        </select>
+                        <div class="form-text">Sélectionnez une icône pour cette catégorie.</div>
                     </div>
                     
                     <div class="mb-3">
