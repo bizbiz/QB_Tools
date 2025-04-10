@@ -139,11 +139,9 @@
                 shouldInclude = true;
                 console.log(`  Option ${option.value} (${option.text}): incluse car aucun flag sélectionné`);
             } 
-            // Si c'est l'option actuellement sélectionnée, toujours l'inclure
-            else if (option.value === currentValue && currentValue !== '') {
-                shouldInclude = true;
-                console.log(`  Option ${option.value} (${option.text}): incluse car c'est l'option actuellement sélectionnée`);
-            }
+            // MODIFICATION: Ne plus inclure automatiquement l'option sélectionnée 
+            // si elle n'est pas compatible avec le flag
+            
             // Vérifier si le flagId est dans les flagIds de cette catégorie
             else if (flagIds.includes(flagId)) {
                 shouldInclude = true;
@@ -187,6 +185,7 @@
             }
             
             // Sélectionner cette option si elle était sélectionnée avant
+            // ET qu'elle est compatible avec le nouveau flag
             if (option.value === currentValue) {
                 newOption.selected = true;
             }
@@ -194,12 +193,16 @@
             categorySelect.appendChild(newOption);
         });
         
-        // ÉTAPE 5: Gérer le cas où aucune option n'est sélectionnée
-        // Si la valeur actuelle n'est plus dans les options disponibles et qu'il y a d'autres options
-        if (categorySelect.value === '' && filteredOptions.length > 1) {
-            // Sélectionner la première option non-vide
-            categorySelect.selectedIndex = 1;
-            console.log(`Aucune option sélectionnée, sélection de la première option: ${categorySelect.options[1].text}`);
+        // ÉTAPE 5: Vérifier si la valeur actuelle est toujours dans les options disponibles
+        // MODIFICATION: Sélectionner vide (index 0) si la valeur actuelle n'est plus disponible
+        const isCurrentValueAvailable = Array.from(categorySelect.options).some(
+            option => option.value === currentValue
+        );
+        
+        if (!isCurrentValueAvailable && currentValue !== '') {
+            // Réinitialiser à "Choisir une catégorie"
+            categorySelect.selectedIndex = 0;
+            console.log(`La valeur actuelle "${currentValue}" n'est plus disponible, réinitialisation à "Choisir une catégorie"`);
         }
         
         // Déclencher un événement change pour informer d'autres listeners
