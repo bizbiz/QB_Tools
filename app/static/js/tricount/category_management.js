@@ -63,13 +63,19 @@ function sortTable(table, columnIndex) {
         let aValue = a.cells[columnIndex].textContent.trim();
         let bValue = b.cells[columnIndex].textContent.trim();
         
+        // Special case for icon column
+        if (header.dataset.type === 'icon') {
+            // Sort based on presence of icon
+            aValue = a.cells[columnIndex].querySelector('.fas') ? 1 : 0;
+            bValue = b.cells[columnIndex].querySelector('.fas') ? 1 : 0;
+        }
         // Special case for flag columns (check/x mark)
-        if (a.cells[columnIndex].querySelector('.fa-check') || a.cells[columnIndex].querySelector('.fa-times')) {
+        else if (a.cells[columnIndex].querySelector('.fa-check') || a.cells[columnIndex].querySelector('.fa-times')) {
             aValue = a.cells[columnIndex].querySelector('.fa-check') ? 1 : 0;
             bValue = b.cells[columnIndex].querySelector('.fa-check') ? 1 : 0;
         }
         // Handle date format (DD/MM/YYYY)
-        else if (headers[columnIndex].dataset.type === 'date') {
+        else if (header.dataset.type === 'date') {
             aValue = parseDateString(aValue);
             bValue = parseDateString(bValue);
         }
@@ -145,7 +151,9 @@ function setupModalEventListeners() {
             });
             
             // Vérifier quels flags sont actifs pour cette catégorie
-            const flagCells = row.querySelectorAll('td.text-center');
+            // Nous commençons à l'index 4 pour sauter les colonnes: icône, nom, description, date
+            const flagCells = Array.from(row.querySelectorAll('td')).slice(4, 4 + flagCheckboxes.length);
+            
             flagCells.forEach((cell, index) => {
                 const hasFlag = cell.querySelector('.fa-check') !== null;
                 if (hasFlag && flagCheckboxes[index]) {

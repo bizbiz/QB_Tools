@@ -1,4 +1,3 @@
-<!-- app/templates/tricount/categories.html -->
 {% extends "base.html" %}
 
 {% block title %}QB Tools - Gestion des catégories{% endblock %}
@@ -149,34 +148,35 @@
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <thead>
-                            <tr>
-                                <th data-type="icon" class="text-center" style="width: 50px;">Icône</th>
-                                <th data-type="text">Nom</th>
-                                <th data-type="text">Description</th>
-                                <th data-type="date">Date de création</th>
-                                {% for flag in flags %}
-                                <th class="text-center" data-type="text" title="{{ flag.name }}">
-                                    <span class="flag-icon" style="background-color: {{ flag.color }}">
-                                        <i class="fas {{ flag.icon }}"></i>
-                                    </span>
-                                </th>
-                                {% endfor %}
-                                <th class="no-sort">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for category in categories %}
-                            <tr>
-                                <td class="text-center">
-                                    {% if category.icon %}
-                                    <i class="fas {{ category.icon }} fa-lg text-secondary"></i>
-                                    {% else %}
-                                    <span class="text-muted">—</span>
-                                    {% endif %}
-                                </td>
-                                <td>{{ category.name }}</td>
-                                <td>{{ category.description or 'N/A' }}</td>
+                        <table class="table table-hover table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th data-type="icon" class="text-center" style="width: 50px;">Icône</th>
+                                    <th data-type="text">Nom</th>
+                                    <th data-type="text">Description</th>
+                                    <th data-type="date">Date de création</th>
+                                    {% for flag in flags %}
+                                    <th class="text-center" data-type="text" title="{{ flag.name }}">
+                                        <span class="flag-icon" style="background-color: {{ flag.color }}">
+                                            <i class="fas {{ flag.icon }}"></i>
+                                        </span>
+                                    </th>
+                                    {% endfor %}
+                                    <th class="no-sort">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for category in categories %}
+                                <tr>
+                                    <td class="text-center">
+                                        {% if category.icon %}
+                                        <i class="fas {{ category.icon }} fa-lg text-secondary"></i>
+                                        {% else %}
+                                        <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ category.name }}</td>
+                                    <td>{{ category.description or 'N/A' }}</td>
                                     <td>{{ category.created_at.strftime('%d/%m/%Y') }}</td>
                                     {% for flag in flags %}
                                     <td class="text-center">
@@ -192,7 +192,7 @@
                                                 data-id="{{ category.id }}"
                                                 data-name="{{ category.name }}"
                                                 data-description="{{ category.description or '' }}"
-                                                data-icon="{{ category.icon or '' }}"  <!-- Ajouté l'attribut data-icon -->
+                                                data-icon="{{ category.icon or '' }}"
                                                 data-bs-toggle="tooltip" 
                                                 data-bs-placement="top" 
                                                 title="Modifier">
@@ -207,7 +207,7 @@
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </td>
-                                    </tr>
+                                </tr>
                                 {% else %}
                                 <tr>
                                     <td colspan="{{ 5 + flags|length }}" class="text-center py-4">
