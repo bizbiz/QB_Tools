@@ -52,7 +52,5 @@ def register_blueprints(app):
 def register_commands(app):
     # Importer et enregistrer les commandes
     from app.commands import register_commands as register_tricount_commands
-    from app.commands_icons import register_icon_commands  # Nouvelles commandes
     
     register_tricount_commands(app)
-    register_icon_commands(app)
