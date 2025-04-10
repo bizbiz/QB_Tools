@@ -19,21 +19,34 @@
         categorySelects.forEach(categorySelect => {
             // Sauvegarder les options originales
             categorySelect.originalOptions = Array.from(categorySelect.options).map(option => {
+                // Extraire les flags du dataset
+                let flags = [];
+                if (option.dataset.flags) {
+                    try {
+                        flags = JSON.parse(option.dataset.flags);
+                    } catch (e) {
+                        console.error("Erreur lors du parsing des flags:", e);
+                    }
+                }
+                
                 return {
                     value: option.value,
                     text: option.text,
-                    flags: option.dataset.flags ? JSON.parse(option.dataset.flags) : [],
+                    flags: flags,
                     icon: option.dataset.icon || '',
                     selected: option.selected
                 };
             });
             
+            // Log des options originales pour débug
+            console.log("Options originales:", categorySelect.originalOptions);
+            
             // Sauvegarder la valeur initiale
             categorySelect.initialValue = categorySelect.value;
             
-            // Chercher le sélecteur de flag associé (peut être spécifié ou recherché automatiquement)
+            // Chercher le sélecteur de flag associé
             const flagSelectId = categorySelect.dataset.flagSelect;
-            let flagSelect;
+            let flagSelect = null;
             
             if (flagSelectId) {
                 flagSelect = document.getElementById(flagSelectId);
@@ -71,81 +84,101 @@
      */
     function filterCategoriesByFlag(categorySelect, flagSelect) {
         // Vérifier que les sélecteurs et les options originales existent
-        if (!categorySelect || !categorySelect.originalOptions || !flagSelect) {
-            console.error("Erreur: Sélecteurs ou options originales manquants");
+        if (!categorySelect || !categorySelect.originalOptions) {
+            console.error("categorySelect ou ses options originales sont manquants");
             return;
         }
         
-        // Récupérer l'ID du flag sélectionné
+        if (!flagSelect) {
+            console.error("flagSelect est manquant");
+            return;
+        }
+        
+        // Récupérer l'ID du flag sélectionné comme nombre
         const flagId = parseInt(flagSelect.value);
-        console.log(`Filtrage des catégories pour flag_id=${flagId}`);
+        console.log(`Filtrage des catégories pour flag_id=${flagId} (type: ${typeof flagId})`);
         
         // Sauvegarder la valeur actuelle
         const currentValue = categorySelect.value;
+        console.log(`Valeur actuelle du select: ${currentValue}`);
         
-        // Supprimer toutes les options actuelles
-        while (categorySelect.options.length > 0) {
-            categorySelect.remove(0);
+        // ÉTAPE 1: Créer un tableau des options filtrées
+        let filteredOptions = [];
+        
+        // Toujours ajouter l'option vide (placeholder)
+        const emptyOption = categorySelect.originalOptions.find(opt => opt.value === '');
+        if (emptyOption) {
+            filteredOptions.push(emptyOption);
         }
         
-        // Ajouter l'option "Choisir une catégorie"
-        const defaultOption = document.createElement('option');
-        defaultOption.value = '';
-        defaultOption.text = categorySelect.dataset.placeholder || 'Choisir une catégorie';
-        categorySelect.appendChild(defaultOption);
-        
-        // Filtrer les catégories qui correspondent au flag sélectionné
-        const filteredOptions = categorySelect.originalOptions.filter(option => {
-            // Toujours inclure l'option vide
-            if (option.value === '') return true;
+        // ÉTAPE 2: Filtrer les options non-vides
+        categorySelect.originalOptions.forEach(option => {
+            // Ignorer l'option vide (déjà ajoutée)
+            if (option.value === '') return;
             
-            // Si aucun flag n'est sélectionné, inclure toutes les catégories
-            if (!flagId || isNaN(flagId)) return true;
+            // Récupérer les flags associés à cette catégorie
+            let flagIds = [];
             
-            // Si c'est la valeur actuellement sélectionnée, l'inclure quand même
-            if (option.value === currentValue && currentValue !== '') return true;
-            
-            // Vérifier si la catégorie est compatible avec le flag
+            // D'abord essayer depuis option.flags
             if (option.flags && Array.isArray(option.flags)) {
-                const flagsAsNumbers = option.flags.map(id => typeof id === 'string' ? parseInt(id) : id);
-                const includes = flagsAsNumbers.includes(flagId);
-                console.log(`Catégorie ${option.value} (${option.text}): flags=${JSON.stringify(flagsAsNumbers)}, flagId=${flagId}, includes=${includes}`);
-                return includes;
-            } else if (window.categoryData && window.categoryData[option.value]) {
-                // Alternative: chercher dans window.categoryData
-                const categoryInfo = window.categoryData[option.value];
-                if (categoryInfo.flagIds && Array.isArray(categoryInfo.flagIds)) {
-                    const flagIdsAsNumbers = categoryInfo.flagIds.map(id => typeof id === 'string' ? parseInt(id) : id);
-                    const includes = flagIdsAsNumbers.includes(flagId);
-                    console.log(`Catégorie ${option.value} (${option.text}): flagIds=${JSON.stringify(flagIdsAsNumbers)}, flagId=${flagId}, includes=${includes}`);
-                    return includes;
-                }
+                flagIds = option.flags.map(id => typeof id === 'string' ? parseInt(id) : id);
+            } 
+            // Ensuite essayer depuis window.categoryData
+            else if (window.categoryData && window.categoryData[option.value] && 
+                     window.categoryData[option.value].flagIds) {
+                flagIds = window.categoryData[option.value].flagIds.map(id => 
+                    typeof id === 'string' ? parseInt(id) : id
+                );
             }
             
-            return false;
+            // Décider si l'option doit être incluse
+            let shouldInclude = false;
+            
+            // Si pas de flag sélectionné, inclure toutes les options
+            if (!flagId || isNaN(flagId)) {
+                shouldInclude = true;
+                console.log(`  Option ${option.value} (${option.text}): incluse car aucun flag sélectionné`);
+            } 
+            // Si c'est l'option actuellement sélectionnée, toujours l'inclure
+            else if (option.value === currentValue && currentValue !== '') {
+                shouldInclude = true;
+                console.log(`  Option ${option.value} (${option.text}): incluse car c'est l'option actuellement sélectionnée`);
+            }
+            // Vérifier si le flagId est dans les flagIds de cette catégorie
+            else if (flagIds.includes(flagId)) {
+                shouldInclude = true;
+                console.log(`  Option ${option.value} (${option.text}): incluse car flagIds ${JSON.stringify(flagIds)} contient flagId ${flagId}`);
+            } else {
+                console.log(`  Option ${option.value} (${option.text}): exclue car flagIds ${JSON.stringify(flagIds)} ne contient pas flagId ${flagId}`);
+            }
+            
+            if (shouldInclude) {
+                filteredOptions.push(option);
+            }
         });
         
-        // Trier les options par ordre alphabétique
+        // ÉTAPE 3: Trier les options par ordre alphabétique (sauf l'option vide qui reste en premier)
         filteredOptions.sort((a, b) => {
-            // L'option vide reste toujours en premier
             if (a.value === '') return -1;
             if (b.value === '') return 1;
-            
-            // Sinon tri alphabétique par texte
             return a.text.localeCompare(b.text);
         });
         
-        // Ajouter les options filtrées au sélecteur
+        console.log(`Options filtrées (${filteredOptions.length}):`, 
+                    filteredOptions.map(o => o.text).join(', '));
+        
+        // ÉTAPE 4: Reconstruire le select avec les options filtrées
+        // Vider le select
+        categorySelect.innerHTML = '';
+        
+        // Ajouter les options filtrées
         filteredOptions.forEach(option => {
-            // Skip vide car déjà ajoutée
-            if (option.value === '') return;
-            
             const newOption = document.createElement('option');
             newOption.value = option.value;
             newOption.text = option.text;
             
-            // Ajouter les data attributes
-            if (option.flags) {
+            // Ajouter les attributs de données
+            if (option.flags && option.flags.length > 0) {
                 newOption.dataset.flags = JSON.stringify(option.flags);
             }
             
@@ -153,7 +186,7 @@
                 newOption.dataset.icon = option.icon;
             }
             
-            // Sélectionner si c'était l'option sélectionnée
+            // Sélectionner cette option si elle était sélectionnée avant
             if (option.value === currentValue) {
                 newOption.selected = true;
             }
@@ -161,11 +194,12 @@
             categorySelect.appendChild(newOption);
         });
         
-        console.log(`Options filtrées ajoutées: ${filteredOptions.length - 1}`); // -1 pour l'option vide
-        
-        // Si aucune option n'a été sélectionnée, essayer de sélectionner la première non vide
-        if (categorySelect.value === '' && categorySelect.options.length > 1) {
+        // ÉTAPE 5: Gérer le cas où aucune option n'est sélectionnée
+        // Si la valeur actuelle n'est plus dans les options disponibles et qu'il y a d'autres options
+        if (categorySelect.value === '' && filteredOptions.length > 1) {
+            // Sélectionner la première option non-vide
             categorySelect.selectedIndex = 1;
+            console.log(`Aucune option sélectionnée, sélection de la première option: ${categorySelect.options[1].text}`);
         }
         
         // Déclencher un événement change pour informer d'autres listeners
