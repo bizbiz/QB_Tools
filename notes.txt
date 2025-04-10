@@ -112,3 +112,6 @@ Version mobile optimisée - Adapter l'interface pour les petits écrans avec peu
 Filtres tactiles - Sur mobile, ajouter des boutons de filtre rapide pour les catégories les plus courantes
 
 Ces améliorations pourraient être implémentées progressivement, en commençant par celles qui apportent le plus de valeur à vos utilisateurs avec un effort minimal.
+
+
+. Ajouter la possibilité au client d'ajouter des icones et charger la liste d'icone modulable là où on en a besoin

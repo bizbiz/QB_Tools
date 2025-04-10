@@ -25,7 +25,14 @@ class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False, unique=True)
     description = db.Column(db.String(255))
-    icon = db.Column(db.String(50))  # Nouvel attribut pour l'icône (fa-xxxx)
+    
+    # Nouvelle relation avec la table des icônes
+    icon_id = db.Column(db.Integer, db.ForeignKey('icons.id'))
+    icon = db.relationship('Icon', backref='categories')
+    
+    # Pour la rétrocompatibilité - sera déprécié après migration
+    legacy_icon = db.Column(db.String(50))
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Association many-to-many avec les flags
@@ -36,6 +43,20 @@ class Category(db.Model):
     
     def __repr__(self):
         return f'<Category {self.name}>'
+    
+    @property
+    def get_icon_class(self):
+        """Récupère la classe Font Awesome de l'icône (compatibilité rétroactive)"""
+        if self.icon:
+            return self.icon.font_awesome_class
+        return self.legacy_icon or 'fa-folder'
+    
+    @property
+    def get_icon_emoji(self):
+        """Récupère l'emoji de l'icône"""
+        if self.icon:
+            return self.icon.unicode_emoji
+        return None
 
 class Expense(db.Model):
     """Modèle pour stocker les dépenses importées"""
@@ -157,6 +178,25 @@ class PendingRuleApplication(db.Model):
     
     def __repr__(self):
         return f'<PendingRuleApplication rule={self.rule_id} expense={self.expense_id}>'
+
+class Icon(db.Model):
+    """Modèle pour stocker les icônes utilisables dans l'application"""
+    __tablename__ = 'icons'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    description = db.Column(db.String(255))
+    
+    # Représentations de l'icône
+    font_awesome_class = db.Column(db.String(50), nullable=False)  # ex: "fa-home"
+    unicode_emoji = db.Column(db.String(20))  # ex: "🏠"
+    
+    # Métadonnées
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<Icon {self.name} ({self.font_awesome_class})>'
 
 # Table de liaison entre règles et dépenses
 rule_expense_links = db.Table('rule_expense_links',

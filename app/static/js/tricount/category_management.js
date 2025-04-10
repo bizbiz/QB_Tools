@@ -24,9 +24,65 @@ document.addEventListener('DOMContentLoaded', function() {
         return new bootstrap.Tooltip(tooltipTriggerEl)
     });
     
+    // Initialize icon preview for add form
+    initIconPreview();
+    
     // Modal management
     setupModalEventListeners();
 });
+
+// Initialize icon preview in the add form
+function initIconPreview() {
+    const iconSelect = document.getElementById('icon_id');
+    const iconPreview = document.getElementById('icon-preview');
+    
+    if (iconSelect && iconPreview) {
+        // Initial preview
+        updateIconPreview(iconSelect, iconPreview);
+        
+        // Update preview on change
+        iconSelect.addEventListener('change', function() {
+            updateIconPreview(iconSelect, iconPreview);
+        });
+    }
+    
+    // Also initialize the edit form preview
+    const editIconSelect = document.getElementById('edit-icon-id');
+    const editIconPreview = document.getElementById('edit-icon-preview');
+    
+    if (editIconSelect && editIconPreview) {
+        editIconSelect.addEventListener('change', function() {
+            updateIconPreview(editIconSelect, editIconPreview);
+        });
+    }
+}
+
+// Update icon preview based on selected option
+function updateIconPreview(select, previewElement) {
+    previewElement.innerHTML = '';
+    
+    const selectedOption = select.options[select.selectedIndex];
+    if (selectedOption && selectedOption.value) {
+        const faClass = selectedOption.getAttribute('data-fa');
+        const emoji = selectedOption.getAttribute('data-emoji');
+        
+        const previewHTML = `
+            <div class="d-flex align-items-center">
+                <div class="me-3 p-3 border rounded">
+                    <i class="fas ${faClass} fa-2x"></i>
+                </div>
+                <div class="me-3 p-3 border rounded">
+                    <span style="font-size: 2rem;">${emoji}</span>
+                </div>
+                <div class="text-muted">
+                    <p class="mb-0">Cette icône sera utilisée pour représenter la catégorie dans l'application.</p>
+                </div>
+            </div>
+        `;
+        
+        previewElement.innerHTML = previewHTML;
+    }
+}
 
 // Function to sort table
 function sortTable(table, columnIndex) {
@@ -126,7 +182,7 @@ function setupModalEventListeners() {
     const editCategoryForm = document.getElementById('edit-category-form');
     const editNameInput = document.getElementById('edit-name');
     const editDescriptionInput = document.getElementById('edit-description');
-    const editIconSelect = document.getElementById('edit-icon');  // Ajouté
+    const editIconSelect = document.getElementById('edit-icon-id');  // Mis à jour
     const saveCategoryButton = document.getElementById('save-category');
 
     editButtons.forEach(button => {
@@ -134,12 +190,16 @@ function setupModalEventListeners() {
             const categoryId = this.dataset.id;
             const categoryName = this.dataset.name;
             const categoryDescription = this.dataset.description;
-            const categoryIcon = this.dataset.icon || '';  // Ajouté
+            const categoryIconId = this.dataset.iconId || '';  // Mis à jour
             
             // Remplir le formulaire
             editNameInput.value = categoryName;
             editDescriptionInput.value = categoryDescription;
-            editIconSelect.value = categoryIcon;  // Ajouté
+            editIconSelect.value = categoryIconId;  // Mis à jour
+            
+            // Mettre à jour l'aperçu de l'icône
+            const editIconPreview = document.getElementById('edit-icon-preview');
+            updateIconPreview(editIconSelect, editIconPreview);
             
             // Récupérer les flags de cette catégorie
             const row = this.closest('tr');

@@ -26,8 +26,12 @@
             
             {% if display %}
                 <option value="{{ category.id }}" {% if selected_category == category.id %}selected{% endif %}>
-                    {% if show_icons and category.icon %}
-                    <i class="fas {{ category.icon }}"></i> 
+                    {% if show_icons %}
+                        {% if category.icon %}
+                            {{ category.get_icon_emoji }} 
+                        {% elif category.legacy_icon %}
+                            <i class="fas {{ category.legacy_icon }}"></i> 
+                        {% endif %}
                     {% endif %}
                     {{ category.name }}
                 </option>
@@ -57,9 +61,18 @@
             <option value="{{ category.id }}" 
                     {% if selected_category == category.id %}selected{% endif %}
                     data-flags="[{% for flag in category.flags %}{{ flag.id }}{% if not loop.last %},{% endif %}{% endfor %}]"
-                    {% if category.icon %}data-icon="{{ category.icon }}"{% endif %}>
-                {% if show_icons and category.icon %}
-                <i class="fas {{ category.icon }}"></i> 
+                    {% if category.icon %}
+                        data-icon-emoji="{{ category.get_icon_emoji }}"
+                        data-icon-class="{{ category.get_icon_class }}"
+                    {% elif category.legacy_icon %}
+                        data-icon="{{ category.legacy_icon }}"
+                    {% endif %}>
+                {% if show_icons %}
+                    {% if category.icon %}
+                        {{ category.get_icon_emoji }} 
+                    {% elif category.legacy_icon %}
+                        <i class="fas {{ category.legacy_icon }}"></i> 
+                    {% endif %}
                 {% endif %}
                 {{ category.name }}
             </option>

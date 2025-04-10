@@ -37,9 +37,8 @@ def create_app(config_name='default'):
     
     # Enregistrement des blueprints
     register_blueprints(app)
+    register_commands(app)
     return app
-
-# app/__init__.py - Update in register_blueprints function
 
 def register_blueprints(app):
     from app.routes.main import main_bp
@@ -49,3 +48,11 @@ def register_blueprints(app):
     app.register_blueprint(main_bp)
     app.register_blueprint(teamplanning_bp)
     app.register_blueprint(tricount_bp)
+
+def register_commands(app):
+    # Importer et enregistrer les commandes
+    from app.commands import register_commands as register_tricount_commands
+    from app.commands_icons import register_icon_commands  # Nouvelles commandes
+    
+    register_tricount_commands(app)
+    register_icon_commands(app)
