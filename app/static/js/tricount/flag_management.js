@@ -9,59 +9,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // === GESTION DES SÉLECTEURS D'ICÔNES ===
     const iconSelector = document.getElementById('icon_id');
-    const iconPreview = document.getElementById('icon-preview');
     
     // Sélecteurs pour la modal d'édition
     const editIconSelector = document.getElementById('edit-icon-id');
-    const editIconPreview = document.getElementById('edit-icon-preview');
-    
-    // Fonction pour mettre à jour l'aperçu de l'icône
-    function updateIconPreview(iconId, previewElement) {
-        if (!previewElement) return;
-
-        let previewHTML = '';
-        
-        // Si une icône personnalisée est sélectionnée
-        if (iconId && window.iconsData && window.iconsData[iconId]) {
-            const iconData = window.iconsData[iconId];
-            previewHTML = `
-                <div class="d-flex align-items-center">
-                    <div class="me-3 p-3 border rounded">
-                        <span style="font-size: 2rem;">${iconData.emoji}</span>
-                    </div>
-                    <div class="text-muted">
-                        <p class="mb-1"><strong>Icône sélectionnée:</strong> ${iconData.name}</p>
-                    </div>
-                </div>
-            `;
-        } else {
-            previewHTML = `
-                <div class="alert alert-info mb-0">
-                    Sélectionnez une icône pour afficher l'aperçu.
-                </div>
-            `;
-        }
-        
-        previewElement.innerHTML = previewHTML;
-    }
-    
-    // Mettre à jour l'aperçu quand le sélecteur d'icône change
-    if (iconSelector) {
-        iconSelector.addEventListener('change', function() {
-            updateIconPreview(this.value, iconPreview);
-            if (typeof updatePreviewBadge === 'function') {
-                updatePreviewBadge();
-            }
-        });
-    }
-    
-    // Idem pour le sélecteur dans la modal d'édition
-    if (editIconSelector) {
-        editIconSelector.addEventListener('change', function() {
-            updateIconPreview(this.value, editIconPreview);
-            updatePreviewBadge();
-        });
-    }
     
     // === GESTION DE LA MODAL DE SUPPRESSION ===
     const deleteButtons = document.querySelectorAll('.delete-flag');
@@ -113,9 +63,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const colorHexValue = document.getElementById('color-hex-value');
     
     // Mise à jour en temps réel de la prévisualisation
-    editNameInput.addEventListener('input', updatePreviewBadge);
-    editColorInput.addEventListener('input', updatePreviewBadge);
+    if (editNameInput) {
+        editNameInput.addEventListener('input', updatePreviewBadge);
+    }
     
+    if (editColorInput) {
+        editColorInput.addEventListener('input', updatePreviewBadge);
+    }
+    
+    if (editIconSelector) {
+        editIconSelector.addEventListener('change', updatePreviewBadge);
+    }
+    
+    // Fonction pour mettre à jour la prévisualisation du badge
     function updatePreviewBadge() {
         // Mettre à jour le nom
         if (previewName) {
@@ -131,18 +91,18 @@ document.addEventListener('DOMContentLoaded', function() {
             colorHexValue.textContent = editColorInput.value;
         }
         
-        // Mettre à jour l'icône en fonction de la sélection
+        // Mettre à jour l'émoji en fonction de la sélection d'icône
         if (previewEmoji) {
             const selectedIconId = editIconSelector ? editIconSelector.value : '';
             
+            // Récupérer l'émoji depuis les données d'icône
             if (selectedIconId && window.iconsData && window.iconsData[selectedIconId]) {
-                // Utiliser l'emoji de l'icône personnalisée
                 previewEmoji.textContent = window.iconsData[selectedIconId].emoji;
-                previewEmoji.style.display = 'inline';
+                previewEmoji.style.display = 'inline-block'; // Assurer que l'émoji est visible
             } else {
-                // Icône par défaut
+                // Émoji par défaut en cas d'absence d'icône
                 previewEmoji.textContent = '🏷️';
-                previewEmoji.style.display = 'inline';
+                previewEmoji.style.display = 'inline-block';
             }
         }
     }
@@ -161,17 +121,14 @@ document.addEventListener('DOMContentLoaded', function() {
             editDescriptionInput.value = flagDescription;
             editColorInput.value = flagColor;
             
-            // Sélectionner l'icône
+            // Sélectionner l'icône si disponible
             if (editIconSelector) {
                 editIconSelector.value = flagIconId || '';
             }
             
             editIsDefaultCheckbox.checked = flagIsDefault;
             
-            // Mettre à jour l'aperçu de l'icône
-            updateIconPreview(flagIconId, editIconPreview);
-            
-            // Mettre à jour la prévisualisation
+            // Mettre à jour la prévisualisation immédiatement
             updatePreviewBadge();
             
             // Définir l'URL de soumission
@@ -187,11 +144,6 @@ document.addEventListener('DOMContentLoaded', function() {
         editFlagForm.submit();
     });
     
-    // Initialiser les aperçus au chargement de la page
-    if (iconPreview) {
-        updateIconPreview('', iconPreview);
-    }
-    
-    // Mise à jour initiale de la prévisualisation du badge
+    // Initialiser la prévisualisation au chargement
     updatePreviewBadge();
 });

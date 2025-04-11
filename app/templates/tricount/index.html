@@ -6,6 +6,9 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/main.css') }}">
 {% endblock %}
 
+{# Importer la macro flag_badge #}
+{% from "macros/tricount/flag_macros.html" import flag_badge %}
+
 {% block content %}
 <div class="container py-5">
     <div class="row mb-4">
@@ -58,10 +61,7 @@
                                     <div class="d-flex flex-column gap-2">
                                         {% for flag in flags %}
                                         <div class="d-flex justify-content-between align-items-center">
-                                            <span class="flag-badge" style="background-color: {{ flag.color }}">
-                                                <i class="fas {{ flag.icon }}"></i>
-                                                {{ flag.name }}
-                                            </span>
+                                            {{ flag_badge(flag) }}
                                             <span class="fw-bold">{{ expenses_stats['flag_' ~ flag.id] }}</span>
                                         </div>
                                         {% endfor %}
@@ -166,10 +166,7 @@
                                     </td>
                                     <td>
                                         {% if expense.flag %}
-                                        <span class="flag-badge" style="background-color: {{ expense.flag.color }}">
-                                            <i class="fas {{ expense.flag.icon }}"></i>
-                                            {{ expense.flag.name }}
-                                        </span>
+                                        {{ flag_badge(expense.flag) }}
                                         {% else %}
                                         <span class="badge bg-secondary">Non défini</span>
                                         {% endif %}

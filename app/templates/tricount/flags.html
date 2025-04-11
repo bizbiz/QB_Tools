@@ -6,6 +6,10 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/flags.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/emoji_picker.css') }}">
 {% endblock %}
+
+{# Importer la macro flag_badge #}
+{% from "macros/tricount/flag_macros.html" import flag_badge, flag_badge_preview %}
+
 {% block content %}
 <div class="container py-4">
     <div class="row mb-4">
@@ -113,14 +117,7 @@
                             {% for flag in flags %}
                             <tr>
                                 <td>
-                                    <span class="flag-badge" style="background-color: {{ flag.color }}">
-                                        {% if flag.icon_relationship %}
-                                            <span class="me-1">{{ flag.get_icon_emoji }}</span>
-                                        {% else %}
-                                            <i class="fas {{ flag.legacy_icon }}"></i>
-                                        {% endif %}
-                                        {{ flag.name }}
-                                    </span>
+                                    {{ flag_badge(flag) }}
                                 </td>
                                 <td>{{ flag.description or 'N/A' }}</td>
                                 <td>
@@ -128,9 +125,9 @@
                                     {{ flag.color }}
                                 </td>
                                 <td>
-                                    {% if flag.icon_relationship %}
+                                    {% if flag.icon %}
                                         <span class="emoji-display">{{ flag.get_icon_emoji }}</span>
-                                        {{ flag.icon_relationship.name }}
+                                        {{ flag.icon.name }}
                                     {% else %}
                                         <i class="fas {{ flag.legacy_icon }}"></i> {{ flag.legacy_icon }}
                                     {% endif %}
@@ -267,8 +264,7 @@
                     <label class="form-label">Aperçu</label>
                     <div class="preview-container">
                         <span class="flag-badge preview-badge">
-                            <span id="preview-emoji" class="me-1"></span>
-                            <i id="preview-icon" class="fas fa-tag"></i>
+                            <span id="preview-emoji" class="me-1">🏷️</span>
                             <span id="preview-name">Nom du type</span>
                         </span>
                     </div>
