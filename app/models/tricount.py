@@ -11,9 +11,31 @@ class Flag(db.Model):
     name = db.Column(db.String(100), nullable=False, unique=True)
     description = db.Column(db.String(255))
     color = db.Column(db.String(50))  # Pour le styling (ex: "blue", "#0366d6")
-    icon = db.Column(db.String(50))   # Pour afficher une icône (ex: "fa-home")
+    
+    # Relation avec le modèle Icon
+    icon_id = db.Column(db.Integer, db.ForeignKey('icons.id'))
+    icon_relationship = db.relationship('Icon', backref='flags')
+    
+    # Pour la rétrocompatibilité - sera déprécié après migration
+    legacy_icon = db.Column(db.String(50))
+    
     is_default = db.Column(db.Boolean, default=False)  # Pour définir le flag par défaut
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Méthodes d'aide pour les icônes
+    @property
+    def get_icon_class(self):
+        """Récupère la classe Font Awesome de l'icône (compatibilité rétroactive)"""
+        if self.icon_relationship:
+            return self.icon_relationship.font_awesome_class
+        return self.legacy_icon or 'fa-tag'
+    
+    @property
+    def get_icon_emoji(self):
+        """Récupère l'emoji de l'icône"""
+        if self.icon_relationship:
+            return self.icon_relationship.unicode_emoji
+        return None
     
     def __repr__(self):
         return f'<Flag {self.name}>'

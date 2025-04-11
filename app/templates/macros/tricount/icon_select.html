@@ -1,0 +1,139 @@
+{# app/templates/macros/tricount/icon_select.html #}
+
+{# Macro pour sélectionner une icône #}
+{% macro icon_select(name='icon_id', id=None, selected_icon=None, classes='', required=False, placeholder='Choisir une icône...', all_icons=None, show_preview=True) %}
+    {# Générer un ID unique si non fourni #}
+    {% set select_id = id if id else 'icon-' ~ name %}
+    
+    <select name="{{ name }}" id="{{ select_id }}" class="form-select icon-select {{ classes }}" {% if required %}required{% endif %}>
+        <option value="">{{ placeholder }}</option>
+        
+        {% for icon in all_icons %}
+            <option value="{{ icon.id }}" 
+                    {% if selected_icon == icon.id %}selected{% endif %}
+                    data-emoji="{{ icon.unicode_emoji }}"
+                    data-fa="{{ icon.font_awesome_class }}">
+                {{ icon.unicode_emoji }} {{ icon.name }}
+            </option>
+        {% endfor %}
+    </select>
+    
+    {% if show_preview %}
+    <div id="{{ select_id }}-preview" class="icon-preview mt-2">
+        {# L'aperçu sera inséré ici via JavaScript #}
+    </div>
+    {% endif %}
+{% endmacro %}
+
+{# Macro pour sélectionner une icône Font Awesome (pour la rétrocompatibilité) #}
+{% macro legacy_icon_select(name='legacy_icon', id=None, selected_icon=None, classes='', required=False, placeholder='Icône Font Awesome') %}
+    {# Générer un ID unique si non fourni #}
+    {% set select_id = id if id else 'legacy-icon-' ~ name %}
+    
+    <select name="{{ name }}" id="{{ select_id }}" class="form-select legacy-icon-select {{ classes }}" {% if required %}required{% endif %}>
+        <option value="">{{ placeholder }}</option>
+        <option value="fa-tag" {% if selected_icon == 'fa-tag' %}selected{% endif %}>📌 Tag</option>
+        <option value="fa-user" {% if selected_icon == 'fa-user' %}selected{% endif %}>👤 Utilisateur</option>
+        <option value="fa-users" {% if selected_icon == 'fa-users' %}selected{% endif %}>👥 Groupe</option>
+        <option value="fa-briefcase" {% if selected_icon == 'fa-briefcase' %}selected{% endif %}>💼 Travail</option>
+        <option value="fa-home" {% if selected_icon == 'fa-home' %}selected{% endif %}>🏠 Maison</option>
+        <option value="fa-car" {% if selected_icon == 'fa-car' %}selected{% endif %}>🚗 Voiture</option>
+        <option value="fa-plane" {% if selected_icon == 'fa-plane' %}selected{% endif %}>✈️ Voyage</option>
+        <option value="fa-heart" {% if selected_icon == 'fa-heart' %}selected{% endif %}>❤️ Coeur</option>
+        <option value="fa-star" {% if selected_icon == 'fa-star' %}selected{% endif %}>⭐ Étoile</option>
+    </select>
+{% endmacro %}
+
+{# Macro combinée pour sélectionner une icône (personnalisée ou Font Awesome) #}
+{% macro combined_icon_select(icon_name='icon_id', legacy_name='legacy_icon', id_prefix=None, selected_icon=None, selected_legacy=None, classes='', all_icons=None) %}
+    {# Générer des préfixes d'ID uniques si non fournis #}
+    {% set prefix = id_prefix if id_prefix else 'icon-select-' ~ range(1000)|random %}
+    
+    <div class="icon-selection-container">
+        <div class="mb-3">
+            <label for="{{ prefix }}-icon" class="form-label">Icône personnalisée</label>
+            {{ icon_select(name=icon_name, id=prefix ~ '-icon', selected_icon=selected_icon, classes=classes, all_icons=all_icons, show_preview=false) }}
+            <div class="form-text">Sélectionnez une icône personnalisée ou utilisez une icône Font Awesome ci-dessous</div>
+        </div>
+        
+        <div class="mb-3">
+            <label for="{{ prefix }}-legacy" class="form-label">Icône Font Awesome</label>
+            {{ legacy_icon_select(name=legacy_name, id=prefix ~ '-legacy', selected_icon=selected_legacy, classes=classes) }}
+        </div>
+        
+        <div id="{{ prefix }}-preview" class="icon-preview mt-2">
+            {# L'aperçu sera inséré ici via JavaScript #}
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const iconSelector = document.getElementById('{{ prefix }}-icon');
+            const legacySelector = document.getElementById('{{ prefix }}-legacy');
+            const previewContainer = document.getElementById('{{ prefix }}-preview');
+            
+            // Fonction pour mettre à jour l'aperçu
+            function updatePreview() {
+                if (!previewContainer) return;
+                
+                let selectedIconId = iconSelector ? iconSelector.value : '';
+                let selectedLegacyIcon = legacySelector ? legacySelector.value : '';
+                
+                let previewHTML = '<div class="d-flex align-items-center">';
+                
+                // Si une icône personnalisée est sélectionnée
+                if (selectedIconId && window.iconsData && window.iconsData[selectedIconId]) {
+                    const iconData = window.iconsData[selectedIconId];
+                    previewHTML += `
+                        <div class="me-3 p-3 border rounded">
+                            <span style="font-size: 2rem;">${iconData.emoji}</span>
+                        </div>
+                        <div class="text-muted">
+                            <p class="mb-1"><strong>Icône sélectionnée:</strong> ${iconData.name}</p>
+                        </div>
+                    `;
+                    
+                    // Désélectionner l'icône legacy
+                    if (legacySelector) legacySelector.value = '';
+                } 
+                // Sinon, si une icône Font Awesome est sélectionnée
+                else if (selectedLegacyIcon) {
+                    previewHTML += `
+                        <div class="me-3 p-3 border rounded">
+                            <i class="fas ${selectedLegacyIcon} fa-2x"></i>
+                        </div>
+                        <div class="text-muted">
+                            <p class="mb-1"><strong>Icône Font Awesome:</strong> ${selectedLegacyIcon}</p>
+                        </div>
+                    `;
+                    
+                    // Désélectionner l'icône personnalisée
+                    if (iconSelector) iconSelector.value = '';
+                } 
+                // Si rien n'est sélectionné
+                else {
+                    previewHTML += `
+                        <div class="alert alert-info mb-0">
+                            Sélectionnez une icône personnalisée ou Font Awesome pour l'aperçu.
+                        </div>
+                    `;
+                }
+                
+                previewHTML += '</div>';
+                previewContainer.innerHTML = previewHTML;
+            }
+            
+            // Ajouter les écouteurs d'événements
+            if (iconSelector) {
+                iconSelector.addEventListener('change', updatePreview);
+            }
+            
+            if (legacySelector) {
+                legacySelector.addEventListener('change', updatePreview);
+            }
+            
+            // Initialiser l'aperçu
+            updatePreview();
+        });
+    </script>
+{% endmacro %}

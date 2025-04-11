@@ -2,13 +2,14 @@
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from app.routes.tricount import tricount_bp
 from app.extensions import db
-from app.models.tricount import Flag
+from app.models.tricount import Flag, Icon
 
 @tricount_bp.route('/flags')
 def flags_list():
     """Liste des flags de dépenses"""
     flags = Flag.query.all()
-    return render_template('tricount/flags.html', flags=flags)
+    icons = Icon.query.all()  # Récupérer toutes les icônes pour le sélecteur
+    return render_template('tricount/flags.html', flags=flags, icons=icons)
 
 @tricount_bp.route('/flags/add', methods=['POST'])
 def add_flag():
@@ -16,7 +17,8 @@ def add_flag():
     name = request.form.get('name')
     description = request.form.get('description', '')
     color = request.form.get('color', '#0366d6')
-    icon = request.form.get('icon', 'fa-tag')
+    icon_id = request.form.get('icon_id', type=int)  # Récupérer l'ID de l'icône
+    legacy_icon = request.form.get('legacy_icon', 'fa-tag')  # Pour la rétrocompatibilité
     is_default = request.form.get('is_default') == 'on'
     
     if not name:
@@ -31,7 +33,8 @@ def add_flag():
         name=name, 
         description=description,
         color=color,
-        icon=icon,
+        icon_id=icon_id,
+        legacy_icon=legacy_icon if not icon_id else None,  # Utiliser legacy_icon uniquement si icon_id n'est pas fourni
         is_default=is_default
     )
     db.session.add(flag)
@@ -76,7 +79,8 @@ def update_flag(flag_id):
     name = request.form.get('name')
     description = request.form.get('description', '')
     color = request.form.get('color', '#0366d6')
-    icon = request.form.get('icon', 'fa-tag')
+    icon_id = request.form.get('icon_id', type=int)
+    legacy_icon = request.form.get('legacy_icon')
     is_default = request.form.get('is_default') == 'on'
     
     if not name:
@@ -91,7 +95,8 @@ def update_flag(flag_id):
         flag.name = name
         flag.description = description
         flag.color = color
-        flag.icon = icon
+        flag.icon_id = icon_id
+        flag.legacy_icon = legacy_icon if not icon_id else None
         flag.is_default = is_default
         
         db.session.commit()
