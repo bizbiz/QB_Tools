@@ -45,30 +45,17 @@
                             </div>
                         </div>
                         <div class="mb-3">
-                            <label for="icon" class="form-label">Icône</label>
-                            <select class="form-select" id="icon" name="icon">
+                            <label for="icon_id" class="form-label">Icône</label>
+                            <select class="form-select" id="icon_id" name="icon_id">
                                 <option value="">Aucune icône</option>
-                                <option value="fa-shopping-cart">🛒 Panier</option>
-                                <option value="fa-utensils">🍽️ Nourriture</option>
-                                <option value="fa-home">🏠 Maison</option>
-                                <option value="fa-car">🚗 Voiture</option>
-                                <option value="fa-plane">✈️ Avion</option>
-                                <option value="fa-credit-card">💳 Carte</option>
-                                <option value="fa-money-bill">💵 Argent</option>
-                                <option value="fa-gift">🎁 Cadeau</option>
-                                <option value="fa-film">🎬 Film</option>
-                                <option value="fa-music">🎵 Musique</option>
-                                <option value="fa-hospital">🏥 Santé</option>
-                                <option value="fa-graduation-cap">🎓 Éducation</option>
-                                <option value="fa-gas-pump">⛽ Essence</option>
-                                <option value="fa-bus">🚌 Transport</option>
-                                <option value="fa-building">🏢 Immeuble</option>
-                                <option value="fa-wrench">🔧 Services</option>
-                                <option value="fa-tshirt">👕 Vêtements</option>
-                                <option value="fa-dumbbell">🏋️ Sport</option>
-                                <option value="fa-umbrella-beach">🏖️ Vacances</option>
+                                {% for icon in icons %}
+                                <option value="{{ icon.id }}" data-emoji="{{ icon.unicode_emoji }}" data-fa="{{ icon.font_awesome_class }}">
+                                    {{ icon.unicode_emoji }} {{ icon.name }}
+                                </option>
+                                {% endfor %}
                             </select>
                             <div class="form-text">Sélectionnez une icône pour cette catégorie.</div>
+                            <div id="icon-preview" class="mt-2"></div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Types de dépenses applicables</label>
@@ -170,7 +157,9 @@
                                 <tr>
                                     <td class="text-center">
                                         {% if category.icon %}
-                                        <i class="fas {{ category.icon }} fa-lg text-secondary"></i>
+                                        <span style="font-size: 1.5rem;" title="{{ category.icon.name }}">{{ category.icon.unicode_emoji }}</span>
+                                        {% elif category.legacy_icon %}
+                                        <i class="fas {{ category.legacy_icon }} fa-lg text-secondary"></i>
                                         {% else %}
                                         <span class="text-muted">—</span>
                                         {% endif %}
@@ -192,7 +181,9 @@
                                                 data-id="{{ category.id }}"
                                                 data-name="{{ category.name }}"
                                                 data-description="{{ category.description or '' }}"
-                                                data-icon="{{ category.icon or '' }}"
+                                                data-icon-id="{{ category.icon_id or '' }}"
+                                                data-icon-emoji="{{ category.icon.unicode_emoji if category.icon else '' }}"
+                                                data-legacy-icon="{{ category.legacy_icon or '' }}"
                                                 data-bs-toggle="tooltip" 
                                                 data-bs-placement="top" 
                                                 title="Modifier">
@@ -270,30 +261,17 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label for="edit-icon" class="form-label">Icône</label>
-                        <select class="form-select" id="edit-icon" name="icon">
+                        <label for="edit-icon-id" class="form-label">Icône</label>
+                        <select class="form-select" id="edit-icon-id" name="icon_id">
                             <option value="">Aucune icône</option>
-                            <option value="fa-shopping-cart">🛒 Panier</option>
-                            <option value="fa-utensils">🍽️ Nourriture</option>
-                            <option value="fa-home">🏠 Maison</option>
-                            <option value="fa-car">🚗 Voiture</option>
-                            <option value="fa-plane">✈️ Avion</option>
-                            <option value="fa-credit-card">💳 Carte</option>
-                            <option value="fa-money-bill">💵 Argent</option>
-                            <option value="fa-gift">🎁 Cadeau</option>
-                            <option value="fa-film">🎬 Film</option>
-                            <option value="fa-music">🎵 Musique</option>
-                            <option value="fa-hospital">🏥 Santé</option>
-                            <option value="fa-graduation-cap">🎓 Éducation</option>
-                            <option value="fa-gas-pump">⛽ Essence</option>
-                            <option value="fa-bus">🚌 Transport</option>
-                            <option value="fa-building">🏢 Immeuble</option>
-                            <option value="fa-wrench">🔧 Services</option>
-                            <option value="fa-tshirt">👕 Vêtements</option>
-                            <option value="fa-dumbbell">🏋️ Sport</option>
-                            <option value="fa-umbrella-beach">🏖️ Vacances</option>
+                            {% for icon in icons %}
+                            <option value="{{ icon.id }}" data-emoji="{{ icon.unicode_emoji }}" data-fa="{{ icon.font_awesome_class }}">
+                                {{ icon.unicode_emoji }} {{ icon.name }}
+                            </option>
+                            {% endfor %}
                         </select>
                         <div class="form-text">Sélectionnez une icône pour cette catégorie.</div>
+                        <div id="edit-icon-preview" class="mt-2"></div>
                     </div>
                     
                     <div class="mb-3">

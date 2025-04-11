@@ -1,5 +1,5 @@
 # app/routes/tricount/category_routes.py
-from flask import render_template, redirect, url_for, flash, request
+from flask import render_template, redirect, url_for, flash, request, jsonify
 from app.routes.tricount import tricount_bp
 from app.extensions import db
 from app.models.tricount import Category, Flag, Icon
@@ -10,7 +10,7 @@ def categories_list():
     """Liste des catégories"""
     categories = Category.query.all()
     flags = Flag.query.all()
-    icons = Icon.query.all()  # Récupérer toutes les icônes
+    icons = Icon.query.all()  # Récupérer toutes les icônes disponibles
     return render_template('tricount/categories.html', categories=categories, flags=flags, icons=icons)
 
 @tricount_bp.route('/categories/add', methods=['POST'])

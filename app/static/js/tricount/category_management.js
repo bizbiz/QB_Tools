@@ -51,6 +51,10 @@ function initIconPreview() {
     const editIconPreview = document.getElementById('edit-icon-preview');
     
     if (editIconSelect && editIconPreview) {
+        // Initial preview
+        updateIconPreview(editIconSelect, editIconPreview);
+        
+        // Update preview on change
         editIconSelect.addEventListener('change', function() {
             updateIconPreview(editIconSelect, editIconPreview);
         });
@@ -59,21 +63,26 @@ function initIconPreview() {
 
 // Update icon preview based on selected option
 function updateIconPreview(select, previewElement) {
+    if (!previewElement) return;
+    
     previewElement.innerHTML = '';
+    
+    if (!select || select.selectedIndex === -1) return;
     
     const selectedOption = select.options[select.selectedIndex];
     if (selectedOption && selectedOption.value) {
-        const faClass = selectedOption.getAttribute('data-fa');
         const emoji = selectedOption.getAttribute('data-emoji');
+        const faClass = selectedOption.getAttribute('data-fa');
         
         const previewHTML = `
             <div class="d-flex align-items-center">
                 <div class="me-3 p-3 border rounded">
-                    <i class="fas ${faClass} fa-2x"></i>
+                    <span style="font-size: 2rem;">${emoji || '❓'}</span>
                 </div>
+                ${faClass ? `
                 <div class="me-3 p-3 border rounded">
-                    <span style="font-size: 2rem;">${emoji}</span>
-                </div>
+                    <i class="fas ${faClass} fa-2x"></i>
+                </div>` : ''}
                 <div class="text-muted">
                     <p class="mb-0">Cette icône sera utilisée pour représenter la catégorie dans l'application.</p>
                 </div>
@@ -122,8 +131,8 @@ function sortTable(table, columnIndex) {
         // Special case for icon column
         if (header.dataset.type === 'icon') {
             // Sort based on presence of icon
-            aValue = a.cells[columnIndex].querySelector('.fas') ? 1 : 0;
-            bValue = b.cells[columnIndex].querySelector('.fas') ? 1 : 0;
+            aValue = a.cells[columnIndex].querySelector('.fas') || a.cells[columnIndex].textContent.trim() !== '—' ? 1 : 0;
+            bValue = b.cells[columnIndex].querySelector('.fas') || b.cells[columnIndex].textContent.trim() !== '—' ? 1 : 0;
         }
         // Special case for flag columns (check/x mark)
         else if (a.cells[columnIndex].querySelector('.fa-check') || a.cells[columnIndex].querySelector('.fa-times')) {
@@ -182,7 +191,8 @@ function setupModalEventListeners() {
     const editCategoryForm = document.getElementById('edit-category-form');
     const editNameInput = document.getElementById('edit-name');
     const editDescriptionInput = document.getElementById('edit-description');
-    const editIconSelect = document.getElementById('edit-icon-id');  // Mis à jour
+    const editIconSelect = document.getElementById('edit-icon-id');
+    const editIconPreview = document.getElementById('edit-icon-preview');
     const saveCategoryButton = document.getElementById('save-category');
 
     editButtons.forEach(button => {
@@ -190,16 +200,20 @@ function setupModalEventListeners() {
             const categoryId = this.dataset.id;
             const categoryName = this.dataset.name;
             const categoryDescription = this.dataset.description;
-            const categoryIconId = this.dataset.iconId || '';  // Mis à jour
+            const categoryIconId = this.dataset.iconId || '';
+            const categoryIconEmoji = this.dataset.iconEmoji || '';
+            const categoryLegacyIcon = this.dataset.legacyIcon || '';
             
             // Remplir le formulaire
             editNameInput.value = categoryName;
             editDescriptionInput.value = categoryDescription;
-            editIconSelect.value = categoryIconId;  // Mis à jour
             
-            // Mettre à jour l'aperçu de l'icône
-            const editIconPreview = document.getElementById('edit-icon-preview');
-            updateIconPreview(editIconSelect, editIconPreview);
+            // Sélectionner l'icône correspondante
+            if (editIconSelect) {
+                editIconSelect.value = categoryIconId;
+                // Si nous n'avons pas d'icône mais un legacy_icon, on peut l'afficher différemment
+                updateIconPreview(editIconSelect, editIconPreview);
+            }
             
             // Récupérer les flags de cette catégorie
             const row = this.closest('tr');
