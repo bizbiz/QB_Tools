@@ -1,9 +1,13 @@
+{# app/templates/tricount/categorize.html #}
+
 {% extends "base.html" %}
+{% from "macros/tricount/category_select.html" import category_select_with_js %}
 
 {% block title %}QB Tools - Catégoriser les dépenses{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/main.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/category_select.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -99,17 +103,22 @@
                                         
                                         <div class="mb-3">
                                             <label for="category-{{ expense.id }}" class="form-label">Catégorie</label>
-                                            <select class="form-select category-select" id="category-{{ expense.id }}" name="category_id" data-expense-id="{{ expense.id }}">
-                                                <option value="">Choisir une catégorie</option>
-                                                {% for category in categories %}
-                                                <option value="{{ category.id }}">{{ category.name }}</option>
-                                                {% endfor %}
-                                            </select>
+                                            {{ category_select_with_js(
+                                                name="category_id", 
+                                                id="category-" ~ expense.id, 
+                                                selected_category=None,
+                                                classes="category-select",
+                                                required=false,
+                                                placeholder="Choisir une catégorie",
+                                                all_categories=categories,
+                                                show_icons=true,
+                                                flag_select_id="flag-" ~ expense.id
+                                            ) }}
                                         </div>
                                         
                                         <div class="mb-3">
                                             <label for="flag-{{ expense.id }}" class="form-label">Type de dépense</label>
-                                            <select class="form-select flag-select" id="flag-{{ expense.id }}" name="flag_id" data-expense-id="{{ expense.id }}">
+                                            <select class="form-select flag-select" id="flag-{{ expense.id }}" name="flag_id" data-expense-id="{{ expense.id }}" data-flag-select="true">
                                                 {% for flag in flags %}
                                                 <option value="{{ flag.id }}" {% if flag.is_default %}selected{% endif %}>
                                                     {{ flag.name }}
@@ -146,6 +155,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{{ url_for('static', filename='js/tricount/category_select.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/categorize.js') }}"></script>
 <script>
     // Données de catégories pour le filtrage
