@@ -32,12 +32,12 @@
             </div>
             <div class="card-body">
                 <form action="{{ url_for('tricount.add_flag') }}" method="POST" class="row">
-                    <div class="col-md-3 mb-3">
+                    <div class="col-md-4 mb-3">
                         <label for="name" class="form-label">Nom du type</label>
                         <input type="text" class="form-control" id="name" name="name" required>
                     </div>
                     
-                    <div class="col-md-3 mb-3">
+                    <div class="col-md-4 mb-3">
                         <label for="description" class="form-label">Description (optionnelle)</label>
                         <input type="text" class="form-control" id="description" name="description">
                     </div>
@@ -49,21 +49,21 @@
                     
                     <div class="col-md-2 mb-3">
                         <label for="icon_id" class="form-label">Icône</label>
-                        <div class="col-md-4 mb-3">
-                            {% from "macros/tricount/icon_select.html" import combined_icon_select %}
-                            {{ combined_icon_select(
-                                icon_name="icon_id",
-                                legacy_name="legacy_icon",
-                                id_prefix="add-flag",
-                                all_icons=icons
-                            ) }}
-                        </div>
+                        <select class="form-select" id="icon_id" name="icon_id" required>
+                            <option value="">Choisir une icône...</option>
+                            {% for icon in icons %}
+                            <option value="{{ icon.id }}" data-emoji="{{ icon.unicode_emoji }}">
+                                {{ icon.unicode_emoji }} {{ icon.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
                     </div>
-                    
                     
                     <div class="col-12 mb-3">
                         <div id="icon-preview" class="mt-2">
-                            <!-- L'aperçu de l'icône sera inséré ici via JavaScript -->
+                            <div class="alert alert-info">
+                                Sélectionnez une icône pour afficher l'aperçu.
+                            </div>
                         </div>
                     </div>
                     
@@ -237,32 +237,17 @@
                 </div>
                 
                 <div class="mb-3">
-                    <label for="edit-icon-id" class="form-label">Icône personnalisée</label>
-                    <select class="form-select" id="edit-icon-id" name="icon_id">
+                    <label for="edit-icon-id" class="form-label">Icône</label>
+                    <select class="form-select" id="edit-icon-id" name="icon_id" required>
                         <option value="">Choisir une icône...</option>
                         {% for icon in icons %}
-                        <option value="{{ icon.id }}" data-emoji="{{ icon.unicode_emoji }}" data-fa="{{ icon.font_awesome_class }}">
+                        <option value="{{ icon.id }}" data-emoji="{{ icon.unicode_emoji }}">
                             {{ icon.unicode_emoji }} {{ icon.name }}
                         </option>
                         {% endfor %}
                     </select>
-                    <div class="form-text">Ou utilisez une icône Font Awesome ci-dessous</div>
-                </div>
-                
-                <div class="mb-3">
-                    <label for="edit-legacy-icon" class="form-label">Icône</label>
-                    {% from "macros/tricount/icon_select.html" import combined_icon_select %}
-                    {{ combined_icon_select(
-                        icon_name="icon_id",
-                        legacy_name="legacy_icon",
-                        id_prefix="edit-flag",
-                        all_icons=icons
-                    ) }}
-                </div>
-                
-                <div class="mb-3">
                     <div id="edit-icon-preview" class="mt-2">
-                        <!-- L'aperçu de l'icône sera inséré ici via JavaScript -->
+                        <!-- L'aperçu sera inséré ici via JavaScript -->
                     </div>
                 </div>
                 

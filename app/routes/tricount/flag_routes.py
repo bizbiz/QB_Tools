@@ -18,7 +18,6 @@ def add_flag():
     description = request.form.get('description', '')
     color = request.form.get('color', '#0366d6')
     icon_id = request.form.get('icon_id', type=int)  # Récupérer l'ID de l'icône
-    legacy_icon = request.form.get('legacy_icon', 'fa-tag')  # Pour la rétrocompatibilité
     is_default = request.form.get('is_default') == 'on'
     
     if not name:
@@ -34,7 +33,6 @@ def add_flag():
         description=description,
         color=color,
         icon_id=icon_id,
-        legacy_icon=legacy_icon if not icon_id else None,  # Utiliser legacy_icon uniquement si icon_id n'est pas fourni
         is_default=is_default
     )
     db.session.add(flag)
