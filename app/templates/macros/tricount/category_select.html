@@ -1,5 +1,29 @@
 {# app/templates/macros/tricount/category_select.html #}
 
+{# Macro pour générer un badge de catégorie cohérent dans toute l'application #}
+{% macro category_badge(category, extra_classes='') %}
+<span class="category-badge {{ extra_classes }}">
+    {% if category.icon %}
+    <span class="me-1">{{ category.get_icon_emoji }}</span>
+    {% elif category.legacy_icon %}
+    <i class="fas {{ category.legacy_icon }} me-1"></i>
+    {% endif %}
+    {{ category.name }}
+</span>
+{% endmacro %}
+
+{# Version simplifiée pour l'aperçu en édition ou création #}
+{% macro category_badge_preview(name, emoji=None, icon_class=None, extra_classes='') %}
+<span class="category-badge {{ extra_classes }}">
+    {% if emoji %}
+    <span class="me-1">{{ emoji }}</span>
+    {% elif icon_class %}
+    <i class="fas {{ icon_class }} me-1"></i>
+    {% endif %}
+    {{ name }}
+</span>
+{% endmacro %}
+
 {# Macro simple pour sélectionner une catégorie (filtrage côté serveur) #}
 {% macro category_select(name='category_id', id=None, selected_category=None, selected_flag=None, classes='', required=False, placeholder='Choisir une catégorie', all_categories=None, show_icons=True) %}
     {# Générer un ID unique si non fourni #}

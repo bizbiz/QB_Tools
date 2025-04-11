@@ -10,6 +10,7 @@
 	{{ flag.name }}
 </span>
 {% endmacro %}
+
 {# Version simplifiée pour l'aperçu en édition ou création #}
 {% macro flag_badge_preview(name, color, emoji=None, icon_class=None, extra_classes='') %}
 <span class="flag-badge {{ extra_classes }}" style="background-color: {{ color }}">
@@ -20,4 +21,72 @@
 	{% endif %}
 	{{ name }}
 </span>
+{% endmacro %}
+
+{# Macro pour un sélecteur de flag avec affichage des icônes #}
+{% macro flag_select(name='flag_id', id=None, selected_flag=None, classes='', required=False, placeholder='Choisir un type de dépense', all_flags=None, data_attribute_expense_id=None, show_preview=False) %}
+    {# Générer un ID unique si non fourni #}
+    {% set select_id = id if id else 'flag-' ~ name %}
+    
+    <select 
+        name="{{ name }}" 
+        id="{{ select_id }}" 
+        class="form-select flag-select {{ classes }}" 
+        {% if required %}required{% endif %}
+        data-flag-select="true"
+        {% if data_attribute_expense_id %}data-expense-id="{{ data_attribute_expense_id }}"{% endif %}
+    >
+        <option value="">{{ placeholder }}</option>
+        
+        {% for flag in all_flags %}
+            <option value="{{ flag.id }}" 
+                    {% if selected_flag == flag.id %}selected{% endif %}
+                    data-color="{{ flag.color }}"
+                    data-icon="{{ flag.legacy_icon or '' }}"
+                    data-emoji="{{ flag.get_icon_emoji }}">
+                {{ flag.name }}
+            </option>
+        {% endfor %}
+    </select>
+    
+    {% if show_preview %}
+    <div id="{{ select_id }}-preview" class="flag-preview mt-2">
+        {# Le prévisualisation sera inséré ici via JavaScript #}
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const flagSelect = document.getElementById('{{ select_id }}');
+            const previewContainer = document.getElementById('{{ select_id }}-preview');
+            
+            if (flagSelect && previewContainer) {
+                // Fonction pour mettre à jour la prévisualisation
+                function updateFlagPreview() {
+                    if (flagSelect.selectedIndex > 0) {
+                        const selectedOption = flagSelect.options[flagSelect.selectedIndex];
+                        const color = selectedOption.dataset.color;
+                        const emoji = selectedOption.dataset.emoji;
+                        const icon = selectedOption.dataset.icon;
+                        const name = selectedOption.text;
+                        
+                        previewContainer.innerHTML = `
+                            <span class="flag-badge" style="background-color: ${color}">
+                                ${emoji ? `<span class="me-1">${emoji}</span>` : (icon ? `<i class="fas ${icon} me-1"></i>` : '')}
+                                ${name}
+                            </span>
+                        `;
+                    } else {
+                        previewContainer.innerHTML = '';
+                    }
+                }
+                
+                // Initialiser la prévisualisation
+                updateFlagPreview();
+                
+                // Mettre à jour lors du changement
+                flagSelect.addEventListener('change', updateFlagPreview);
+            }
+        });
+    </script>
+    {% endif %}
 {% endmacro %}

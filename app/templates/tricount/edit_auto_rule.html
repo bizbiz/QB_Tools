@@ -1,6 +1,8 @@
 <!-- app/templates/tricount/edit_auto_rule.html -->
 {% extends "base.html" %}
 
+{% from "macros/tricount/flag_macros.html" import flag_select %}
+
 {% block title %}QB Tools - Modifier une règle d'auto-catégorisation{% endblock %}
 
 {% block extra_css %}
@@ -114,25 +116,16 @@
                             
                             <div class="section-content mb-3">
                                 <label for="flag-id" class="form-label">Type de dépense</label>
-                                <select class="form-select rule-input" id="flag-id" name="flag_id" data-required="true">
-                                    <option value="">Choisir un type de dépense</option>
-                                    {% for flag in flags %}
-                                    <option value="{{ flag.id }}" {% if rule.flag_id == flag.id %}selected{% endif %}>
-                                        {{ flag.name }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
+                                {{ flag_select(
+                                    name="flag_id",
+                                    id="flag-id",
+                                    selected_flag=rule.flag_id,
+                                    classes="rule-input",
+                                    required=true,
+                                    all_flags=flags,
+                                    show_preview=true
+                                ) }}
                                 <div id="flag-id-error" class="validation-error">Veuillez sélectionner un type de dépense</div>
-                                <div class="mt-2">
-                                    <div id="flag-preview" class="d-flex align-items-center mt-2">
-                                        {% if rule.flag %}
-                                        <span class="flag-badge" style="background-color: {{ rule.flag.color }}; color: white; padding: 4px 12px; border-radius: 20px; display: inline-flex; align-items: center;">
-                                            <i class="fas {{ rule.flag.icon }} me-2"></i>
-                                            {{ rule.flag.name }}
-                                        </span>
-                                        {% endif %}
-                                    </div>
-                                </div>
                             </div>
                         </div>
                         

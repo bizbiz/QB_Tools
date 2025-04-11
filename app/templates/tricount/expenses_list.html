@@ -4,10 +4,12 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/main.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/category_badge.css') }}">
 {% endblock %}
 
 {# Importer la macro flag_badge #}
 {% from "macros/tricount/flag_macros.html" import flag_badge %}
+{% from "macros/tricount/category_select.html" import category_badge %}
 
 {% block content %}
 <div class="container py-4">
@@ -125,7 +127,6 @@
                                 {% if paginated %}
                                     {% for expense in expenses.items %}
                                     <tr data-expense-id="{{ expense.id }}">
-                                        <!-- Contenu des colonnes -->
                                         <td>{{ expense.date.strftime('%d/%m/%Y') }}</td>
                                         <td>
                                             <div class="fw-bold">{{ expense.merchant }}</div>
@@ -136,7 +137,7 @@
                                         </td>
                                         <td>
                                             {% if expense.category %}
-                                            <span class="badge bg-info">{{ expense.category.name }}</span>
+                                            {{ category_badge(expense.category) }}
                                             {% else %}
                                             <span class="badge bg-secondary">Non catégorisé</span>
                                             {% endif %}
@@ -170,7 +171,6 @@
                                 {% else %}
                                     {% for expense in expenses %}
                                     <tr data-expense-id="{{ expense.id }}">
-                                        <!-- Même contenu que ci-dessus -->
                                         <td>{{ expense.date.strftime('%d/%m/%Y') }}</td>
                                         <td>
                                             <div class="fw-bold">{{ expense.merchant }}</div>
@@ -181,7 +181,7 @@
                                         </td>
                                         <td>
                                             {% if expense.category %}
-                                            <span class="badge bg-info">{{ expense.category.name }}</span>
+                                            {{ category_badge(expense.category) }}
                                             {% else %}
                                             <span class="badge bg-secondary">Non catégorisé</span>
                                             {% endif %}

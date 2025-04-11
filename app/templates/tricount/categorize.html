@@ -2,7 +2,7 @@
 
 {% extends "base.html" %}
 {% from "macros/tricount/category_select.html" import category_select_with_js %}
-{% from "macros/tricount/flag_macros.html" import flag_badge %}
+{% from "macros/tricount/flag_macros.html" import flag_badge, flag_select %}
 
 {% block title %}QB Tools - Catégoriser les dépenses{% endblock %}
 
@@ -119,13 +119,13 @@
                                         
                                         <div class="mb-3">
                                             <label for="flag-{{ expense.id }}" class="form-label">Type de dépense</label>
-                                            <select class="form-select flag-select" id="flag-{{ expense.id }}" name="flag_id" data-expense-id="{{ expense.id }}" data-flag-select="true">
-                                                {% for flag in flags %}
-                                                <option value="{{ flag.id }}" {% if flag.is_default %}selected{% endif %}>
-                                                    {{ flag.name }}
-                                                </option>
-                                                {% endfor %}
-                                            </select>
+                                            {{ flag_select(
+                                                name="flag_id",
+                                                id="flag-" ~ expense.id,
+                                                selected_flag=None,
+                                                all_flags=flags,
+                                                data_attribute_expense_id=expense.id
+                                            ) }}
                                         </div>
                                         
                                         <div class="d-flex gap-2">
