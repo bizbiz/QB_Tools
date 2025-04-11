@@ -98,30 +98,31 @@
                 <div class="card-header">
                     <h3 class="card-title">Gérer mes dépenses</h3>
                 </div>
-                <div class="card-body">
-                    <div class="list-group">
-                        <a href="{{ url_for('tricount.expenses_list') }}" class="list-group-item list-group-item-action">
-                            <i class="fas fa-list me-2"></i>Liste des dépenses
-                        </a>
-                        <a href="{{ url_for('tricount.categorize_expenses') }}" class="list-group-item list-group-item-action">
-                            <i class="fas fa-tags me-2"></i>Catégoriser les dépenses
-                            {% if expenses_stats.uncategorized > 0 %}
-                            <span class="badge bg-warning float-end">{{ expenses_stats.uncategorized }}</span>
-                            {% endif %}
-                        </a>
-                        <a href="{{ url_for('tricount.categories_list') }}" class="list-group-item list-group-item-action">
-                            <i class="fas fa-folder me-2"></i>Gérer les catégories
-                        </a>
-                        <a href="{{ url_for('tricount.flags_list') }}" class="list-group-item list-group-item-action">
-                            <i class="fas fa-tags me-2"></i>Gérer les types de dépenses
-                        </a>
-                        <a href="{{ url_for('tricount.pending_rules_list') }}" class="list-group-item list-group-item-action">
-                            <i class="fas fa-tasks me-2"></i>Règles en attente
-                            {% if pending_count > 0 %}
-                            <span class="badge bg-warning float-end">{{ pending_count }}</span>
-                            {% endif %}
-                        </a>
-                    </div>
+                <div class="list-group">
+                    <a href="{{ url_for('tricount.expenses_list') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-list me-2"></i>Liste des dépenses
+                    </a>
+                    <a href="{{ url_for('tricount.categorize_expenses') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-tags me-2"></i>Catégoriser les dépenses
+                        {% if expenses_stats.uncategorized > 0 %}
+                        <span class="badge bg-warning float-end">{{ expenses_stats.uncategorized }}</span>
+                        {% endif %}
+                    </a>
+                    <a href="{{ url_for('tricount.categories_list') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-folder me-2"></i>Gérer les catégories
+                    </a>
+                    <a href="{{ url_for('tricount.flags_list') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-tags me-2"></i>Gérer les types de dépenses
+                    </a>
+                    <a href="{{ url_for('tricount.icons_list') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-icons me-2"></i>Gérer les icônes
+                    </a>
+                    <a href="{{ url_for('tricount.pending_rules_list') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-tasks me-2"></i>Règles en attente
+                        {% if pending_count > 0 %}
+                        <span class="badge bg-warning float-end">{{ pending_count }}</span>
+                        {% endif %}
+                    </a>
                 </div>
             </div>
         </div>

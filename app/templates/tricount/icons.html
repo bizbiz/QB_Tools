@@ -2,6 +2,11 @@
 
 {% block title %}QB Tools - Gestion des icônes{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/main.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/emoji_picker.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="container py-4">
     <div class="row mb-4">
@@ -9,12 +14,65 @@
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('tricount.index') }}">Tricount Helper</a></li>
                     <li class="breadcrumb-item active">Gestion des icônes</li>
                 </ol>
             </nav>
             
             <h1>Gestion des icônes</h1>
             <p class="lead">Créez, modifiez et supprimez les icônes disponibles dans l'application</p>
+        </div>
+    </div>
+    
+    <!-- Section de sélection d'emoji -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h3 class="card-title">Sélectionner un emoji</h3>
+                </div>
+                <div class="card-body">
+                    <div class="input-group mb-3">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control" id="search-emoji" placeholder="Rechercher un emoji...">
+                    </div>
+                    
+                    <ul class="nav nav-tabs emoji-tabs" id="emojiTabs" role="tablist">
+                        {% for category, emojis in suggested_by_category.items() %}
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {% if loop.first %}active{% endif %}" 
+                                    id="{{ category|lower|replace(' ', '-') }}-tab" 
+                                    data-bs-toggle="tab" 
+                                    data-bs-target="#{{ category|lower|replace(' ', '-') }}" 
+                                    type="button" 
+                                    role="tab" 
+                                    aria-controls="{{ category|lower|replace(' ', '-') }}" 
+                                    aria-selected="{% if loop.first %}true{% else %}false{% endif %}">
+                                {{ category }}
+                            </button>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    
+                    <div class="tab-content p-3" id="emojiTabContent">
+                        {% for category, emojis in suggested_by_category.items() %}
+                        <div class="tab-pane fade {% if loop.first %}show active{% endif %} emoji-category" 
+                             id="{{ category|lower|replace(' ', '-') }}" 
+                             role="tabpanel" 
+                             aria-labelledby="{{ category|lower|replace(' ', '-') }}-tab">
+                            <h5 class="emoji-category-title">{{ category }}</h5>
+                            <div class="emoji-grid">
+                                {% for emoji in emojis %}
+                                <button type="button" class="btn emoji-btn" data-emoji="{{ emoji }}">
+                                    <span>{{ emoji }}</span>
+                                </button>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -26,30 +84,30 @@
                     <h3 class="card-title">Ajouter une icône</h3>
                 </div>
                 <div class="card-body">
-                    <form action="{{ url_for('icons.add_icon') }}" method="POST">
+                    <form id="add-icon-form" action="{{ url_for('tricount.add_icon') }}" method="POST">
                         <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label for="name" class="form-label">Nom de l'icône</label>
-                                <input type="text" class="form-control" id="name" name="name" required>
+                            <div class="col-md-6 mb-3">
+                                <label for="unicode_emoji" class="form-label">Emoji Unicode</label>
+                                <input type="text" class="form-control" id="unicode_emoji" name="unicode_emoji" required>
+                                <div class="form-text">L'emoji à utiliser pour représenter cette icône (obligatoire). Sélectionnez un emoji ci-dessus.</div>
                             </div>
                             
-                            <div class="col-md-8 mb-3">
-                                <label for="description" class="form-label">Description (optionnelle)</label>
-                                <input type="text" class="form-control" id="description" name="description">
+                            <div class="col-md-6 mb-3">
+                                <label for="name" class="form-label">Nom de l'icône</label>
+                                <input type="text" class="form-control" id="name" name="name" required>
                             </div>
                         </div>
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="font_awesome_class" class="form-label">Classe Font Awesome</label>
-                                <input type="text" class="form-control" id="font_awesome_class" name="font_awesome_class" required placeholder="fa-home">
-                                <div class="form-text">Entrez la classe Font Awesome sans le préfixe "fas" (ex: fa-home)</div>
+                                <label for="description" class="form-label">Description (optionnelle)</label>
+                                <input type="text" class="form-control" id="description" name="description">
                             </div>
                             
                             <div class="col-md-6 mb-3">
-                                <label for="unicode_emoji" class="form-label">Emoji Unicode (optionnel)</label>
-                                <input type="text" class="form-control" id="unicode_emoji" name="unicode_emoji" placeholder="🏠">
-                                <div class="form-text">Entrez l'emoji correspondant si disponible</div>
+                                <label for="font_awesome_class" class="form-label">Classe Font Awesome (optionnelle)</label>
+                                <input type="text" class="form-control" id="font_awesome_class" name="font_awesome_class" placeholder="fa-home">
+                                <div class="form-text">Facultatif : classe Font Awesome sans le préfixe "fas" (ex: fa-home)</div>
                             </div>
                         </div>
                         
@@ -57,10 +115,10 @@
                             <label class="form-label">Aperçu</label>
                             <div class="d-flex align-items-center">
                                 <div class="me-3 p-3 border rounded">
-                                    <i id="preview-fa-icon" class="fas fa-home fa-2x"></i>
+                                    <span id="preview-emoji" style="font-size: 2rem;">?</span>
                                 </div>
                                 <div class="me-3 p-3 border rounded">
-                                    <span id="preview-emoji" style="font-size: 2rem;">🏠</span>
+                                    <i id="preview-fa-icon" class="fas fa-question fa-2x"></i>
                                 </div>
                             </div>
                         </div>
@@ -91,10 +149,9 @@
                         <table class="table table-hover table-striped mb-0">
                             <thead>
                                 <tr>
-                                    <th>Aperçu FA</th>
                                     <th>Aperçu Emoji</th>
+                                    <th>Aperçu FA</th>
                                     <th>Nom</th>
-                                    <th>Classe FA</th>
                                     <th>Description</th>
                                     <th>Actions</th>
                                 </tr>
@@ -103,21 +160,24 @@
                                 {% for icon in icons %}
                                 <tr>
                                     <td class="text-center">
-                                        <i class="fas {{ icon.font_awesome_class }} fa-lg"></i>
+                                        <span style="font-size: 1.5rem;">{{ icon.unicode_emoji or '-' }}</span>
                                     </td>
                                     <td class="text-center">
-                                        {{ icon.unicode_emoji or '-' }}
+                                        {% if icon.font_awesome_class %}
+                                        <i class="fas {{ icon.font_awesome_class }} fa-lg"></i>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
                                     </td>
                                     <td>{{ icon.name }}</td>
-                                    <td><code>{{ icon.font_awesome_class }}</code></td>
                                     <td>{{ icon.description or 'N/A' }}</td>
                                     <td>
                                         <button class="btn btn-sm btn-outline-primary edit-icon" 
                                                 data-id="{{ icon.id }}"
                                                 data-name="{{ icon.name }}"
                                                 data-description="{{ icon.description or '' }}"
-                                                data-font-awesome-class="{{ icon.font_awesome_class }}"
-                                                data-unicode-emoji="{{ icon.unicode_emoji or '' }}"
+                                                data-font-awesome-class="{{ icon.font_awesome_class or '' }}"
+                                                data-unicode-emoji="{{ icon.unicode_emoji }}"
                                                 data-bs-toggle="tooltip" 
                                                 data-bs-placement="top" 
                                                 title="Modifier">
@@ -135,7 +195,7 @@
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="6" class="text-center py-4">
+                                    <td colspan="5" class="text-center py-4">
                                         <div class="alert alert-info mb-0">
                                             <i class="fas fa-info-circle me-2"></i>
                                             Aucune icône trouvée. Utilisez le formulaire ci-dessus pour ajouter votre première icône.
@@ -184,16 +244,9 @@
             </div>
             <div class="modal-body">
                 <form id="edit-icon-form" method="POST">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="edit-name" class="form-label">Nom de l'icône</label>
-                            <input type="text" class="form-control" id="edit-name" name="name" required>
-                        </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label for="edit-font-awesome-class" class="form-label">Classe Font Awesome</label>
-                            <input type="text" class="form-control" id="edit-font-awesome-class" name="font_awesome_class" required>
-                        </div>
+                    <div class="mb-3">
+                        <label for="edit-name" class="form-label">Nom de l'icône</label>
+                        <input type="text" class="form-control" id="edit-name" name="name" required>
                     </div>
                     
                     <div class="mb-3">
@@ -203,17 +256,24 @@
                     
                     <div class="mb-3">
                         <label for="edit-unicode-emoji" class="form-label">Emoji Unicode</label>
-                        <input type="text" class="form-control" id="edit-unicode-emoji" name="unicode_emoji">
+                        <input type="text" class="form-control" id="edit-unicode-emoji" name="unicode_emoji" required>
+                        <div class="form-text">L'emoji à utiliser pour représenter cette icône (obligatoire)</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit-font-awesome-class" class="form-label">Classe Font Awesome</label>
+                        <input type="text" class="form-control" id="edit-font-awesome-class" name="font_awesome_class">
+                        <div class="form-text">Optionnellement, entrez la classe Font Awesome sans le préfixe "fas"</div>
                     </div>
                     
                     <div class="mb-3">
                         <label class="form-label">Aperçu</label>
                         <div class="d-flex align-items-center">
                             <div class="me-3 p-3 border rounded">
-                                <i id="edit-preview-fa-icon" class="fas fa-home fa-2x"></i>
+                                <span id="edit-preview-emoji" style="font-size: 2rem;">🏠</span>
                             </div>
                             <div class="me-3 p-3 border rounded">
-                                <span id="edit-preview-emoji" style="font-size: 2rem;">🏠</span>
+                                <i id="edit-preview-fa-icon" class="fas fa-home fa-2x"></i>
                             </div>
                         </div>
                     </div>
@@ -229,96 +289,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize tooltips
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl)
-        });
-        
-        // Live preview for add form
-        const fontAwesomeInput = document.getElementById('font_awesome_class');
-        const unicodeEmojiInput = document.getElementById('unicode_emoji');
-        const previewFaIcon = document.getElementById('preview-fa-icon');
-        const previewEmoji = document.getElementById('preview-emoji');
-        
-        fontAwesomeInput.addEventListener('input', function() {
-            previewFaIcon.className = 'fas ' + this.value + ' fa-2x';
-        });
-        
-        unicodeEmojiInput.addEventListener('input', function() {
-            previewEmoji.textContent = this.value || '?';
-        });
-        
-        // Edit modal management
-        const editButtons = document.querySelectorAll('.edit-icon');
-        const editModal = new bootstrap.Modal(document.getElementById('editIconModal'));
-        const editIconForm = document.getElementById('edit-icon-form');
-        const editNameInput = document.getElementById('edit-name');
-        const editDescriptionInput = document.getElementById('edit-description');
-        const editFontAwesomeInput = document.getElementById('edit-font-awesome-class');
-        const editUnicodeEmojiInput = document.getElementById('edit-unicode-emoji');
-        const editPreviewFaIcon = document.getElementById('edit-preview-fa-icon');
-        const editPreviewEmoji = document.getElementById('edit-preview-emoji');
-        const saveIconButton = document.getElementById('save-icon');
-        
-        // Live preview for edit form
-        editFontAwesomeInput.addEventListener('input', function() {
-            editPreviewFaIcon.className = 'fas ' + this.value + ' fa-2x';
-        });
-        
-        editUnicodeEmojiInput.addEventListener('input', function() {
-            editPreviewEmoji.textContent = this.value || '?';
-        });
-        
-        editButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const iconId = this.dataset.id;
-                const iconName = this.dataset.name;
-                const iconDescription = this.dataset.description;
-                const iconFontAwesomeClass = this.dataset.fontAwesomeClass;
-                const iconUnicodeEmoji = this.dataset.unicodeEmoji;
-                
-                // Fill the form
-                editNameInput.value = iconName;
-                editDescriptionInput.value = iconDescription;
-                editFontAwesomeInput.value = iconFontAwesomeClass;
-                editUnicodeEmojiInput.value = iconUnicodeEmoji;
-                
-                // Update preview
-                editPreviewFaIcon.className = 'fas ' + iconFontAwesomeClass + ' fa-2x';
-                editPreviewEmoji.textContent = iconUnicodeEmoji || '?';
-                
-                // Set submit URL
-                editIconForm.action = '{{ url_for("icons.update_icon", icon_id=0) }}'.replace('0', iconId);
-                
-                // Show modal
-                editModal.show();
-            });
-        });
-        
-        saveIconButton.addEventListener('click', function() {
-            editIconForm.submit();
-        });
-        
-        // Delete modal management
-        const deleteButtons = document.querySelectorAll('.delete-icon');
-        const deleteModal = new bootstrap.Modal(document.getElementById('deleteIconModal'));
-        const deleteIconName = document.getElementById('delete-icon-name');
-        const deleteIconForm = document.getElementById('delete-icon-form');
-        
-        deleteButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const iconId = this.dataset.id;
-                const iconName = this.dataset.name;
-                
-                deleteIconName.textContent = iconName;
-                deleteIconForm.action = '{{ url_for("icons.delete_icon", icon_id=0) }}'.replace('0', iconId);
-                
-                deleteModal.show();
-            });
-        });
-    });
-</script>
+<!-- Inclure le fichier JavaScript externe -->
+<script src="{{ url_for('static', filename='js/tricount/icons_list.js') }}"></script>
 {% endblock %}

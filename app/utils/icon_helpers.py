@@ -14,6 +14,19 @@ def get_icon_by_name(name):
     from app.models.tricount import Icon
     return Icon.query.filter_by(name=name).first()
 
+def get_icon_by_emoji(emoji):
+    """
+    Récupère une icône par son emoji Unicode
+    
+    Args:
+        emoji (str): Emoji Unicode à rechercher
+        
+    Returns:
+        Icon|None: L'icône trouvée ou None
+    """
+    from app.models.tricount import Icon
+    return Icon.query.filter_by(unicode_emoji=emoji).first()
+
 def get_icon_by_font_awesome_class(fa_class):
     """
     Récupère une icône par sa classe Font Awesome
@@ -40,5 +53,6 @@ def get_all_icons():
 def register_icon_utilities(app):
     """Enregistre les fonctions liées aux icônes dans Jinja"""
     app.jinja_env.globals['get_icon_by_name'] = get_icon_by_name
+    app.jinja_env.globals['get_icon_by_emoji'] = get_icon_by_emoji
     app.jinja_env.globals['get_icon_by_font_awesome_class'] = get_icon_by_font_awesome_class
     app.jinja_env.globals['get_all_icons'] = get_all_icons

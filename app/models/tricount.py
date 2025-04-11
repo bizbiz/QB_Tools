@@ -188,8 +188,8 @@ class Icon(db.Model):
     description = db.Column(db.String(255))
     
     # Représentations de l'icône
-    font_awesome_class = db.Column(db.String(50), nullable=False)  # ex: "fa-home"
-    unicode_emoji = db.Column(db.String(20))  # ex: "🏠"
+    font_awesome_class = db.Column(db.String(50), nullable=True)  # Maintenant facultatif
+    unicode_emoji = db.Column(db.String(20), nullable=False)      # Devenu obligatoire
     
     # Métadonnées
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
