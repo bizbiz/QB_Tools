@@ -31,7 +31,7 @@
 </span>
 {% endmacro %}
 
-{# Macro pour un sélecteur de flag avec affichage des icônes #}
+{# Macro pour un sélecteur de flag avec affichage des icônes via Select2 #}
 {% macro flag_select(name='flag_id', id=None, selected_flag=None, classes='', required=False, placeholder='Choisir un type de dépense', all_flags=None, data_attribute_expense_id=None, show_preview=false) %}
     {# Générer un ID unique si non fourni #}
     {% set select_id = id if id else 'flag-' ~ name %}
@@ -42,6 +42,7 @@
         class="form-select flag-select {{ classes }}" 
         {% if required %}required{% endif %}
         data-flag-select="true"
+        data-placeholder="{{ placeholder }}"
         {% if data_attribute_expense_id %}data-expense-id="{{ data_attribute_expense_id }}"{% endif %}
     >
         <option value="">{{ placeholder }}</option>
@@ -55,70 +56,14 @@
                     {% elif flag.legacy_icon %}
                         data-icon-class="{{ flag.legacy_icon }}"
                     {% endif %}>
-                {# Afficher un symbole coloré pour représenter le flag #}
-                ● 
                 {{ flag.name }}
             </option>
         {% endfor %}
     </select>
     
     {% if show_preview %}
-    <div id="{{ select_id }}-preview" class="flag-preview mt-2">
-        {# La prévisualisation sera insérée ici via JavaScript #}
+    <div id="{{ select_id }}-preview" class="flag-preview mt-2 d-none">
+        {# Preview caché car Select2 fournit déjà une bonne prévisualisation #}
     </div>
-    
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const flagSelect = document.getElementById('{{ select_id }}');
-            const previewContainer = document.getElementById('{{ select_id }}-preview');
-            
-            if (flagSelect && previewContainer) {
-                // Fonction pour mettre à jour la prévisualisation
-                function updateFlagPreview() {
-                    if (flagSelect.selectedIndex > 0) {
-                        const selectedOption = flagSelect.options[flagSelect.selectedIndex];
-                        const color = selectedOption.dataset.color;
-                        const iconifyId = selectedOption.dataset.iconifyId;
-                        const iconClass = selectedOption.dataset.iconClass;
-                        const name = selectedOption.text.trim().replace(/^● /, '');
-                        
-                        previewContainer.innerHTML = `
-                            <span class="flag-badge" style="background-color: ${color}">
-                                ${iconifyId ? `<span class="iconify me-1" data-icon="${iconifyId}"></span>` : 
-                                 iconClass ? `<i class="fas ${iconClass} me-1"></i>` : 
-                                 '<i class="fas fa-tag me-1"></i>'}
-                                ${name}
-                            </span>
-                        `;
-                        
-                        // Scan for new iconify elements
-                        if (window.Iconify) {
-                            window.Iconify.scan();
-                        }
-                    } else {
-                        previewContainer.innerHTML = '';
-                    }
-                }
-                
-                // Initialize the preview
-                updateFlagPreview();
-                
-                // Update on change
-                flagSelect.addEventListener('change', updateFlagPreview);
-            }
-        });
-    </script>
     {% endif %}
-
-    <style>
-    /* Styles pour les options du select de flags */
-    #{{ select_id }} option {
-        padding: 8px;
-    }
-    
-    #{{ select_id }} option:checked {
-        background-color: #e7f3ff;
-        font-weight: bold;
-    }
-    </style>
 {% endmacro %}

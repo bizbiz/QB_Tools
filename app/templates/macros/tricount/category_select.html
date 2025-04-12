@@ -72,7 +72,7 @@
     </select>
 {% endmacro %}
 
-{# Macro avec support JavaScript pour filtrage dynamique et icônes améliorées #}
+{# Macro avec support JavaScript pour filtrage dynamique et Select2 #}
 {% macro category_select_with_js(name='category_id', id=None, selected_category=None, classes='', required=False, placeholder='Choisir une catégorie', all_categories=None, show_icons=True, flag_select_id=None) %}
     {# Générer un ID unique si non fourni #}
     {% set select_id = id if id else 'category-' ~ name %}
@@ -101,29 +101,8 @@
                     {% elif category.legacy_icon %}
                         data-icon-class="{{ category.legacy_icon }}"
                     {% endif %}>
-                {% if show_icons %}
-                    {% if category.iconify_id %}
-                        🔹 
-                    {% elif category.icon %}
-                        {{ category.get_icon_emoji }} 
-                    {% elif category.legacy_icon %}
-                        🔸 
-                    {% endif %}
-                {% endif %}
                 {{ category.name }}
             </option>
         {% endfor %}
     </select>
-
-    <style>
-    /* Styles spécifiques au select de catégories */
-    #{{ select_id }} option {
-        padding: 8px;
-    }
-    
-    #{{ select_id }} option:checked {
-        background-color: #e7f3ff;
-        font-weight: bold;
-    }
-    </style>
 {% endmacro %}

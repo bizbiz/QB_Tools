@@ -161,7 +161,7 @@
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/tricount/category_select.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/categorize.js') }}"></script>
-<script src="{{ url_for('static', filename='js/tricount/select_enhancer.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tricount/enhanced_selects.js') }}"></script>
 <script>
     // Données de catégories pour le filtrage
     window.categoryData = {
@@ -169,6 +169,7 @@
         "{{ category.id }}": {
             name: "{{ category.name }}",
             color: "{{ category.color }}",
+            iconify_id: "{{ category.iconify_id }}",
             flagIds: [{% for flag in category.flags %}{{ flag.id }}{% if not loop.last %},{% endif %}{% endfor %}]
         }{% if not loop.last %},{% endif %}
         {% endfor %}
@@ -180,8 +181,8 @@
         "{{ flag.id }}": {
             name: "{{ flag.name }}",
             color: "{{ flag.color }}",
-            icon: "{{ flag.legacy_icon }}",
-            iconify_id: "{{ flag.iconify_id }}"
+            iconify_id: "{{ flag.iconify_id }}",
+            icon: "{{ flag.legacy_icon }}"
         }{% if not loop.last %},{% endif %}
         {% endfor %}
     };
