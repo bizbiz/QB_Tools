@@ -70,10 +70,31 @@ document.addEventListener('DOMContentLoaded', function() {
         editColorInput.addEventListener('input', updatePreviewBadge);
     }
     
+    // Observer les changements dans la valeur du champ d'icône
     if (editIconifyIdInput) {
+        // Fonction pour surveiller les changements
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
+                    updateIconPreview(editIconifyIdInput.value);
+                }
+            });
+        });
+        
+        // Configuration de l'observation: attributs, attributs anciens, et subtree
+        observer.observe(editIconifyIdInput, { 
+            attributes: true, 
+            attributeFilter: ['value']
+        });
+        
+        // Aussi réagir à l'événement 'input'
         editIconifyIdInput.addEventListener('input', function() {
             updateIconPreview(this.value);
-            updatePreviewBadge();
+        });
+        
+        // Écouter l'événement de changement du sélecteur d'icônes
+        editIconifyIdInput.addEventListener('change', function() {
+            updateIconPreview(this.value);
         });
     }
     
@@ -87,12 +108,29 @@ document.addEventListener('DOMContentLoaded', function() {
             const flagIconifyId = this.dataset.iconifyId;
             const flagIsDefault = this.dataset.isDefault === 'true';
             
+            console.log("Opening edit modal for flag:", {
+                id: flagId,
+                name: flagName,
+                color: flagColor,
+                iconifyId: flagIconifyId
+            });
+            
             // Remplir le formulaire avec les données du flag
             editNameInput.value = flagName;
             editDescriptionInput.value = flagDescription;
             editColorInput.value = flagColor;
             editIconifyIdInput.value = flagIconifyId;
             editIsDefaultCheckbox.checked = flagIsDefault;
+            
+            // Mettre à jour l'aperçu de l'icône si elle existe
+            if (editIconifyIdInput.value) {
+                const iconPreview = document.getElementById('edit-iconify-id-preview');
+                if (iconPreview) {
+                    iconPreview.innerHTML = `
+                        <span class="iconify" style="font-size: 1.5rem;" data-icon="${flagIconifyId}"></span>
+                    `;
+                }
+            }
             
             // Définir l'URL de soumission
             editFlagForm.action = window.flagUpdateUrl.replace('0', flagId);
@@ -133,6 +171,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Fonction pour mettre à jour l'aperçu de l'icône dans l'élément previw-emoji
     function updateIconPreview(iconifyId) {
+        console.log("Updating icon preview with:", iconifyId);
+        
         if (previewEmoji) {
             if (iconifyId) {
                 // Configurer pour Iconify
@@ -185,26 +225,92 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
         
-        // Mise à jour de l'icône
+        // Surveiller les changements de valeur dans l'entrée d'icône
         if (iconifyIdInput && flagIcon) {
+            // Observer les changements d'attribut value
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
+                        updateAddFormIcon(iconifyIdInput.value);
+                    }
+                });
+            });
+            
+            // Observer l'élément input
+            observer.observe(iconifyIdInput, { 
+                attributes: true, 
+                attributeFilter: ['value']
+            });
+            
+            // Aussi réagir à l'événement 'input'
             iconifyIdInput.addEventListener('input', function() {
-                if (this.value) {
+                updateAddFormIcon(this.value);
+            });
+            
+            // Écouter les changements
+            iconifyIdInput.addEventListener('change', function() {
+                updateAddFormIcon(this.value);
+            });
+        }
+        
+        // Fonction pour mettre à jour l'icône dans le formulaire d'ajout
+        function updateAddFormIcon(iconifyId) {
+            console.log("Updating add form icon with:", iconifyId);
+            
+            if (flagIcon) {
+                if (iconifyId) {
                     // Remplacer l'émoji par une icône Iconify
                     flagIcon.innerHTML = '';
                     flagIcon.className = 'iconify me-1';
-                    flagIcon.setAttribute('data-icon', this.value);
-                    
-                    // Actualiser Iconify
-                    if (window.Iconify) {
-                        window.Iconify.scan();
-                    }
+                    flagIcon.setAttribute('data-icon', iconifyId);
                 } else {
                     // Revenir à l'émoji par défaut
                     flagIcon.innerHTML = '🏷️';
                     flagIcon.className = 'me-1';
                 }
-            });
+                
+                // Actualiser Iconify
+                if (window.Iconify) {
+                    window.Iconify.scan();
+                }
+            }
         }
+    }
+    
+    // === LIAISON AVEC ICON_SELECTOR.JS ===
+    // S'assurer que lorsqu'une icône est sélectionnée, l'aperçu est mis à jour
+    const originalSelectIcon = window.IconSelector.selectIcon;
+    if (originalSelectIcon) {
+        window.IconSelector.selectIcon = function(iconId, inputId) {
+            // Appeler la fonction originale
+            originalSelectIcon(iconId, inputId);
+            
+            console.log(`Icon selected: ${iconId} for input: ${inputId}`);
+            
+            // Mise à jour spécifique selon l'élément modifié
+            if (inputId === 'iconify_id') {
+                // Pour le formulaire d'ajout
+                const flagIcon = document.getElementById('flag-icon');
+                if (flagIcon) {
+                    flagIcon.innerHTML = '';
+                    flagIcon.className = 'iconify me-1';
+                    flagIcon.setAttribute('data-icon', iconId);
+                }
+            } else if (inputId === 'edit-iconify-id') {
+                // Pour le formulaire d'édition
+                const previewEmoji = document.getElementById('preview-emoji');
+                if (previewEmoji) {
+                    previewEmoji.innerHTML = '';
+                    previewEmoji.className = 'iconify me-1';
+                    previewEmoji.setAttribute('data-icon', iconId);
+                }
+            }
+            
+            // Actualiser Iconify
+            if (window.Iconify) {
+                window.Iconify.scan();
+            }
+        };
     }
     
     // Initialiser Iconify au chargement
