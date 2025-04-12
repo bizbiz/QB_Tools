@@ -1,15 +1,15 @@
-{# app/templates/tricount/flags.html #}
+<!-- app/templates/tricount/flags.html -->
 {% extends "base.html" %}
 {% block title %}QB Tools - Gestion des types de dépenses{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/main.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/flags.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/emoji_picker.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/common/icon_selector.css') }}">
 {% endblock %}
 
-{# Importer les macros nécessaires #}
-{% from "macros/tricount/flag_macros.html" import flag_badge, flag_badge_preview %}
-{% from "macros/tricount/icon_selector.html" import icon_search_modal, icon_input_field %}
+{# Importer la macro flag_badge #}
+{% from "macros/tricount/flag_macros.html" import flag_badge %}
 
 {% block content %}
 <div class="container py-4">
@@ -24,166 +24,171 @@
             </nav>
             
             <h1>Gestion des types de dépenses</h1>
-            <p class="lead">Personnalisez les types de dépenses pour organiser votre budget</p>
-        </div>
+        <p class="lead">Personnalisez les types de dépenses pour organiser votre budget</p>
     </div>
+</div>
 
-    <!-- Formulaire d'ajout -->
-    <div class="row mb-4">
-        <div class="col">
-            <div class="card shadow-sm">
-                <div class="card-header">
-                    <h3 class="card-title">Ajouter un nouveau type de dépense</h3>
-                </div>
-                <div class="card-body">
-                    <form action="{{ url_for('tricount.add_flag') }}" method="POST" class="row">
-                        <div class="col-md-4 mb-3">
-                            <label for="name" class="form-label">Nom du type</label>
-                            <input type="text" class="form-control" id="name" name="name" required>
-                        </div>
-                        
-                        <div class="col-md-4 mb-3">
-                            <label for="description" class="form-label">Description (optionnelle)</label>
-                            <input type="text" class="form-control" id="description" name="description">
-                        </div>
-                        
-                        <div class="col-md-4 mb-3">
-                            <label for="color" class="form-label">Couleur</label>
-                            <input type="color" class="form-control form-control-color" id="color" name="color" value="#0366d6">
-                            <div class="form-text">Couleur de fond du badge</div>
-                        </div>
-                        
-                        <div class="col-12 mb-3">
-                            <label for="iconify_id" class="form-label">Icône</label>
-                            {{ icon_input_field(name='iconify_id', id='iconify_id', placeholder='Sélectionnez une icône...') }}
-                            <div class="form-text">Sélectionnez une icône pour ce type de dépense (utilise Iconify).</div>
-                        </div>
-                        
-                        <div class="col-md-12 mb-3 d-flex align-items-end">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="is_default" name="is_default">
-                                <label class="form-check-label" for="is_default">Définir comme type par défaut</label>
-                            </div>
-                        </div>
-                        
-                        <div class="col-12 mb-3">
-                            <label class="form-label">Aperçu</label>
-                            <div class="preview-container">
-                                {{ flag_badge_preview(
-                                    name="Nouveau type", 
-                                    color="#0366d6", 
-                                    extra_classes="preview-badge", 
-                                    id="flag-preview-badge"
-                                ) }}
-                            </div>
-                        </div>
-                        
-                        <div class="col-12 mt-3">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-plus-circle me-2"></i>Ajouter
-                            </button>
-                        </div>
-                    </form>
-                </div>
+<!-- Formulaire d'ajout -->
+<div class="row mb-4">
+    <div class="col">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h3 class="card-title">Ajouter un nouveau type de dépense</h3>
             </div>
-        </div>
-    </div>
-
-    <!-- Tableau des types de dépenses -->
-    <div class="row">
-        <div class="col">
-            <div class="card shadow-sm">
-                <div class="card-header">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h3 class="card-title">Liste des types de dépenses</h3>
-                        <span class="badge bg-primary">{{ flags|length }} types</span>
+            <div class="card-body">
+                <form action="{{ url_for('tricount.add_flag') }}" method="POST" class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="name" class="form-label">Nom du type</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
                     </div>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover table-striped mb-0 sortable-table">
-                            <thead>
-                                <tr>
-                                    <th>Nom</th>
-                                    <th>Description</th>
-                                    <th>Couleur</th>
-                                    <th>Icône</th>
-                                    <th class="text-center">Par défaut</th>
-                                    <th>Dépenses</th>
-                                    <th class="no-sort">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for flag in flags %}
-                                <tr>
-                                    <td>
-                                        {{ flag_badge(flag) }}
-                                    </td>
-                                    <td>{{ flag.description or 'N/A' }}</td>
-                                    <td>
-                                        <div class="color-preview" style="background-color: {{ flag.color }}"></div>
-                                        {{ flag.color }}
-                                    </td>
-                                    <td>
-                                        {% if flag.iconify_id %}
-                                            <span class="iconify me-2" data-icon="{{ flag.iconify_id }}"></span>
-                                            {{ flag.iconify_id }}
-                                        {% else %}
-                                            <i class="fas fa-tag"></i> Non définie
-                                        {% endif %}
-                                    </td>
-                                    <td class="text-center">
-                                        <i class="fas {% if flag.is_default %}fa-check text-success{% else %}fa-times text-muted{% endif %}"></i>
-                                    </td>
-                                    <td>{{ flag.expenses|length }}</td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary edit-flag" 
-                                                data-id="{{ flag.id }}"
-                                                data-name="{{ flag.name }}"
-                                                data-description="{{ flag.description or '' }}"
-                                                data-color="{{ flag.color }}"
-                                                data-iconify-id="{{ flag.iconify_id or '' }}"
-                                                data-is-default="{{ flag.is_default|lower }}"
-                                                data-count="{{ flag.expenses|length }}"
-                                                data-bs-toggle="tooltip" 
-                                                data-bs-placement="top" 
-                                                title="Modifier">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-danger delete-flag" 
-                                                data-id="{{ flag.id }}"
-                                                data-name="{{ flag.name }}"
-                                                data-count="{{ flag.expenses|length }}"
-                                                data-bs-toggle="tooltip" 
-                                                data-bs-placement="top" 
-                                                title="Supprimer"
-                                                {% if flag.expenses|length > 0 %}disabled{% endif %}>
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                {% else %}
-                                <tr>
-                                    <td colspan="7" class="text-center py-4">
-                                        <div class="alert alert-info mb-0">
-                                            <i class="fas fa-info-circle me-2"></i>
-                                            Aucun type de dépense trouvé. Utilisez le formulaire ci-dessus pour ajouter votre premier type.
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="description" class="form-label">Description (optionnelle)</label>
+                        <input type="text" class="form-control" id="description" name="description">
                     </div>
-                </div>
+                    
+                    <div class="col-md-2 mb-3">
+                        <label for="color" class="form-label">Couleur</label>
+                        <input type="color" class="form-control form-control-color" id="color" name="color" value="#0366d6">
+                    </div>
+                    
+                    <!-- Champ de recherche d'icône sur toute la largeur -->
+                    <div class="col-12 mb-3">
+                        <label for="iconify_id" class="form-label">Icône</label>
+                        <div class="icon-input-container">
+                            <div class="input-group">
+                                <input type="text" class="form-control icon-search-input" id="iconify_id" name="iconify_id" placeholder="Rechercher une icône...">
+                                <button class="btn btn-outline-danger icon-clear-btn" type="button" data-target="iconify_id">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div class="icon-search-results" id="iconify_id-results"></div>
+                            <div class="icon-preview mt-2" id="iconify_id-preview"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-12 mb-3">
+                        <label class="form-label">Aperçu</label>
+                        <div class="preview-container">
+                            <span class="flag-badge" style="background-color: #0366d6;" id="flag-preview">
+                                <span id="flag-icon" class="me-1">🏷️</span>
+                                <span id="flag-name">Nouveau type</span>
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-12 mb-3 d-flex align-items-end">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="is_default" name="is_default">
+                            <label class="form-check-label" for="is_default">Définir comme type par défaut</label>
+                        </div>
+                    </div>
+                    
+                    <div class="col-12 mt-3">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus-circle me-2"></i>Ajouter
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal de recherche d'icône -->
-{{ icon_search_modal('icon-search-modal', 'Rechercher une icône') }}
-
+<!-- Tableau des types de dépenses -->
+<div class="row">
+    <div class="col">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h3 class="card-title">Liste des types de dépenses</h3>
+                    <span class="badge bg-primary">{{ flags|length }} types</span>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>Nom</th>
+                                <th>Description</th>
+                                <th>Couleur</th>
+                                <th>Icône</th>
+                                <th class="text-center">Par défaut</th>
+                                <th>Dépenses</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for flag in flags %}
+                            <tr>
+                                <td>
+                                    {{ flag_badge(flag) }}
+                                </td>
+                                <td>{{ flag.description or 'N/A' }}</td>
+                                <td>
+                                    <div class="color-preview" style="background-color: {{ flag.color }}"></div>
+                                    {{ flag.color }}
+                                </td>
+                                <td>
+                                    {% if flag.iconify_id %}
+                                        <span class="iconify me-2" data-icon="{{ flag.iconify_id }}"></span>
+                                        {{ flag.iconify_id }}
+                                    {% elif flag.icon %}
+                                        <span class="emoji-display">{{ flag.get_icon_emoji }}</span>
+                                        {{ flag.icon.name }}
+                                    {% else %}
+                                        <i class="fas {{ flag.legacy_icon }}"></i> {{ flag.legacy_icon }}
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <i class="fas {% if flag.is_default %}fa-check text-success{% else %}fa-times text-muted{% endif %}"></i>
+                                </td>
+                                <td>{{ flag.expenses|length }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary edit-flag" 
+                                            data-id="{{ flag.id }}"
+                                            data-name="{{ flag.name }}"
+                                            data-description="{{ flag.description or '' }}"
+                                            data-color="{{ flag.color }}"
+                                            data-iconify-id="{{ flag.iconify_id or '' }}"
+                                            data-is-default="{{ flag.is_default|lower }}"
+                                            data-count="{{ flag.expenses|length }}"
+                                            data-bs-toggle="tooltip" 
+                                            data-bs-placement="top" 
+                                            title="Modifier">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger delete-flag" 
+                                            data-id="{{ flag.id }}"
+                                            data-name="{{ flag.name }}"
+                                            data-count="{{ flag.expenses|length }}"
+                                            data-bs-toggle="tooltip" 
+                                            data-bs-placement="top" 
+                                            title="Supprimer"
+                                            {% if flag.expenses|length > 0 %}disabled{% endif %}>
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4">
+                                    <div class="alert alert-info mb-0">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        Aucun type de dépense trouvé. Utilisez le formulaire ci-dessus pour ajouter votre premier type.
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
 <!-- Modal de suppression -->
 <div class="modal fade" id="deleteFlagModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
@@ -209,7 +214,6 @@
         </div>
     </div>
 </div>
-
 <!-- Modal d'édition -->
 <div class="modal fade" id="editFlagModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
@@ -224,78 +228,82 @@
                         <label for="edit-name" class="form-label">Nom du type</label>
                         <input type="text" class="form-control" id="edit-name" name="name" required>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="edit-description" class="form-label">Description (optionnelle)</label>
-                        <textarea class="form-control" id="edit-description" name="description" rows="2"></textarea>
+                <div class="mb-3">
+                    <label for="edit-description" class="form-label">Description (optionnelle)</label>
+                    <textarea class="form-control" id="edit-description" name="description" rows="2"></textarea>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="edit-color" class="form-label">Couleur</label>
+                    <div class="input-group">
+                        <input type="color" class="form-control form-control-color" id="edit-color" name="color">
+                        <span class="input-group-text" id="color-hex-value">#000000</span>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="edit-color" class="form-label">Couleur</label>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="edit-iconify-id" class="form-label">Icône</label>
+                    <div class="icon-input-container">
                         <div class="input-group">
-                            <input type="color" class="form-control form-control-color" id="edit-color" name="color">
-                            <span class="input-group-text" id="color-hex-value">#000000</span>
+                            <input type="text" class="form-control icon-search-input" id="edit-iconify-id" name="iconify_id" placeholder="Rechercher une icône...">
+                            <button class="btn btn-outline-danger icon-clear-btn" type="button" data-target="edit-iconify-id">
+                                <i class="fas fa-times"></i>
+                            </button>
                         </div>
+                        <div class="icon-search-results" id="edit-iconify-id-results"></div>
+                        <div class="icon-preview mt-2" id="edit-iconify-id-preview"></div>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="edit-iconify-id" class="form-label">Icône</label>
-                        {{ icon_input_field(name='iconify_id', id='edit-iconify-id', placeholder='Sélectionnez une icône...') }}
+                </div>
+                
+                <div class="mb-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="edit-is-default" name="is_default">
+                        <label class="form-check-label" for="edit-is-default">
+                            Type par défaut
+                        </label>
                     </div>
-                    
-                    <div class="mb-3">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="edit-is-default" name="is_default">
-                            <label class="form-check-label" for="edit-is-default">
-                                Type par défaut
-                            </label>
-                        </div>
-                        <div class="form-text">
-                            Si activé, ce type sera appliqué par défaut aux nouvelles dépenses.
-                        </div>
+                    <div class="form-text">
+                        Si activé, ce type sera appliqué par défaut aux nouvelles dépenses.
                     </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Aperçu</label>
-                        <div class="preview-container">
-                            {{ flag_badge_preview(
-                                name="Nom du type",
-                                color="#000000",
-                                extra_classes="preview-badge",
-                                id="edit-flag-preview-badge"
-                            ) }}
-                        </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Aperçu</label>
+                    <div class="preview-container">
+                        <span class="flag-badge preview-badge">
+                            <span id="preview-emoji" class="me-1">🏷️</span>
+                            <span id="preview-name">Nom du type</span>
+                        </span>
                     </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-primary" id="save-flag">Enregistrer</button>
-            </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+            <button type="button" class="btn btn-primary" id="save-flag">Enregistrer</button>
         </div>
     </div>
 </div>
+</div>
 {% endblock %}
-
 {% block extra_js %}
-<!-- Script Iconify -->
-<script src="https://code.iconify.design/2/2.2.1/iconify.min.js"></script>
-
-<!-- Scripts personnalisés -->
-<script src="{{ url_for('static', filename='js/common/icon_selector.js') }}"></script>
-
 <!-- Pass URLs to JavaScript -->
 <script>
     window.flagDeleteUrl = "{{ url_for('tricount.delete_flag', flag_id=0) }}";
     window.flagUpdateUrl = "{{ url_for('tricount.update_flag', flag_id=0) }}";
     
-    // Configuration pour Iconify
-    window.iconifyConfig = {
-        collections: ['mdi', 'fa-solid', 'material-symbols', 'fluent', 'carbon'],
-        limit: 48
+    // Données des icônes pour la manipulation en JavaScript
+    window.iconsData = {
+        {% for icon in icons %}
+        "{{ icon.id }}": {
+            name: "{{ icon.name }}",
+            emoji: "{{ icon.unicode_emoji }}",
+            fa_class: "{{ icon.font_awesome_class }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
     };
 </script>
-
-<!-- Gestion des flags -->
+<!-- Include our external JS files -->
+<script src="{{ url_for('static', filename='js/common/icon_selector.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/flag_management.js') }}"></script>
 {% endblock %}
