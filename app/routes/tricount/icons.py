@@ -1,4 +1,4 @@
-# app/routes/tricount/icon_routes.py
+# app/routes/tricount/icons.py
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from app.routes.tricount import tricount_bp
 from app.extensions import db
@@ -120,6 +120,7 @@ def search_icons():
     """API pour rechercher des icônes (internes et Iconify)"""
     query = request.args.get('q', '')
     collection = request.args.get('collection', '')
+    language = request.args.get('lang', 'fr')  # Langue par défaut: français
     
     # Recherche dans la base de données locale
     local_icons = Icon.search(query)
@@ -137,7 +138,7 @@ def search_icons():
     iconify_results = []
     if collection and len(query) >= 2:
         try:
-            api_url = f"https://api.iconify.design/search?query={query}&limit=24&collections={collection}"
+            api_url = f"https://api.iconify.design/search?query={query}&limit=24&collections={collection}&lang={language}"
             response = requests.get(api_url)
             if response.status_code == 200:
                 data = response.json()

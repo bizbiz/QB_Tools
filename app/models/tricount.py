@@ -1,6 +1,7 @@
 # app/models/tricount.py
 from app.extensions import db
 from datetime import datetime
+from sqlalchemy import or_
 import hashlib
 
 class Flag(db.Model):
@@ -195,23 +196,57 @@ class PendingRuleApplication(db.Model):
         return f'<PendingRuleApplication rule={self.rule_id} expense={self.expense_id}>'
 
 class Icon(db.Model):
-    """Modèle pour stocker les icônes utilisables dans l'application"""
+    """Modèle amélioré pour stocker les icônes utilisables dans l'application"""
     __tablename__ = 'icons'
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False, unique=True)
     description = db.Column(db.String(255))
     
-    # Représentations de l'icône
-    font_awesome_class = db.Column(db.String(50), nullable=True)  # Maintenant facultatif
-    unicode_emoji = db.Column(db.String(20), nullable=False)      # Devenu obligatoire
+    # Représentations de l'icône - ajout du support Iconify
+    font_awesome_class = db.Column(db.String(50), nullable=True)  # FontAwesome (legacy)
+    unicode_emoji = db.Column(db.String(20), nullable=False)      # Emoji Unicode
+    iconify_id = db.Column(db.String(100), nullable=True)         # ID Iconify (nouveau)
     
-    # Métadonnées
+    # Métadonnées améliorées
+    category = db.Column(db.String(50))                           # Catégorie
+    tags = db.Column(db.String(255))                              # Tags pour recherche
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     def __repr__(self):
-        return f'<Icon {self.name} ({self.font_awesome_class})>'
+        if self.iconify_id:
+            return f'<Icon {self.name} (Iconify:{self.iconify_id})>'
+        elif self.unicode_emoji:
+            return f'<Icon {self.name} (Emoji:{self.unicode_emoji})>'
+        else:
+            return f'<Icon {self.name} (FA:{self.font_awesome_class})>'
+    
+    @classmethod
+    def search(cls, query, limit=20):
+        """
+        Recherche des icônes par nom, description ou tags
+        
+        Args:
+            query (str): Terme de recherche
+            limit (int): Nombre maximum de résultats
+            
+        Returns:
+            list: Liste des icônes trouvées
+        """
+        if not query or len(query) < 2:
+            return []
+            
+        # Recherche dans les différents champs
+        return cls.query.filter(
+            or_(
+                cls.name.ilike(f'%{query}%'),
+                cls.description.ilike(f'%{query}%'),
+                cls.tags.ilike(f'%{query}%'),
+                cls.category.ilike(f'%{query}%'),
+                cls.iconify_id.ilike(f'%{query}%')
+            )
+        ).limit(limit).all()
 
 # Table de liaison entre règles et dépenses
 rule_expense_links = db.Table('rule_expense_links',

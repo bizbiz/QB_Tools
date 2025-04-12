@@ -1,0 +1,93 @@
+/* app/static/css/tricount/icon_selector.css */
+
+.icon-selector {
+  width: 100%;
+  max-width: 100%;
+}
+
+.icons-container {
+  min-height: 300px;
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #dee2e6;
+  border-radius: 0.25rem;
+  padding: 1rem;
+  background-color: #f8f9fa;
+}
+
+.icon-item {
+  cursor: pointer;
+  border-radius: 0.25rem;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.icon-item:hover {
+  background-color: #e9ecef;
+  transform: translateY(-2px);
+}
+
+.icon-item.selected {
+  background-color: #cfe2ff;
+  border-color: #0d6efd;
+}
+
+.selected-icon-container {
+  background-color: #f8f9fa;
+}
+
+/* Styles pour les onglets de collections */
+.nav-collections {
+  overflow-x: auto;
+  white-space: nowrap;
+  flex-wrap: nowrap;
+  margin-bottom: 1rem;
+}
+
+.nav-collections .nav-link {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+/* Grille d'icônes */
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 10px;
+  margin-top: 1rem;
+}
+
+/* Styles pour les filtres et recherche */
+.icon-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.filter-tag {
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  background-color: #e9ecef;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.filter-tag:hover, .filter-tag.active {
+  background-color: #0d6efd;
+  color: white;
+}
+
+/* Prévisualisation d'icône */
+.emoji-display {
+  font-size: 1.5rem;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .icon-grid {
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+  }
+}
