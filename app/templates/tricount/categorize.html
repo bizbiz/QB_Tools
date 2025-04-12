@@ -9,6 +9,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/main.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/category_select.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/select_styles.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -46,8 +47,8 @@
                 <div class="card-body">
                     <p>Sur cette page, vous pouvez catégoriser rapidement les dépenses qui n'ont pas encore été associées à une catégorie. Pour chaque dépense :</p>
                     <ol>
-                        <li>Sélectionnez une catégorie dans le menu déroulant</li>
-                        <li>Activez les options "Tricount" et "Professionnel" si nécessaire</li>
+                        <li>Sélectionnez d'abord un <strong>type de dépense</strong> dans le premier menu déroulant</li>
+                        <li>Puis choisissez une <strong>catégorie</strong> compatible avec ce type</li>
                         <li>Cliquez sur "Enregistrer" pour appliquer les modifications</li>
                     </ol>
                     <div class="alert alert-info">
@@ -102,6 +103,19 @@
                                     <form id="categorize-form-{{ expense.id }}" class="categorize-form">
                                         <input type="hidden" name="expense_id" value="{{ expense.id }}">
                                         
+                                        {# Type de dépense d'abord pour meilleure UX #}
+                                        <div class="mb-3">
+                                            <label for="flag-{{ expense.id }}" class="form-label">Type de dépense</label>
+                                            {{ flag_select(
+                                                name="flag_id",
+                                                id="flag-" ~ expense.id,
+                                                selected_flag=None,
+                                                all_flags=flags,
+                                                data_attribute_expense_id=expense.id,
+                                                show_preview=true
+                                            ) }}
+                                        </div>
+                                        
                                         <div class="mb-3">
                                             <label for="category-{{ expense.id }}" class="form-label">Catégorie</label>
                                             {{ category_select_with_js(
@@ -114,17 +128,6 @@
                                                 all_categories=categories,
                                                 show_icons=true,
                                                 flag_select_id="flag-" ~ expense.id
-                                            ) }}
-                                        </div>
-                                        
-                                        <div class="mb-3">
-                                            <label for="flag-{{ expense.id }}" class="form-label">Type de dépense</label>
-                                            {{ flag_select(
-                                                name="flag_id",
-                                                id="flag-" ~ expense.id,
-                                                selected_flag=None,
-                                                all_flags=flags,
-                                                data_attribute_expense_id=expense.id
                                             ) }}
                                         </div>
                                         
@@ -158,12 +161,14 @@
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/tricount/category_select.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/categorize.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tricount/select_enhancer.js') }}"></script>
 <script>
     // Données de catégories pour le filtrage
     window.categoryData = {
         {% for category in categories %}
         "{{ category.id }}": {
             name: "{{ category.name }}",
+            color: "{{ category.color }}",
             flagIds: [{% for flag in category.flags %}{{ flag.id }}{% if not loop.last %},{% endif %}{% endfor %}]
         }{% if not loop.last %},{% endif %}
         {% endfor %}
@@ -175,7 +180,8 @@
         "{{ flag.id }}": {
             name: "{{ flag.name }}",
             color: "{{ flag.color }}",
-            icon: "{{ flag.icon }}"
+            icon: "{{ flag.legacy_icon }}",
+            iconify_id: "{{ flag.iconify_id }}"
         }{% if not loop.last %},{% endif %}
         {% endfor %}
     };

@@ -72,7 +72,7 @@
     </select>
 {% endmacro %}
 
-{# Macro avec support JavaScript pour filtrage dynamique #}
+{# Macro avec support JavaScript pour filtrage dynamique et icônes améliorées #}
 {% macro category_select_with_js(name='category_id', id=None, selected_category=None, classes='', required=False, placeholder='Choisir une catégorie', all_categories=None, show_icons=True, flag_select_id=None) %}
     {# Générer un ID unique si non fourni #}
     {% set select_id = id if id else 'category-' ~ name %}
@@ -93,25 +93,37 @@
             <option value="{{ category.id }}" 
                     {% if selected_category == category.id %}selected{% endif %}
                     data-flags="[{% for flag in category.flags %}{{ flag.id }}{% if not loop.last %},{% endif %}{% endfor %}]"
+                    data-color="{{ category.color }}"
                     {% if category.iconify_id %}
                         data-iconify-id="{{ category.iconify_id }}"
                     {% elif category.icon %}
                         data-icon-emoji="{{ category.get_icon_emoji }}"
-                        data-icon-class="{{ category.get_icon_class }}"
                     {% elif category.legacy_icon %}
-                        data-icon="{{ category.legacy_icon }}"
+                        data-icon-class="{{ category.legacy_icon }}"
                     {% endif %}>
                 {% if show_icons %}
                     {% if category.iconify_id %}
-                        🔍 
+                        🔹 
                     {% elif category.icon %}
                         {{ category.get_icon_emoji }} 
                     {% elif category.legacy_icon %}
-                        <i class="fas {{ category.legacy_icon }}"></i> 
+                        🔸 
                     {% endif %}
                 {% endif %}
                 {{ category.name }}
             </option>
         {% endfor %}
     </select>
+
+    <style>
+    /* Styles spécifiques au select de catégories */
+    #{{ select_id }} option {
+        padding: 8px;
+    }
+    
+    #{{ select_id }} option:checked {
+        background-color: #e7f3ff;
+        font-weight: bold;
+    }
+    </style>
 {% endmacro %}

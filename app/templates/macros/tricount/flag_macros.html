@@ -32,7 +32,7 @@
 {% endmacro %}
 
 {# Macro pour un sélecteur de flag avec affichage des icônes #}
-{% macro flag_select(name='flag_id', id=None, selected_flag=None, classes='', required=False, placeholder='Choisir un type de dépense', all_flags=None, data_attribute_expense_id=None, show_preview=False) %}
+{% macro flag_select(name='flag_id', id=None, selected_flag=None, classes='', required=False, placeholder='Choisir un type de dépense', all_flags=None, data_attribute_expense_id=None, show_preview=false) %}
     {# Générer un ID unique si non fourni #}
     {% set select_id = id if id else 'flag-' ~ name %}
     
@@ -50,7 +50,13 @@
             <option value="{{ flag.id }}" 
                     {% if selected_flag == flag.id %}selected{% endif %}
                     data-color="{{ flag.color }}"
-                    data-iconify-id="{{ flag.iconify_id or '' }}">
+                    {% if flag.iconify_id %}
+                        data-iconify-id="{{ flag.iconify_id }}"
+                    {% elif flag.legacy_icon %}
+                        data-icon-class="{{ flag.legacy_icon }}"
+                    {% endif %}>
+                {# Afficher un symbole coloré pour représenter le flag #}
+                ● 
                 {{ flag.name }}
             </option>
         {% endfor %}
@@ -73,11 +79,14 @@
                         const selectedOption = flagSelect.options[flagSelect.selectedIndex];
                         const color = selectedOption.dataset.color;
                         const iconifyId = selectedOption.dataset.iconifyId;
-                        const name = selectedOption.text;
+                        const iconClass = selectedOption.dataset.iconClass;
+                        const name = selectedOption.text.trim().replace(/^● /, '');
                         
                         previewContainer.innerHTML = `
                             <span class="flag-badge" style="background-color: ${color}">
-                                ${iconifyId ? `<span class="iconify me-1" data-icon="${iconifyId}"></span>` : ''}
+                                ${iconifyId ? `<span class="iconify me-1" data-icon="${iconifyId}"></span>` : 
+                                 iconClass ? `<i class="fas ${iconClass} me-1"></i>` : 
+                                 '<i class="fas fa-tag me-1"></i>'}
                                 ${name}
                             </span>
                         `;
@@ -100,4 +109,16 @@
         });
     </script>
     {% endif %}
+
+    <style>
+    /* Styles pour les options du select de flags */
+    #{{ select_id }} option {
+        padding: 8px;
+    }
+    
+    #{{ select_id }} option:checked {
+        background-color: #e7f3ff;
+        font-weight: bold;
+    }
+    </style>
 {% endmacro %}
