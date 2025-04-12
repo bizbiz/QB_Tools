@@ -139,27 +139,25 @@
      * @param {Object} category - L'option de sélection
      * @returns {string} HTML formaté pour l'option
      */
+    /**
+     * Formate une option de catégorie dans le menu déroulant
+     * @param {Object} category - L'option de sélection
+     * @returns {string} HTML formaté pour l'option
+     */
     function formatCategoryOption(category) {
         if (!category.id) {
             return category.text; // Skip placeholder
         }
         
-        const $category = $(category.element);
-        const color = $category.data('color') || '#e9ecef';
-        const iconifyId = $category.data('iconify-id');
-        const iconEmoji = $category.data('icon-emoji');
-        const iconClass = $category.data('icon-class');
+        // Utiliser directement les données de la catégorie depuis window.categoryData
+        const categoryData = window.categoryData[category.id] || {};
+        const color = categoryData.color || '#e9ecef';
+        const iconifyId = categoryData.iconify_id;
         
         let iconHtml = '';
         if (iconifyId) {
             // Utiliser une icône Iconify si disponible
             iconHtml = `<span class="iconify me-2" data-icon="${iconifyId}"></span>`;
-        } else if (iconEmoji) {
-            // Utiliser un emoji
-            iconHtml = `<span class="me-2">${iconEmoji}</span>`;
-        } else if (iconClass) {
-            // Sinon utiliser Font Awesome
-            iconHtml = `<i class="fas ${iconClass} me-2"></i>`;
         } else {
             // Icône par défaut
             iconHtml = `<i class="fas fa-folder me-2"></i>`;
@@ -182,19 +180,14 @@
             return category.text; // Skip placeholder
         }
         
-        const $category = $(category.element);
-        const color = $category.data('color') || '#e9ecef';
-        const iconifyId = $category.data('iconify-id');
-        const iconEmoji = $category.data('icon-emoji');
-        const iconClass = $category.data('icon-class');
+        // Utiliser directement les données de la catégorie depuis window.categoryData
+        const categoryData = window.categoryData[category.id] || {};
+        const color = categoryData.color || '#e9ecef';
+        const iconifyId = categoryData.iconify_id;
         
         let iconHtml = '';
         if (iconifyId) {
             iconHtml = `<span class="iconify me-1" data-icon="${iconifyId}"></span>`;
-        } else if (iconEmoji) {
-            iconHtml = `<span class="me-1">${iconEmoji}</span>`;
-        } else if (iconClass) {
-            iconHtml = `<i class="fas ${iconClass} me-1"></i>`;
         } else {
             iconHtml = `<i class="fas fa-folder me-1"></i>`;
         }
@@ -206,3 +199,12 @@
                 </div>`;
     }
 })();
+
+$('.category-select, .flag-select').on('select2:open', function() {
+    // Attendre un court instant pour que le DOM soit prêt
+    setTimeout(function() {
+        if (window.Iconify) {
+            window.Iconify.scan();
+        }
+    }, 100);
+});

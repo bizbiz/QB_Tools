@@ -1,7 +1,6 @@
-{% from "macros/tricount/category_select.html" import category_select_with_js %}
-{% from "macros/tricount/flag_macros.html" import flag_select %}
-
 {% extends "base.html" %}
+{% from "macros/tricount/category_select.html" import category_select_with_js %}
+{% from "macros/tricount/flag_macros.html" import flag_badge, flag_select %}
 
 {% block title %}QB Tools - Auto-catégorisation{% endblock %}
 
@@ -9,6 +8,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/main.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/auto_categorize.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/category_select.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/select_styles.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -281,7 +281,14 @@
                                     {% for exp in similar_expenses %}
                                     <tr class="apply-expense-row" data-expense-id="{{ exp.id }}">
                                         <td>{{ exp.date.strftime('%d/%m/%Y') }}</td>
-                                        <td>{{ exp.merchant }}</td>
+                                        <td>
+                                            {% if exp.renamed_by_rule and exp.original_merchant %}
+                                            <div class="original-merchant">{{ exp.original_merchant }}</div>
+                                            <div class="renamed-merchant"><small><em>Renommé en: {{ exp.merchant }}</em></small></div>
+                                            {% else %}
+                                            {{ exp.merchant }}
+                                            {% endif %}
+                                        </td>
                                         <td class="{% if exp.is_debit %}text-danger{% else %}text-success{% endif %}">
                                             {% if exp.is_debit %}-{% endif %}{{ "%.2f"|format(exp.amount) }} €
                                         </td>
@@ -307,7 +314,7 @@
                         </div>
                         <div class="alert alert-info mt-3 info-message" id="similar-expenses-info">
                             <i class="fas fa-info-circle me-2"></i>
-                            Ces dépenses correspondent au marchand "<strong>{{ expense.merchant }}</strong>". Elles seront catégorisées automatiquement si vous activez l'option "Appliquer immédiatement".
+                            Ces dépenses correspondent aux critères spécifiés. Elles seront catégorisées automatiquement si vous activez l'option "Appliquer immédiatement".
                         </div>
                         {% else %}
                         <div class="alert alert-warning warning-message" id="no-similar-expenses">
@@ -366,7 +373,8 @@
         "{{ flag.id }}": {
             name: "{{ flag.name }}",
             color: "{{ flag.color }}",
-            icon: "{{ flag.icon }}"
+            iconify_id: "{{ flag.iconify_id }}",
+            icon: "{{ flag.legacy_icon }}"
         }{% if not loop.last %},{% endif %}
         {% endfor %}
     };
@@ -376,6 +384,8 @@
         {% for category in categories %}
         "{{ category.id }}": {
             name: "{{ category.name }}",
+            color: "{{ category.color }}",
+            iconify_id: "{{ category.iconify_id }}",
             flagIds: [{% for flag in category.flags %}{{ flag.id }}{% if not loop.last %},{% endif %}{% endfor %}]
         }{% if not loop.last %},{% endif %}
         {% endfor %}
@@ -397,6 +407,8 @@
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/filters.js') }}"></script>
 <!-- Script de sélection des catégories - important de le charger avant categories.js -->
 <script src="{{ url_for('static', filename='js/tricount/category_select.js') }}"></script>
+<!-- Script des selects améliorés -->
+<script src="{{ url_for('static', filename='js/tricount/enhanced_selects.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/categories.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/sections.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/auto_categorize/rename.js') }}"></script>

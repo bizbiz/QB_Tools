@@ -1,9 +1,49 @@
+{# app/templates/tricount/auto_rules.html #}
 {% extends "base.html" %}
 
 {% block title %}QB Tools - Règles d'auto-catégorisation{% endblock %}
 
+{# Import des macros pour les badges de type et de catégorie #}
+{% from "macros/tricount/flag_macros.html" import flag_badge %}
+{% from "macros/tricount/category_select.html" import category_badge %}
+
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/main.css') }}">
+<style>
+    /* Styles spécifiques pour cette page */
+    .flag-badge, .category-badge {
+        white-space: nowrap;
+        display: inline-flex;
+    }
+    
+    .filter-summary {
+        max-width: 250px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    .table th, .table td {
+        vertical-align: middle;
+    }
+    
+    /* Style pour l'affichage du détail au survol */
+    .filters-detail {
+        display: none;
+        position: absolute;
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 10px;
+        z-index: 1000;
+        width: 300px;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+    }
+    
+    .filter-container:hover .filters-detail {
+        display: block;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -79,38 +119,57 @@
                                 <tr>
                                     <td>{{ rule.name }}</td>
                                     <td>
-                                        {% if rule.merchant_contains %}
-                                        <div><strong>Marchand contient:</strong> {{ rule.merchant_contains }}</div>
-                                        {% endif %}
-                                        {% if rule.description_contains %}
-                                        <div><strong>Description contient:</strong> {{ rule.description_contains }}</div>
-                                        {% endif %}
-                                        {% if rule.min_amount or rule.max_amount %}
-                                        <div><strong>Montant:</strong> 
-                                            {% if rule.min_amount %}min. {{ "%.2f"|format(rule.min_amount) }}€{% endif %}
-                                            {% if rule.min_amount and rule.max_amount %} - {% endif %}
-                                            {% if rule.max_amount %}max. {{ "%.2f"|format(rule.max_amount) }}€{% endif %}
+                                        <div class="filter-container position-relative">
+                                            <div class="filter-summary">
+                                                {% if rule.merchant_contains %}
+                                                <i class="fas fa-store me-1"></i> {{ rule.merchant_contains|truncate(20) }}
+                                                {% endif %}
+                                                {% if rule.description_contains %}
+                                                {% if rule.merchant_contains %} | {% endif %}
+                                                <i class="fas fa-file-alt me-1"></i> {{ rule.description_contains|truncate(20) }}
+                                                {% endif %}
+                                                {% if rule.min_amount or rule.max_amount %}
+                                                {% if rule.merchant_contains or rule.description_contains %} | {% endif %}
+                                                <i class="fas fa-euro-sign me-1"></i> 
+                                                {% if rule.min_amount %}min. {{ "%.2f"|format(rule.min_amount) }}€{% endif %}
+                                                {% if rule.min_amount and rule.max_amount %}...{% endif %}
+                                                {% if rule.max_amount and not rule.min_amount %}max. {{ "%.2f"|format(rule.max_amount) }}€{% endif %}
+                                                {% endif %}
+                                            </div>
+                                            
+                                            <div class="filters-detail">
+                                                <h6>Détails des filtres</h6>
+                                                {% if rule.merchant_contains %}
+                                                <div><strong>Marchand contient:</strong> {{ rule.merchant_contains }}</div>
+                                                {% endif %}
+                                                {% if rule.description_contains %}
+                                                <div><strong>Description contient:</strong> {{ rule.description_contains }}</div>
+                                                {% endif %}
+                                                {% if rule.min_amount or rule.max_amount %}
+                                                <div><strong>Montant:</strong> 
+                                                    {% if rule.min_amount %}min. {{ "%.2f"|format(rule.min_amount) }}€{% endif %}
+                                                    {% if rule.min_amount and rule.max_amount %} - {% endif %}
+                                                    {% if rule.max_amount %}max. {{ "%.2f"|format(rule.max_amount) }}€{% endif %}
+                                                </div>
+                                                {% endif %}
+                                            </div>
                                         </div>
-                                        {% endif %}
                                     </td>
                                     <td>
                                         {% if rule.category %}
-                                            {{ rule.category.name }}
+                                            {{ category_badge(rule.category) }}
                                         {% else %}
                                             <span class="text-muted">Non définie</span>
                                         {% endif %}
                                     </td>
                                     <td>
                                         {% if rule.flag %}
-                                        <span class="flag-badge" style="background-color: {{ rule.flag.color }}">
-                                            <i class="fas {{ rule.flag.icon }}"></i>
-                                            {{ rule.flag.name }}
-                                        </span>
+                                            {{ flag_badge(rule.flag) }}
                                         {% else %}
-                                        <span class="badge bg-secondary">Non défini</span>
+                                            <span class="badge bg-secondary">Non défini</span>
                                         {% endif %}
                                     </td>
-                                    <td>
+                                    <td class="text-center">
                                         {% if rule.requires_confirmation %}
                                             <span class="badge bg-warning">À confirmer</span>
                                         {% else %}
@@ -118,19 +177,21 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <form method="POST" action="{{ url_for('tricount.apply_auto_rule', rule_id=rule.id) }}" class="d-inline">
-                                            <button type="submit" class="btn btn-sm btn-success" data-bs-toggle="tooltip" title="Appliquer la règle">
-                                                <i class="fas fa-play"></i>
-                                            </button>
-                                        </form>
-                                        <a href="{{ url_for('tricount.edit_auto_rule', rule_id=rule.id) }}" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" title="Modifier la règle">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        <form method="POST" action="{{ url_for('tricount.delete_auto_rule', rule_id=rule.id) }}" class="d-inline">
-                                            <button type="submit" class="btn btn-sm btn-danger" data-bs-toggle="tooltip" title="Supprimer la règle" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette règle ?');">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </form>
+                                        <div class="d-flex gap-1">
+                                            <form method="POST" action="{{ url_for('tricount.apply_auto_rule', rule_id=rule.id) }}" class="d-inline">
+                                                <button type="submit" class="btn btn-sm btn-success" data-bs-toggle="tooltip" title="Appliquer la règle">
+                                                    <i class="fas fa-play"></i>
+                                                </button>
+                                            </form>
+                                            <a href="{{ url_for('tricount.edit_auto_rule', rule_id=rule.id) }}" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" title="Modifier la règle">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <form method="POST" action="{{ url_for('tricount.delete_auto_rule', rule_id=rule.id) }}" class="d-inline">
+                                                <button type="submit" class="btn btn-sm btn-danger" data-bs-toggle="tooltip" title="Supprimer la règle" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette règle ?');">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}
