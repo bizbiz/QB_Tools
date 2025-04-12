@@ -15,8 +15,8 @@
 {% endmacro %}
 
 {# Version simplifiée pour l'aperçu en édition ou création #}
-{% macro category_badge_preview(name, color='#e9ecef', emoji=None, icon_class=None, iconify_id=None, extra_classes='') %}
-<span class="category-badge {{ extra_classes }}" style="border-color: {{ color }};">
+{% macro category_badge_preview(name, color='#e9ecef', emoji=None, icon_class=None, iconify_id=None, extra_classes='', id=None) %}
+<span class="category-badge {{ extra_classes }}" style="border-color: {{ color }};" {% if id %}id="{{ id }}"{% endif %}>
     {% if iconify_id %}
     <span class="iconify me-2" data-icon="{{ iconify_id }}"></span>
     {% elif emoji %}
