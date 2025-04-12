@@ -19,6 +19,7 @@ def add_category():
     name = request.form.get('name')
     description = request.form.get('description', '')
     icon_id = request.form.get('icon_id')  # Récupérer l'ID de l'icône
+    color = request.form.get('color', '#e9ecef')  # Récupérer la couleur
     flag_ids = request.form.getlist('flags')
     
     if not name:
@@ -28,7 +29,8 @@ def add_category():
     category = Category(
         name=name, 
         description=description,
-        icon_id=icon_id  # Assigner l'ID de l'icône
+        icon_id=icon_id,  # Assigner l'ID de l'icône
+        color=color  # Assigner la couleur
     )
     
     # Associer les flags sélectionnés
@@ -55,6 +57,7 @@ def update_category(category_id):
     name = request.form.get('name')
     description = request.form.get('description', '')
     icon_id = request.form.get('icon_id')  # Récupérer l'ID de l'icône
+    color = request.form.get('color', '#e9ecef')  # Récupérer la couleur
     flag_ids = request.form.getlist('flags')
     
     if not name:
@@ -65,6 +68,7 @@ def update_category(category_id):
         category.name = name
         category.description = description
         category.icon_id = icon_id  # Assigner l'ID de l'icône
+        category.color = color  # Assigner la couleur
         
         # Mettre à jour les flags
         if flag_ids:
@@ -80,22 +84,6 @@ def update_category(category_id):
         flash(f'Une catégorie avec le nom "{name}" existe déjà.', 'danger')
     
     return redirect(url_for('tricount.categories_list'))
-
-@tricount_bp.route('/categories/delete/<int:category_id>', methods=['POST'])
-def delete_category(category_id):
-    """Supprimer une catégorie"""
-    category = Category.query.get_or_404(category_id)
-    
-    try:
-        db.session.delete(category)
-        db.session.commit()
-        flash(f'Catégorie "{category.name}" supprimée avec succès.', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Erreur lors de la suppression de la catégorie: {str(e)}', 'danger')
-    
-    return redirect(url_for('tricount.categories_list'))
-
 
 @tricount_bp.route('/categories/<int:category_id>/info')
 def category_info(category_id):
@@ -121,9 +109,26 @@ def category_info(category_id):
         'category': {
             'id': category.id,
             'name': category.name,
-            'description': category.description
+            'description': category.description,
+            'color': category.color  # Inclure la couleur dans la réponse
         },
         'preferred_flag_id': preferred_flag_id,
         'flags': [{'id': flag.id, 'name': flag.name} for flag in category.flags],
         'icon': icon_info
     })
+
+@tricount_bp.route('/categories/delete/<int:category_id>', methods=['POST'])
+def delete_category(category_id):
+    """Supprimer une catégorie"""
+    category = Category.query.get_or_404(category_id)
+    
+    try:
+        db.session.delete(category)
+        db.session.commit()
+        flash(f'Catégorie "{category.name}" supprimée avec succès.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erreur lors de la suppression de la catégorie: {str(e)}', 'danger')
+    
+    return redirect(url_for('tricount.categories_list'))
+

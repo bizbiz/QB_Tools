@@ -2,7 +2,7 @@
 
 {# Macro pour générer un badge de catégorie cohérent dans toute l'application #}
 {% macro category_badge(category, extra_classes='') %}
-<span class="category-badge {{ extra_classes }}">
+<span class="category-badge {{ extra_classes }}" style="border-color: {{ category.color }};">
     {% if category.icon %}
     <span class="me-1">{{ category.get_icon_emoji }}</span>
     {% elif category.legacy_icon %}
@@ -13,8 +13,8 @@
 {% endmacro %}
 
 {# Version simplifiée pour l'aperçu en édition ou création #}
-{% macro category_badge_preview(name, emoji=None, icon_class=None, extra_classes='') %}
-<span class="category-badge {{ extra_classes }}">
+{% macro category_badge_preview(name, color='#e9ecef', emoji=None, icon_class=None, extra_classes='') %}
+<span class="category-badge {{ extra_classes }}" style="border-color: {{ color }};">
     {% if emoji %}
     <span class="me-1">{{ emoji }}</span>
     {% elif icon_class %}

@@ -25,67 +25,76 @@
     </div>
     
     <!-- Formulaire d'ajout -->
-    <div class="row mb-4">
-        <div class="col">
-            <div class="card shadow-sm">
-                <div class="card-header">
-                    <h3 class="card-title">Ajouter une catégorie</h3>
+    <div class="card-body">
+        <form action="{{ url_for('tricount.add_category') }}" method="POST">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="name" class="form-label">Nom de la catégorie</label>
+                    <input type="text" class="form-control" id="name" name="name" required>
                 </div>
-                <div class="card-body">
-                    <form action="{{ url_for('tricount.add_category') }}" method="POST">
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label for="name" class="form-label">Nom de la catégorie</label>
-                                <input type="text" class="form-control" id="name" name="name" required>
-                            </div>
-                            
-                            <div class="col-md-8 mb-3">
-                                <label for="description" class="form-label">Description (optionnelle)</label>
-                                <input type="text" class="form-control" id="description" name="description">
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="icon_id" class="form-label">Icône</label>
-                            <select class="form-select" id="icon_id" name="icon_id">
-                                <option value="">Aucune icône</option>
-                                {% for icon in icons %}
-                                <option value="{{ icon.id }}" data-emoji="{{ icon.unicode_emoji }}" data-fa="{{ icon.font_awesome_class }}">
-                                    {{ icon.unicode_emoji }} {{ icon.name }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                            <div class="form-text">Sélectionnez une icône pour cette catégorie.</div>
-                            <div id="icon-preview" class="mt-2"></div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Types de dépenses applicables</label>
-                            <div class="d-flex flex-wrap gap-2">
-                                {% for flag in flags %}
-                                <div class="form-check me-3">
-                                    <input class="form-check-input" type="checkbox" id="flag-{{ flag.id }}" name="flags" value="{{ flag.id }}" checked>
-                                    <label class="form-check-label" for="flag-{{ flag.id }}">
-                                        <span class="flag-badge" style="background-color: {{ flag.color }}">
-                                            <i class="fas {{ flag.icon }}"></i>
-                                            {{ flag.name }}
-                                        </span>
-                                    </label>
-                                </div>
-                                {% endfor %}
-                            </div>
-                            <div class="form-text">
-                                Sélectionnez les types de dépenses pour lesquels cette catégorie sera disponible.
-                            </div>
-                        </div>
-                        
-                        <div class="mt-3">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-plus-circle me-2"></i>Ajouter
-                            </button>
-                        </div>
-                    </form>
+                
+                <div class="col-md-6 mb-3">
+                    <label for="description" class="form-label">Description (optionnelle)</label>
+                    <input type="text" class="form-control" id="description" name="description">
+                </div>
+                
+                <div class="col-md-2 mb-3">
+                    <label for="color" class="form-label">Couleur</label>
+                    <input type="color" class="form-control form-control-color" id="color" name="color" value="#e9ecef">
+                    <div class="form-text">Couleur de bordure du badge</div>
                 </div>
             </div>
-        </div>
+            
+            <div class="mb-3">
+                <label for="icon_id" class="form-label">Icône</label>
+                <select class="form-select" id="icon_id" name="icon_id">
+                    <option value="">Aucune icône</option>
+                    {% for icon in icons %}
+                    <option value="{{ icon.id }}" data-emoji="{{ icon.unicode_emoji }}" data-fa="{{ icon.font_awesome_class }}">
+                        {{ icon.unicode_emoji }} {{ icon.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <div class="form-text">Sélectionnez une icône pour cette catégorie.</div>
+                <div id="icon-preview" class="mt-2"></div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Types de dépenses applicables</label>
+                <div class="d-flex flex-wrap gap-2">
+                    {% for flag in flags %}
+                    <div class="form-check me-3">
+                        <input class="form-check-input" type="checkbox" id="flag-{{ flag.id }}" name="flags" value="{{ flag.id }}" checked>
+                        <label class="form-check-label" for="flag-{{ flag.id }}">
+                            <span class="flag-badge" style="background-color: {{ flag.color }}">
+                                <i class="fas {{ flag.icon }}"></i>
+                                {{ flag.name }}
+                            </span>
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="form-text">
+                    Sélectionnez les types de dépenses pour lesquels cette catégorie sera disponible.
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Aperçu</label>
+                <div class="preview-container">
+                    <span class="category-badge preview-badge" id="category-preview-badge" style="border-color: #e9ecef;">
+                        <span id="preview-emoji" class="me-1">📁</span>
+                        <span id="preview-name">Nouvelle catégorie</span>
+                    </span>
+                </div>
+            </div>
+            
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-plus-circle me-2"></i>Ajouter
+                </button>
+            </div>
+        </form>
     </div>
     
     <!-- Légende des types -->
@@ -164,7 +173,9 @@
                                         <span class="text-muted">—</span>
                                         {% endif %}
                                     </td>
-                                    <td>{{ category.name }}</td>
+                                    <td>
+                                        {{ category_badge(category) }}
+                                    </td>
                                     <td>{{ category.description or 'N/A' }}</td>
                                     <td>{{ category.created_at.strftime('%d/%m/%Y') }}</td>
                                     {% for flag in flags %}
@@ -184,6 +195,7 @@
                                                 data-icon-id="{{ category.icon_id or '' }}"
                                                 data-icon-emoji="{{ category.icon.unicode_emoji if category.icon else '' }}"
                                                 data-legacy-icon="{{ category.legacy_icon or '' }}"
+                                                data-color="{{ category.color or '#e9ecef' }}"
                                                 data-bs-toggle="tooltip" 
                                                 data-bs-placement="top" 
                                                 title="Modifier">
@@ -261,6 +273,14 @@
                     </div>
                     
                     <div class="mb-3">
+                        <label for="edit-color" class="form-label">Couleur</label>
+                        <div class="input-group">
+                            <input type="color" class="form-control form-control-color" id="edit-color" name="color">
+                            <span class="input-group-text" id="color-hex-value">#e9ecef</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
                         <label for="edit-icon-id" class="form-label">Icône</label>
                         <select class="form-select" id="edit-icon-id" name="icon_id">
                             <option value="">Aucune icône</option>
@@ -271,7 +291,6 @@
                             {% endfor %}
                         </select>
                         <div class="form-text">Sélectionnez une icône pour cette catégorie.</div>
-                        <div id="edit-icon-preview" class="mt-2"></div>
                     </div>
                     
                     <div class="mb-3">
@@ -288,6 +307,16 @@
                                 </label>
                             </div>
                             {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Aperçu</label>
+                        <div class="preview-container">
+                            <span class="category-badge preview-badge" id="edit-category-preview-badge" style="border-color: #e9ecef;">
+                                <span id="edit-preview-emoji" class="me-1">📁</span>
+                                <span id="edit-preview-name">Nom de la catégorie</span>
+                            </span>
                         </div>
                     </div>
                 </form>

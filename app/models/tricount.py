@@ -39,6 +39,7 @@ class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False, unique=True)
     description = db.Column(db.String(255))
+    color = db.Column(db.String(50), default="#e9ecef")  # Ajout du champ de couleur
     
     # Nouvelle relation avec la table des icônes
     icon_id = db.Column(db.Integer, db.ForeignKey('icons.id'))

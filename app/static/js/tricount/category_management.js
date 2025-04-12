@@ -24,39 +24,71 @@ document.addEventListener('DOMContentLoaded', function() {
         return new bootstrap.Tooltip(tooltipTriggerEl)
     });
     
-    // Initialize icon preview for add form
-    initIconPreview();
+    // Initialize icon and color preview for add form
+    initAddFormPreview();
     
     // Modal management
     setupModalEventListeners();
 });
 
-// Initialize icon preview in the add form
-function initIconPreview() {
+// Initialize preview in the add form
+function initAddFormPreview() {
+    const nameInput = document.getElementById('name');
     const iconSelect = document.getElementById('icon_id');
-    const iconPreview = document.getElementById('icon-preview');
+    const colorInput = document.getElementById('color');
+    const previewBadge = document.getElementById('category-preview-badge');
+    const previewEmoji = document.getElementById('preview-emoji');
+    const previewName = document.getElementById('preview-name');
     
-    if (iconSelect && iconPreview) {
-        // Initial preview
-        updateIconPreview(iconSelect, iconPreview);
+    // Update preview when name changes
+    if (nameInput && previewName) {
+        nameInput.addEventListener('input', function() {
+            previewName.textContent = this.value || 'Nouvelle catégorie';
+        });
+    }
+    
+    // Update preview when icon changes
+    if (iconSelect && previewEmoji) {
+        updateIconPreview(iconSelect, previewEmoji);
         
-        // Update preview on change
         iconSelect.addEventListener('change', function() {
-            updateIconPreview(iconSelect, iconPreview);
+            updateIconPreview(iconSelect, previewEmoji);
+        });
+    }
+    
+    // Update preview when color changes
+    if (colorInput && previewBadge) {
+        colorInput.addEventListener('input', function() {
+            previewBadge.style.borderColor = this.value;
         });
     }
     
     // Also initialize the edit form preview
+    const editNameInput = document.getElementById('edit-name');
     const editIconSelect = document.getElementById('edit-icon-id');
-    const editIconPreview = document.getElementById('edit-icon-preview');
+    const editColorInput = document.getElementById('edit-color');
+    const editPreviewBadge = document.getElementById('edit-category-preview-badge');
+    const editPreviewEmoji = document.getElementById('edit-preview-emoji');
+    const editPreviewName = document.getElementById('edit-preview-name');
+    const colorHexValue = document.getElementById('color-hex-value');
     
-    if (editIconSelect && editIconPreview) {
-        // Initial preview
-        updateIconPreview(editIconSelect, editIconPreview);
-        
-        // Update preview on change
+    // Update preview when values change in edit modal
+    if (editNameInput && editPreviewName) {
+        editNameInput.addEventListener('input', function() {
+            editPreviewName.textContent = this.value || 'Nom de la catégorie';
+        });
+    }
+    
+    if (editIconSelect && editPreviewEmoji) {
         editIconSelect.addEventListener('change', function() {
-            updateIconPreview(editIconSelect, editIconPreview);
+            updateIconPreview(editIconSelect, editPreviewEmoji);
+        });
+    }
+    
+    if (editColorInput && editPreviewBadge && colorHexValue) {
+        editColorInput.addEventListener('input', function() {
+            editPreviewBadge.style.borderColor = this.value;
+            colorHexValue.textContent = this.value;
         });
     }
 }
@@ -65,31 +97,21 @@ function initIconPreview() {
 function updateIconPreview(select, previewElement) {
     if (!previewElement) return;
     
-    previewElement.innerHTML = '';
-    
-    if (!select || select.selectedIndex === -1) return;
+    if (!select || select.selectedIndex <= 0) {
+        previewElement.textContent = '📁'; // Default folder emoji
+        return;
+    }
     
     const selectedOption = select.options[select.selectedIndex];
-    if (selectedOption && selectedOption.value) {
-        const emoji = selectedOption.getAttribute('data-emoji');
-        const faClass = selectedOption.getAttribute('data-fa');
-        
-        const previewHTML = `
-            <div class="d-flex align-items-center">
-                <div class="me-3 p-3 border rounded">
-                    <span style="font-size: 2rem;">${emoji || '❓'}</span>
-                </div>
-                ${faClass ? `
-                <div class="me-3 p-3 border rounded">
-                    <i class="fas ${faClass} fa-2x"></i>
-                </div>` : ''}
-                <div class="text-muted">
-                    <p class="mb-0">Cette icône sera utilisée pour représenter la catégorie dans l'application.</p>
-                </div>
-            </div>
-        `;
-        
-        previewElement.innerHTML = previewHTML;
+    const emoji = selectedOption.getAttribute('data-emoji');
+    const faClass = selectedOption.getAttribute('data-fa');
+    
+    if (emoji) {
+        previewElement.textContent = emoji;
+    } else if (faClass) {
+        previewElement.innerHTML = `<i class="fas ${faClass}"></i>`;
+    } else {
+        previewElement.textContent = '📁'; // Default folder emoji
     }
 }
 
@@ -191,8 +213,12 @@ function setupModalEventListeners() {
     const editCategoryForm = document.getElementById('edit-category-form');
     const editNameInput = document.getElementById('edit-name');
     const editDescriptionInput = document.getElementById('edit-description');
+    const editColorInput = document.getElementById('edit-color');
     const editIconSelect = document.getElementById('edit-icon-id');
-    const editIconPreview = document.getElementById('edit-icon-preview');
+    const colorHexValue = document.getElementById('color-hex-value');
+    const editPreviewBadge = document.getElementById('edit-category-preview-badge');
+    const editPreviewEmoji = document.getElementById('edit-preview-emoji');
+    const editPreviewName = document.getElementById('edit-preview-name');
     const saveCategoryButton = document.getElementById('save-category');
 
     editButtons.forEach(button => {
@@ -203,16 +229,31 @@ function setupModalEventListeners() {
             const categoryIconId = this.dataset.iconId || '';
             const categoryIconEmoji = this.dataset.iconEmoji || '';
             const categoryLegacyIcon = this.dataset.legacyIcon || '';
+            const categoryColor = this.dataset.color || '#e9ecef';
             
             // Remplir le formulaire
             editNameInput.value = categoryName;
             editDescriptionInput.value = categoryDescription;
+            editColorInput.value = categoryColor;
+            
+            // Mettre à jour l'aperçu hexadécimal de la couleur
+            if (colorHexValue) {
+                colorHexValue.textContent = categoryColor;
+            }
+            
+            // Mettre à jour la prévisualisation du badge
+            if (editPreviewBadge) {
+                editPreviewBadge.style.borderColor = categoryColor;
+            }
+            
+            if (editPreviewName) {
+                editPreviewName.textContent = categoryName;
+            }
             
             // Sélectionner l'icône correspondante
             if (editIconSelect) {
                 editIconSelect.value = categoryIconId;
-                // Si nous n'avons pas d'icône mais un legacy_icon, on peut l'afficher différemment
-                updateIconPreview(editIconSelect, editIconPreview);
+                updateIconPreview(editIconSelect, editPreviewEmoji);
             }
             
             // Récupérer les flags de cette catégorie
