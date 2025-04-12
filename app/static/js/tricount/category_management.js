@@ -72,16 +72,6 @@
         const editCategoryForm = document.getElementById('edit-category-form');
         const saveCategoryButton = document.getElementById('save-category');
         
-        // Éléments du formulaire d'édition
-        const editNameInput = document.getElementById('edit-name');
-        const editDescriptionInput = document.getElementById('edit-description');
-        const editColorInput = document.getElementById('edit-color');
-        const editIconifyInput = document.getElementById('edit-iconify-id');
-        
-        // Éléments d'aperçu pour le formulaire d'édition
-        const editPreviewBadge = document.getElementById('edit-category-preview-badge');
-        const colorHexValue = document.getElementById('color-hex-value');
-        
         // Gérer le clic sur les boutons d'édition
         editButtons.forEach(button => {
             button.addEventListener('click', function() {
@@ -91,6 +81,12 @@
                 const categoryIconifyId = this.dataset.iconifyId || '';
                 const categoryLegacyIcon = this.dataset.legacyIcon || '';
                 const categoryColor = this.dataset.color || '#e9ecef';
+                
+                // Éléments du formulaire d'édition - récupérer dynamiquement
+                const editNameInput = document.getElementById('edit-name');
+                const editDescriptionInput = document.getElementById('edit-description');
+                const editColorInput = document.getElementById('edit-color');
+                const editIconifyInput = document.getElementById('edit-iconify-id');
                 
                 // Remplir le formulaire avec les données de la catégorie
                 if (editNameInput) editNameInput.value = categoryName;
@@ -135,6 +131,9 @@
                     editCategoryForm.action = window.categoryUpdateUrl.replace('0', categoryId);
                 }
                 
+                // Configurer les écouteurs d'événements pour les champs du modal avant de l'ouvrir
+                setupEditModalEvents();
+                
                 // Ouvrir la modal
                 editModal.show();
                 
@@ -154,6 +153,64 @@
     }
     
     /**
+     * Configure les écouteurs d'événements pour les champs du modal d'édition
+     */
+    function setupEditModalEvents() {
+        // Éléments du formulaire d'édition
+        const editNameInput = document.getElementById('edit-name');
+        const editColorInput = document.getElementById('edit-color');
+        const editIconifyIdInput = document.getElementById('edit-iconify-id');
+        
+        // Élément badge d'aperçu pour le formulaire d'édition
+        const editPreviewBadge = document.getElementById('edit-category-preview-badge');
+        const colorHexValue = document.getElementById('color-hex-value');
+        
+        // Supprimer les anciens écouteurs (pour éviter les doublons)
+        if (editNameInput) {
+            const newEditNameInput = editNameInput.cloneNode(true);
+            editNameInput.parentNode.replaceChild(newEditNameInput, editNameInput);
+        }
+        
+        if (editColorInput) {
+            const newEditColorInput = editColorInput.cloneNode(true);
+            editColorInput.parentNode.replaceChild(newEditColorInput, editColorInput);
+        }
+        
+        if (editIconifyIdInput) {
+            const newEditIconifyIdInput = editIconifyIdInput.cloneNode(true);
+            editIconifyIdInput.parentNode.replaceChild(newEditIconifyIdInput, editIconifyIdInput);
+        }
+        
+        // Références actualisées
+        const updatedEditNameInput = document.getElementById('edit-name');
+        const updatedEditColorInput = document.getElementById('edit-color');
+        const updatedEditIconifyIdInput = document.getElementById('edit-iconify-id');
+        
+        // Mise à jour du nom en temps réel dans le formulaire d'édition
+        if (updatedEditNameInput && editPreviewBadge) {
+            updatedEditNameInput.addEventListener('input', function() {
+                // Mettre à jour l'aperçu avec le nouveau nom
+                updateCategoryName(editPreviewBadge, this.value || 'Nom de la catégorie');
+            });
+        }
+        
+        // Mise à jour de la couleur en temps réel dans le formulaire d'édition
+        if (updatedEditColorInput && editPreviewBadge && colorHexValue) {
+            updatedEditColorInput.addEventListener('input', function() {
+                editPreviewBadge.style.borderColor = this.value;
+                colorHexValue.textContent = this.value;
+            });
+        }
+        
+        // Mise à jour de l'icône en temps réel dans le formulaire d'édition
+        if (updatedEditIconifyIdInput && editPreviewBadge) {
+            updatedEditIconifyIdInput.addEventListener('change', function() {
+                updatePreviewBadgeIcon(editPreviewBadge, this.value);
+            });
+        }
+    }
+    
+    /**
      * Initialise les fonctionnalités d'aperçu en temps réel
      */
     function initPreviewFunctionality() {
@@ -168,20 +225,7 @@
         // Mise à jour du nom en temps réel
         if (nameInput && previewBadge) {
             nameInput.addEventListener('input', function() {
-                // Trouver le dernier élément enfant (le nom) et le mettre à jour
-                const lastChild = previewBadge.childNodes[previewBadge.childNodes.length - 1];
-                if (lastChild && lastChild.nodeType === Node.TEXT_NODE) {
-                    lastChild.nodeValue = this.value || 'Nouvelle catégorie';
-                } else {
-                    // Si on ne trouve pas le nœud de texte pour une raison quelconque, remplacer tout le contenu
-                    const iconElement = previewBadge.querySelector('.iconify, .fas, .emoji');
-                    if (iconElement) {
-                        const iconHtml = iconElement.outerHTML;
-                        previewBadge.innerHTML = iconHtml + ' ' + (this.value || 'Nouvelle catégorie');
-                    } else {
-                        previewBadge.textContent = this.value || 'Nouvelle catégorie';
-                    }
-                }
+                updateCategoryName(previewBadge, this.value || 'Nouvelle catégorie');
             });
         }
         
@@ -198,50 +242,41 @@
                 updatePreviewBadgeIcon(previewBadge, this.value);
             });
         }
+    }
+    
+    /**
+     * Met à jour le nom de la catégorie dans un badge
+     * @param {HTMLElement} badgeElement - L'élément badge
+     * @param {string} newName - Le nouveau nom à afficher
+     */
+    function updateCategoryName(badgeElement, newName) {
+        if (!badgeElement) return;
         
-        // Éléments du formulaire d'édition
-        const editNameInput = document.getElementById('edit-name');
-        const editColorInput = document.getElementById('edit-color');
-        const editIconifyIdInput = document.getElementById('edit-iconify-id');
+        // Chercher le nœud de texte (dernier enfant) ou le créer
+        let textNode = null;
         
-        // Élément badge d'aperçu pour le formulaire d'édition
-        const editPreviewBadge = document.getElementById('edit-category-preview-badge');
-        const colorHexValue = document.getElementById('color-hex-value');
-        
-        // Mise à jour du nom en temps réel dans le formulaire d'édition
-        if (editNameInput && editPreviewBadge) {
-            editNameInput.addEventListener('input', function() {
-                // Trouver le dernier élément enfant (le nom) et le mettre à jour
-                const lastChild = editPreviewBadge.childNodes[editPreviewBadge.childNodes.length - 1];
-                if (lastChild && lastChild.nodeType === Node.TEXT_NODE) {
-                    lastChild.nodeValue = this.value || 'Nom de la catégorie';
-                } else {
-                    // Si on ne trouve pas le nœud de texte pour une raison quelconque, remplacer tout le contenu
-                    const iconElement = editPreviewBadge.querySelector('.iconify, .fas, .emoji');
-                    if (iconElement) {
-                        const iconHtml = iconElement.outerHTML;
-                        editPreviewBadge.innerHTML = iconHtml + ' ' + (this.value || 'Nom de la catégorie');
-                    } else {
-                        editPreviewBadge.textContent = this.value || 'Nom de la catégorie';
-                    }
-                }
-            });
+        // Parcourir les nœuds enfants
+        for (let i = 0; i < badgeElement.childNodes.length; i++) {
+            const node = badgeElement.childNodes[i];
+            if (node.nodeType === Node.TEXT_NODE && node.nodeValue.trim()) {
+                textNode = node;
+            }
         }
         
-        // Mise à jour de la couleur en temps réel dans le formulaire d'édition
-        if (editColorInput && editPreviewBadge && colorHexValue) {
-            editColorInput.addEventListener('input', function() {
-                editPreviewBadge.style.borderColor = this.value;
-                colorHexValue.textContent = this.value;
-            });
+        // Si aucun nœud de texte n'est trouvé, reconstruire le contenu
+        if (!textNode) {
+            const iconElement = badgeElement.querySelector('.iconify, .fas, .emoji');
+            if (iconElement) {
+                const iconHtml = iconElement.outerHTML;
+                badgeElement.innerHTML = iconHtml + ' ' + newName;
+            } else {
+                badgeElement.textContent = newName;
+            }
+            return;
         }
         
-        // Mise à jour de l'icône en temps réel dans le formulaire d'édition
-        if (editIconifyIdInput && editPreviewBadge) {
-            editIconifyIdInput.addEventListener('change', function() {
-                updatePreviewBadgeIcon(editPreviewBadge, this.value);
-            });
-        }
+        // Mettre à jour le contenu du nœud de texte
+        textNode.nodeValue = newName;
     }
     
     /**
@@ -299,20 +334,8 @@
                 }
             }
             
-            // Mettre à jour le nom (dernier nœud de texte)
-            const lastChild = editPreviewBadge.childNodes[editPreviewBadge.childNodes.length - 1];
-            if (lastChild && lastChild.nodeType === Node.TEXT_NODE) {
-                lastChild.nodeValue = name;
-            } else {
-                // Si on ne trouve pas le nœud de texte pour une raison quelconque, reconstruire le contenu
-                const iconElement = editPreviewBadge.querySelector('.iconify, .fas');
-                if (iconElement) {
-                    const iconHtml = iconElement.outerHTML;
-                    editPreviewBadge.innerHTML = iconHtml + ' ' + name;
-                } else {
-                    editPreviewBadge.textContent = name;
-                }
-            }
+            // Mettre à jour le nom
+            updateCategoryName(editPreviewBadge, name);
         }
         
         // Mise à jour de la valeur hexadécimale de la couleur
