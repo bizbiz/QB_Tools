@@ -1,25 +1,29 @@
 {# app/templates/macros/tricount/flag_macros.html #}
 {# Macro pour générer un badge de flag cohérent dans toute l'application #}
-{% macro flag_badge(flag, extra_classes='') %}
-<span class="flag-badge {{ extra_classes }}" style="background-color: {{ flag.color }}">
-	{% if flag.icon %}
-	<span class="me-1">{{ flag.get_icon_emoji }}</span>
-	{% elif flag.legacy_icon %}
-	<i class="fas {{ flag.legacy_icon }} me-1"></i>
-	{% endif %}
-	{{ flag.name }}
+{% macro flag_badge(flag, extra_classes='', text_hidden=False) %}
+<span class="flag-badge {{ extra_classes }}" style="background-color: {{ flag.color }}" {% if text_hidden %}title="{{ flag.name }}"{% endif %}>
+    {% if flag.icon %}
+    <span class="me-1">{{ flag.get_icon_emoji }}</span>
+    {% elif flag.legacy_icon %}
+    <i class="fas {{ flag.legacy_icon }} me-1"></i>
+    {% endif %}
+    {% if not text_hidden %}
+    {{ flag.name }}
+    {% endif %}
 </span>
 {% endmacro %}
 
 {# Version simplifiée pour l'aperçu en édition ou création #}
-{% macro flag_badge_preview(name, color, emoji=None, icon_class=None, extra_classes='') %}
-<span class="flag-badge {{ extra_classes }}" style="background-color: {{ color }}">
-	{% if emoji %}
-	<span class="me-1">{{ emoji }}</span>
-	{% elif icon_class %}
-	<i class="fas {{ icon_class }} me-1"></i>
-	{% endif %}
-	{{ name }}
+{% macro flag_badge_preview(name, color, emoji=None, icon_class=None, extra_classes='', text_hidden=False) %}
+<span class="flag-badge {{ extra_classes }}" style="background-color: {{ color }}" {% if text_hidden %}title="{{ name }}"{% endif %}>
+    {% if emoji %}
+    <span class="me-1">{{ emoji }}</span>
+    {% elif icon_class %}
+    <i class="fas {{ icon_class }} me-1"></i>
+    {% endif %}
+    {% if not text_hidden %}
+    {{ name }}
+    {% endif %}
 </span>
 {% endmacro %}
 

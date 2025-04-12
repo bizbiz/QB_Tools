@@ -75,7 +75,7 @@
                                     <th data-type="date">Date de création</th>
                                     {% for flag in flags %}
                                     <th class="text-center" data-type="text" title="{{ flag.name }}">
-                                        {{ flag_badge(flag, "btn-sm p-1") }}
+                                        {{ flag_badge(flag, "btn-sm p-1", text_hidden=True) }}
                                     </th>
                                     {% endfor %}
                                     <th class="no-sort">Actions</th>
@@ -326,4 +326,4 @@
 
 <!-- Include our external JS file -->
 <script src="{{ url_for('static', filename='js/tricount/category_management.js') }}"></script>
-{% endblock %}
+{% endblock %} 
