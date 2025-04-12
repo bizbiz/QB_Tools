@@ -3,22 +3,28 @@
 {# Macro pour générer un badge de catégorie cohérent dans toute l'application #}
 {% macro category_badge(category, extra_classes='') %}
 <span class="category-badge {{ extra_classes }}" style="border-color: {{ category.color }};">
-    {% if category.icon %}
-    <span class="me-1">{{ category.get_icon_emoji }}</span>
+    {% if category.iconify_id %}
+    <span class="iconify me-2" data-icon="{{ category.iconify_id }}"></span>
+    {% elif category.icon %}
+    <span class="me-2">{{ category.get_icon_emoji }}</span>
     {% elif category.legacy_icon %}
-    <i class="fas {{ category.legacy_icon }} me-1"></i>
+    <i class="fas {{ category.legacy_icon }} me-2"></i>
     {% endif %}
     {{ category.name }}
 </span>
 {% endmacro %}
 
 {# Version simplifiée pour l'aperçu en édition ou création #}
-{% macro category_badge_preview(name, color='#e9ecef', emoji=None, icon_class=None, extra_classes='') %}
+{% macro category_badge_preview(name, color='#e9ecef', emoji=None, icon_class=None, iconify_id=None, extra_classes='') %}
 <span class="category-badge {{ extra_classes }}" style="border-color: {{ color }};">
-    {% if emoji %}
-    <span class="me-1">{{ emoji }}</span>
+    {% if iconify_id %}
+    <span class="iconify me-2" data-icon="{{ iconify_id }}"></span>
+    {% elif emoji %}
+    <span class="me-2">{{ emoji }}</span>
     {% elif icon_class %}
-    <i class="fas {{ icon_class }} me-1"></i>
+    <i class="fas {{ icon_class }} me-2"></i>
+    {% else %}
+    <i class="fas fa-folder me-2"></i>
     {% endif %}
     {{ name }}
 </span>
@@ -51,7 +57,9 @@
             {% if display %}
                 <option value="{{ category.id }}" {% if selected_category == category.id %}selected{% endif %}>
                     {% if show_icons %}
-                        {% if category.icon %}
+                        {% if category.iconify_id %}
+                            {{ category.iconify_id|truncate(2, true, '') }} 
+                        {% elif category.icon %}
                             {{ category.get_icon_emoji }} 
                         {% elif category.legacy_icon %}
                             <i class="fas {{ category.legacy_icon }}"></i> 
@@ -85,14 +93,18 @@
             <option value="{{ category.id }}" 
                     {% if selected_category == category.id %}selected{% endif %}
                     data-flags="[{% for flag in category.flags %}{{ flag.id }}{% if not loop.last %},{% endif %}{% endfor %}]"
-                    {% if category.icon %}
+                    {% if category.iconify_id %}
+                        data-iconify-id="{{ category.iconify_id }}"
+                    {% elif category.icon %}
                         data-icon-emoji="{{ category.get_icon_emoji }}"
                         data-icon-class="{{ category.get_icon_class }}"
                     {% elif category.legacy_icon %}
                         data-icon="{{ category.legacy_icon }}"
                     {% endif %}>
                 {% if show_icons %}
-                    {% if category.icon %}
+                    {% if category.iconify_id %}
+                        🔍 
+                    {% elif category.icon %}
                         {{ category.get_icon_emoji }} 
                     {% elif category.legacy_icon %}
                         <i class="fas {{ category.legacy_icon }}"></i> 

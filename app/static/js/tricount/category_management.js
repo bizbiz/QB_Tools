@@ -2,18 +2,16 @@
 
 /**
  * Module pour gérer les catégories dans l'interface Tricount
- * Contient les fonctions de tri, d'édition et de gestion des aperçus
+ * Contient les fonctions d'édition et de gestion des aperçus
  */
 (function() {
     // Variables principales
-    let categoryTable = null;
     let deleteModal = null;
     let editModal = null;
     
     // Initialisation au chargement de la page
     document.addEventListener('DOMContentLoaded', function() {
         // Initialiser les composants principaux
-        initTableSorting();
         initDeleteModal();
         initEditModal();
         initPreviewFunctionality();
@@ -25,33 +23,12 @@
                 new bootstrap.Tooltip(tooltipTriggerEl);
             });
         }
+        
+        // Activer le tri de table via le module commun TableSorter
+        if (window.TableSorter && typeof window.TableSorter.init === 'function') {
+            window.TableSorter.init();
+        }
     });
-    
-    /**
-     * Initialise la fonctionnalité de tri du tableau
-     */
-    function initTableSorting() {
-        categoryTable = document.querySelector('.table');
-        if (!categoryTable) return;
-        
-        const tableHeaders = categoryTable.querySelectorAll('th');
-        
-        tableHeaders.forEach((header, index) => {
-            // Ignorer les colonnes non triables
-            if (header.classList.contains('no-sort')) return;
-            
-            // Ajouter le style de curseur et l'événement de clic
-            header.style.cursor = 'pointer';
-            header.addEventListener('click', () => sortTable(categoryTable, index));
-            
-            // Ajouter un indicateur de tri
-            if (!header.querySelector('.sort-icon')) {
-                const sortIcon = document.createElement('span');
-                sortIcon.className = 'sort-icon';
-                header.appendChild(sortIcon);
-            }
-        });
-    }
     
     /**
      * Initialise la modal de suppression
@@ -298,101 +275,5 @@
         if (window.Iconify) {
             window.Iconify.scan();
         }
-    }
-    
-    /**
-     * Trie un tableau par colonne
-     * @param {HTMLElement} table - Le tableau à trier
-     * @param {number} columnIndex - L'index de la colonne à trier
-     */
-    function sortTable(table, columnIndex) {
-        const thead = table.querySelector('thead');
-        const tbody = table.querySelector('tbody');
-        const thList = thead.querySelectorAll('th');
-        
-        if (!tbody || !thead) return;
-        
-        // Déterminer la direction du tri
-        const th = thList[columnIndex];
-        const sortIcon = th.querySelector('.sort-icon');
-        let sortDirection = 'asc';
-        
-        if (sortIcon.classList.contains('asc')) {
-            sortDirection = 'desc';
-            sortIcon.classList.remove('asc');
-            sortIcon.classList.add('desc');
-        } else {
-            sortIcon.classList.remove('desc');
-            sortIcon.classList.add('asc');
-        }
-        
-        // Réinitialiser les autres en-têtes
-        thList.forEach(header => {
-            if (header !== th) {
-                const icon = header.querySelector('.sort-icon');
-                if (icon) {
-                    icon.classList.remove('asc', 'desc');
-                }
-            }
-        });
-        
-        // Déterminer le type de données de la colonne
-        const dataType = th.getAttribute('data-type') || 'text';
-        
-        // Trier les lignes
-        const rows = Array.from(tbody.querySelectorAll('tr'));
-        rows.sort((rowA, rowB) => {
-            let cellA = rowA.cells[columnIndex];
-            let cellB = rowB.cells[columnIndex];
-            
-            if (!cellA || !cellB) return 0;
-            
-            // Récupérer les valeurs à comparer
-            let valueA = cellA.dataset.sortValue || cellA.textContent.trim();
-            let valueB = cellB.dataset.sortValue || cellB.textContent.trim();
-            
-            // Comparer selon le type de données
-            let comparison = 0;
-            
-            if (dataType === 'number') {
-                // Convertir en nombres et comparer
-                const numA = parseFloat(valueA.replace(/[^\d.-]/g, '')) || 0;
-                const numB = parseFloat(valueB.replace(/[^\d.-]/g, '')) || 0;
-                comparison = numA - numB;
-            } else if (dataType === 'date') {
-                // Convertir en dates et comparer
-                const dateA = parseDate(valueA);
-                const dateB = parseDate(valueB);
-                comparison = dateA - dateB;
-            } else {
-                // Comparer comme du texte
-                comparison = valueA.localeCompare(valueB, 'fr', { sensitivity: 'base' });
-            }
-            
-            // Inverser si tri descendant
-            return sortDirection === 'asc' ? comparison : -comparison;
-        });
-        
-        // Replacer les lignes dans l'ordre trié
-        rows.forEach(row => {
-            tbody.appendChild(row);
-        });
-    }
-    
-    /**
-     * Convertit une chaîne de date en timestamp
-     * @param {string} dateStr - Date au format DD/MM/YYYY
-     * @returns {number} - Timestamp correspondant
-     */
-    function parseDate(dateStr) {
-        const parts = dateStr.match(/(\d+)[/-](\d+)[/-](\d+)/);
-        if (parts) {
-            // Format français: jour/mois/année
-            const day = parseInt(parts[1], 10);
-            const month = parseInt(parts[2], 10) - 1; // Les mois sont indexés à partir de 0
-            const year = parseInt(parts[3], 10);
-            return new Date(year, month, day).getTime();
-        }
-        return 0;
     }
 })();

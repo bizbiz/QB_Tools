@@ -2,7 +2,7 @@
 {% extends "base.html" %}
 
 {# Importer les macros nécessaires #}
-{% from "macros/tricount/category_select.html" import category_badge %}
+{% from "macros/tricount/category_select.html" import category_badge, category_badge_preview %}
 {% from "macros/tricount/flag_macros.html" import flag_badge %}
 {% from "macros/tricount/icon_selector.html" import icon_search_modal, icon_input_field %}
 
@@ -87,18 +87,7 @@
                                 {% for category in categories %}
                                 <tr>
                                     <td data-sort-value="{{ category.name }}">
-                                        <div class="d-flex align-items-center">
-                                            {% if category.iconify_id %}
-                                                <span class="iconify me-2" data-icon="{{ category.iconify_id }}"></span>
-                                            {% elif category.legacy_icon %}
-                                                <i class="fas {{ category.legacy_icon }} me-2"></i>
-                                            {% else %}
-                                                <i class="fas fa-folder me-2"></i>
-                                            {% endif %}
-                                            <span class="category-badge" style="border-color: {{ category.color }}">
-                                                {{ category.name }}
-                                            </span>
-                                        </div>
+                                        {{ category_badge(category) }}
                                     </td>
                                     <td>{{ category.description or 'N/A' }}</td>
                                     <td>{{ category.created_at.strftime('%d/%m/%Y') }}</td>
@@ -205,12 +194,13 @@
                         <div class="mb-3">
                             <label class="form-label">Aperçu</label>
                             <div class="preview-container">
-                                <span class="category-badge preview-badge" id="category-preview-badge" style="border-color: #e9ecef;">
-                                    <span id="preview-emoji" class="me-1">
-                                        <i class="fas fa-folder"></i>
-                                    </span>
-                                    <span id="preview-name">Nouvelle catégorie</span>
-                                </span>
+                                {{ category_badge_preview(
+                                    name="Nouvelle catégorie", 
+                                    color="#e9ecef", 
+                                    icon_class="fa-folder", 
+                                    extra_classes="preview-badge", 
+                                    id="category-preview-badge"
+                                ) }}
                             </div>
                         </div>
                         
@@ -301,12 +291,13 @@
                     <div class="mb-3">
                         <label class="form-label">Aperçu</label>
                         <div class="preview-container">
-                            <span class="category-badge preview-badge" id="edit-category-preview-badge" style="border-color: #e9ecef;">
-                                <span id="edit-preview-icon" class="me-1">
-                                    <i class="fas fa-folder"></i>
-                                </span>
-                                <span id="edit-preview-name">Nom de la catégorie</span>
-                            </span>
+                            {{ category_badge_preview(
+                                name="Nouvelle catégorie", 
+                                color="#e9ecef", 
+                                icon_class="fa-folder", 
+                                extra_classes="preview-badge", 
+                                id="category-preview-badge"
+                            ) }}
                         </div>
                     </div>
                 </form>
