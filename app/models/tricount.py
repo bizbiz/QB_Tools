@@ -69,6 +69,7 @@ class Expense(db.Model):
     description = db.Column(db.Text, nullable=False)
     amount = db.Column(db.Numeric(10, 2), nullable=False)
     is_debit = db.Column(db.Boolean, default=True)  # True pour dépense, False pour revenu
+    notes = db.Column(db.Text, nullable=True)  # Notes explicatives ajoutées par l'utilisateur
     
     # Informations supplémentaires extraites
     merchant = db.Column(db.String(200))

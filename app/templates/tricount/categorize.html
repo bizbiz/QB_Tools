@@ -131,6 +131,12 @@
                                             ) }}
                                         </div>
                                         
+                                        {# Nouveau champ de notes/description #}
+                                        <div class="mb-3">
+                                            <label for="notes-{{ expense.id }}" class="form-label">Description</label>
+                                            <textarea name="notes" id="notes-{{ expense.id }}" class="form-control" rows="2" placeholder="Ajouter des détails ou explications sur cette dépense...">{{ expense.notes or '' }}</textarea>
+                                        </div>
+                                        
                                         <div class="d-flex gap-2">
                                             <button type="button" class="btn btn-primary flex-grow-1 save-button" data-expense-id="{{ expense.id }}">
                                                 <i class="fas fa-save me-2"></i>Enregistrer

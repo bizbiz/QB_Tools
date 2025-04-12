@@ -24,6 +24,7 @@
         $('.flag-select').each(function() {
             const flagSelect = $(this);
             const flagSelectId = flagSelect.attr('id');
+            const expenseId = flagSelect.data('expense-id');
             
             flagSelect.select2({
                 theme: 'bootstrap-5',
@@ -36,18 +37,42 @@
                 escapeMarkup: function(markup) { return markup; } // Permettre le HTML
             });
             
-            // Conserver le comportement actuel : mise à jour des catégories lors du changement de flag
+            // Gérer le changement de flag pour filtrer les catégories
             flagSelect.on('change', function() {
-                const expenseId = $(this).data('expense-id');
+                const flagId = $(this).val();
+                console.log(`Flag changed to ${flagId} for expense ${expenseId}`);
+                
+                // Récupérer le select de catégorie correspondant
                 const categorySelect = $(`#category-${expenseId}`);
                 
-                // Déclencher l'événement natif pour que le code existant fonctionne
                 if (categorySelect.length) {
+                    // 1. Déclencher d'abord l'événement natif pour la logique existante
                     const nativeSelect = document.getElementById(`category-${expenseId}`);
                     if (nativeSelect) {
+                        nativeSelect.flagSelect = document.getElementById(flagSelectId);
                         const event = new Event('change');
-                        nativeSelect.dispatchEvent(event);
+                        nativeSelect.flagSelect.dispatchEvent(event);
                     }
+                    
+                    // 2. Détruire et recréer Select2 pour que les changements prennent effet
+                    setTimeout(function() {
+                        categorySelect.select2('destroy');
+                        categorySelect.select2({
+                            theme: 'bootstrap-5',
+                            width: '100%',
+                            placeholder: categorySelect.data('placeholder') || 'Choisir une catégorie',
+                            allowClear: true,
+                            minimumResultsForSearch: 10,
+                            templateResult: formatCategoryOption,
+                            templateSelection: formatCategorySelection,
+                            escapeMarkup: function(markup) { return markup; }
+                        });
+                        
+                        // Actualiser les icônes Iconify
+                        if (window.Iconify) {
+                            window.Iconify.scan();
+                        }
+                    }, 100);
                 }
             });
         });
@@ -139,11 +164,6 @@
      * @param {Object} category - L'option de sélection
      * @returns {string} HTML formaté pour l'option
      */
-    /**
-     * Formate une option de catégorie dans le menu déroulant
-     * @param {Object} category - L'option de sélection
-     * @returns {string} HTML formaté pour l'option
-     */
     function formatCategoryOption(category) {
         if (!category.id) {
             return category.text; // Skip placeholder
@@ -200,7 +220,8 @@
     }
 })();
 
-$('.category-select, .flag-select').on('select2:open', function() {
+// Actualiser les icônes quand le dropdown s'ouvre
+$(document).on('select2:open', function() {
     // Attendre un court instant pour que le DOM soit prêt
     setTimeout(function() {
         if (window.Iconify) {

@@ -139,9 +139,6 @@
                 shouldInclude = true;
                 console.log(`  Option ${option.value} (${option.text}): incluse car aucun flag sélectionné`);
             } 
-            // MODIFICATION: Ne plus inclure automatiquement l'option sélectionnée 
-            // si elle n'est pas compatible avec le flag
-            
             // Vérifier si le flagId est dans les flagIds de cette catégorie
             else if (flagIds.includes(flagId)) {
                 shouldInclude = true;
@@ -194,7 +191,6 @@
         });
         
         // ÉTAPE 5: Vérifier si la valeur actuelle est toujours dans les options disponibles
-        // MODIFICATION: Sélectionner vide (index 0) si la valeur actuelle n'est plus disponible
         const isCurrentValueAvailable = Array.from(categorySelect.options).some(
             option => option.value === currentValue
         );
@@ -205,8 +201,14 @@
             console.log(`La valeur actuelle "${currentValue}" n'est plus disponible, réinitialisation à "Choisir une catégorie"`);
         }
         
-        // Déclencher un événement change pour informer d'autres listeners
-        categorySelect.dispatchEvent(new Event('change'));
+        // Signaler à Select2 que les options ont changé, s'il existe
+        if (typeof $ !== 'undefined' && $.fn && $.fn.select2) {
+            try {
+                $(categorySelect).trigger('change');
+            } catch (e) {
+                console.error("Erreur lors du déclenchement de l'événement change pour Select2:", e);
+            }
+        }
     }
 
     // Exposer les fonctions pour une utilisation externe

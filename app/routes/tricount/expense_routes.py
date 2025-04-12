@@ -109,6 +109,7 @@ def update_expense():
     expense_id = request.form.get('expense_id', type=int)
     category_id = request.form.get('category_id')
     flag_id = request.form.get('flag_id', type=int)
+    notes = request.form.get('notes', '')  # Récupérer les notes utilisateur
     
     if not expense_id:
         return jsonify({'success': False, 'error': 'ID de dépense non fourni'}), 400
@@ -129,6 +130,9 @@ def update_expense():
         default_flag = Flag.query.filter_by(is_default=True).first()
         if default_flag:
             expense.flag_id = default_flag.id
+    
+    # Mettre à jour les notes utilisateur
+    expense.notes = notes
     
     try:
         db.session.commit()
