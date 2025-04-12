@@ -1,10 +1,17 @@
+
+{# app/templates/tricount/categories.html - début du fichier #}
 {% extends "base.html" %}
+
+{# Importer les macros nécessaires #}
+{% from "macros/tricount/category_select.html" import category_badge %}
+{% from "macros/tricount/flag_macros.html" import flag_badge %}
 
 {% block title %}QB Tools - Gestion des catégories{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/main.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/categories.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/category_badge.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -66,10 +73,7 @@
                     <div class="form-check me-3">
                         <input class="form-check-input" type="checkbox" id="flag-{{ flag.id }}" name="flags" value="{{ flag.id }}" checked>
                         <label class="form-check-label" for="flag-{{ flag.id }}">
-                            <span class="flag-badge" style="background-color: {{ flag.color }}">
-                                <i class="fas {{ flag.icon }}"></i>
-                                {{ flag.name }}
-                            </span>
+                            {{ flag_badge(flag) }}
                         </label>
                     </div>
                     {% endfor %}
@@ -147,7 +151,6 @@
                         <table class="table table-hover table-striped mb-0">
                             <thead>
                                 <tr>
-                                    <th data-type="icon" class="text-center" style="width: 50px;">Icône</th>
                                     <th data-type="text">Nom</th>
                                     <th data-type="text">Description</th>
                                     <th data-type="date">Date de création</th>
@@ -164,15 +167,6 @@
                             <tbody>
                                 {% for category in categories %}
                                 <tr>
-                                    <td class="text-center">
-                                        {% if category.icon %}
-                                        <span style="font-size: 1.5rem;" title="{{ category.icon.name }}">{{ category.icon.unicode_emoji }}</span>
-                                        {% elif category.legacy_icon %}
-                                        <i class="fas {{ category.legacy_icon }} fa-lg text-secondary"></i>
-                                        {% else %}
-                                        <span class="text-muted">—</span>
-                                        {% endif %}
-                                    </td>
                                     <td>
                                         {{ category_badge(category) }}
                                     </td>
@@ -300,10 +294,7 @@
                             <div class="form-check me-3">
                                 <input class="form-check-input edit-flag-checkbox" type="checkbox" id="edit-flag-{{ flag.id }}" name="flags" value="{{ flag.id }}">
                                 <label class="form-check-label" for="edit-flag-{{ flag.id }}">
-                                    <span class="flag-badge" style="background-color: {{ flag.color }}">
-                                        <i class="fas {{ flag.icon }}"></i>
-                                        {{ flag.name }}
-                                    </span>
+                                    {{ flag_badge(flag) }}
                                 </label>
                             </div>
                             {% endfor %}
