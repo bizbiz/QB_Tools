@@ -13,4 +13,3 @@ from app.routes.tricount.category_routes import *
 from app.routes.tricount.auto_rules_routes import *
 from app.routes.tricount.flag_routes import *
 from app.routes.tricount.pending_rules_routes import *
-from app.routes.tricount.icons import *

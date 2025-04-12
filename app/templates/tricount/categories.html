@@ -4,12 +4,14 @@
 {# Importer les macros nécessaires #}
 {% from "macros/tricount/category_select.html" import category_badge %}
 {% from "macros/tricount/flag_macros.html" import flag_badge %}
+{% from "macros/tricount/icon_selector.html" import icon_search_modal, icon_input_field %}
 
 {% block title %}QB Tools - Gestion des catégories{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/main.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/categories.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/common/icon_selector.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -85,7 +87,18 @@
                                 {% for category in categories %}
                                 <tr>
                                     <td data-sort-value="{{ category.name }}">
-                                        {{ category_badge(category) }}
+                                        <div class="d-flex align-items-center">
+                                            {% if category.iconify_id %}
+                                                <span class="iconify me-2" data-icon="{{ category.iconify_id }}"></span>
+                                            {% elif category.legacy_icon %}
+                                                <i class="fas {{ category.legacy_icon }} me-2"></i>
+                                            {% else %}
+                                                <i class="fas fa-folder me-2"></i>
+                                            {% endif %}
+                                            <span class="category-badge" style="border-color: {{ category.color }}">
+                                                {{ category.name }}
+                                            </span>
+                                        </div>
                                     </td>
                                     <td>{{ category.description or 'N/A' }}</td>
                                     <td>{{ category.created_at.strftime('%d/%m/%Y') }}</td>
@@ -103,8 +116,7 @@
                                                 data-id="{{ category.id }}"
                                                 data-name="{{ category.name }}"
                                                 data-description="{{ category.description or '' }}"
-                                                data-icon-id="{{ category.icon_id or '' }}"
-                                                data-icon-emoji="{{ category.icon.unicode_emoji if category.icon else '' }}"
+                                                data-iconify-id="{{ category.iconify_id or '' }}"
                                                 data-legacy-icon="{{ category.legacy_icon or '' }}"
                                                 data-color="{{ category.color or '#e9ecef' }}"
                                                 data-bs-toggle="tooltip" 
@@ -168,17 +180,9 @@
                         </div>
                         
                         <div class="mb-3">
-                            <label for="icon_id" class="form-label">Icône</label>
-                            <select class="form-select" id="icon_id" name="icon_id">
-                                <option value="">Aucune icône</option>
-                                {% for icon in icons %}
-                                <option value="{{ icon.id }}" data-emoji="{{ icon.unicode_emoji }}" data-fa="{{ icon.font_awesome_class }}">
-                                    {{ icon.unicode_emoji }} {{ icon.name }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                            <div class="form-text">Sélectionnez une icône pour cette catégorie.</div>
-                            <div id="icon-preview" class="mt-2"></div>
+                            <label for="iconify_id" class="form-label">Icône</label>
+                            {{ icon_input_field(name='iconify_id', id='iconify_id', placeholder='Sélectionnez une icône...') }}
+                            <div class="form-text">Sélectionnez une icône pour cette catégorie (utilise Iconify).</div>
                         </div>
                         
                         <div class="mb-3">
@@ -202,7 +206,9 @@
                             <label class="form-label">Aperçu</label>
                             <div class="preview-container">
                                 <span class="category-badge preview-badge" id="category-preview-badge" style="border-color: #e9ecef;">
-                                    <span id="preview-emoji" class="me-1">📁</span>
+                                    <span id="preview-emoji" class="me-1">
+                                        <i class="fas fa-folder"></i>
+                                    </span>
                                     <span id="preview-name">Nouvelle catégorie</span>
                                 </span>
                             </div>
@@ -219,6 +225,9 @@
         </div>
     </div>
 </div>
+
+<!-- Modal de recherche d'icône (inclus une seule fois pour toute la page) -->
+{{ icon_search_modal('icon-search-modal', 'Rechercher une icône') }}
 
 <!-- Modal de suppression -->
 <div class="modal fade" id="deleteCategoryModal" tabindex="-1" aria-hidden="true">
@@ -271,16 +280,8 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label for="edit-icon-id" class="form-label">Icône</label>
-                        <select class="form-select" id="edit-icon-id" name="icon_id">
-                            <option value="">Aucune icône</option>
-                            {% for icon in icons %}
-                            <option value="{{ icon.id }}" data-emoji="{{ icon.unicode_emoji }}" data-fa="{{ icon.font_awesome_class }}">
-                                {{ icon.unicode_emoji }} {{ icon.name }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                        <div class="form-text">Sélectionnez une icône pour cette catégorie.</div>
+                        <label for="edit-iconify-id" class="form-label">Icône</label>
+                        {{ icon_input_field(name='iconify_id', id='edit-iconify-id', placeholder='Sélectionnez une icône...') }}
                     </div>
                     
                     <div class="mb-3">
@@ -301,7 +302,9 @@
                         <label class="form-label">Aperçu</label>
                         <div class="preview-container">
                             <span class="category-badge preview-badge" id="edit-category-preview-badge" style="border-color: #e9ecef;">
-                                <span id="edit-preview-emoji" class="me-1">📁</span>
+                                <span id="edit-preview-icon" class="me-1">
+                                    <i class="fas fa-folder"></i>
+                                </span>
                                 <span id="edit-preview-name">Nom de la catégorie</span>
                             </span>
                         </div>
@@ -318,12 +321,19 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Script Iconify - doit être chargé en premier -->
+<script src="https://code.iconify.design/2/2.2.1/iconify.min.js"></script>
+
+<!-- Scripts personnalisés -->
+<script src="{{ url_for('static', filename='js/common/icon_selector.js') }}"></script>
+
 <!-- Pass URLs to JavaScript -->
 <script>
     window.categoryDeleteUrl = "{{ url_for('tricount.delete_category', category_id=0) }}";
     window.categoryUpdateUrl = "{{ url_for('tricount.update_category', category_id=0) }}";
+    window.iconifyConfig = {{ iconify_config|tojson }};
 </script>
 
-<!-- Include our external JS file -->
+<!-- Gestion des catégories -->
 <script src="{{ url_for('static', filename='js/tricount/category_management.js') }}"></script>
-{% endblock %} 
+{% endblock %}

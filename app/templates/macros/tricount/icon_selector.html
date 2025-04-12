@@ -1,0 +1,78 @@
+<!-- app/templates/macros/tricount/icon_selector.html -->
+
+{% macro icon_search_modal(modal_id='icon-search-modal', title='Rechercher une icône') %}
+<div class="modal fade" id="{{ modal_id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ title }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <input type="text" class="form-control icon-search-input" placeholder="Rechercher des icônes...">
+                    <div class="form-text">Entrez au moins 2 caractères pour rechercher des icônes.</div>
+                </div>
+                
+                <div class="icon-search-results">
+                    <div class="text-center py-3">
+                        <span class="text-muted">Entrez au moins 2 caractères pour rechercher</span>
+                    </div>
+                </div>
+                
+                <div class="icon-search-loading d-none">
+                    <div class="text-center py-3">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Chargement...</span>
+                        </div>
+                        <p class="mt-2">Recherche en cours...</p>
+                    </div>
+                </div>
+
+                <div class="selected-icon-preview d-none">
+                    <hr>
+                    <div class="d-flex align-items-center">
+                        <div class="me-3 p-3 border rounded">
+                            <span class="selected-icon-display fs-1"></span>
+                        </div>
+                        <div>
+                            <h6 class="mb-1">Icône sélectionnée</h6>
+                            <p class="mb-0"><code class="selected-icon-id"></code></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary icon-select-confirm" disabled>Sélectionner</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
+{# app/templates/macros/tricount/icon_selector.html #}
+
+{% macro icon_input_field(name='iconify_id', id=None, value='', placeholder='Rechercher une icône...') %}
+{% set field_id = id or (name + '-field') %}
+<div class="icon-input-container" id="{{ field_id }}-container">
+    <div class="input-group">
+        <input type="text" 
+               class="form-control icon-search-input" 
+               id="{{ field_id }}" 
+               name="{{ name }}" 
+               value="{{ value }}" 
+               placeholder="{{ placeholder }}"
+               autocomplete="off">
+        <button class="btn btn-outline-danger icon-clear-btn" type="button" data-target="{{ field_id }}">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    <div class="icon-search-results" id="{{ field_id }}-results"></div>
+    <div class="icon-preview mt-2" id="{{ field_id }}-preview">
+        {% if value %}
+        <span class="iconify" data-icon="{{ value }}"></span>
+        {% endif %}
+    </div>
+</div>
+{% endmacro %}

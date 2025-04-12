@@ -2,7 +2,7 @@
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from app.routes.tricount import tricount_bp
 from app.extensions import db
-from app.models.tricount import Flag, Icon
+from app.models.tricount import Flag
 
 @tricount_bp.route('/flags')
 def flags_list():

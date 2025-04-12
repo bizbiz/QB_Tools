@@ -1,0 +1,96 @@
+/* app/static/css/common/icon_selector.css */
+
+/* Conteneur principal du sélecteur d'icônes */
+.icon-input-container {
+    position: relative;
+    margin-bottom: 1rem;
+}
+
+/* Zone de résultats de recherche */
+.icon-search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    background-color: white;
+    z-index: 1050;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    display: none;
+    padding: 0.5rem;
+}
+
+/* Afficher la zone de résultats quand elle a du contenu */
+.icon-search-results:not(:empty) {
+    display: block;
+}
+
+/* Grille d'icônes */
+.icon-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+}
+
+/* Élément d'icône */
+.icon-item {
+    cursor: pointer;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    padding: 0.5rem;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.icon-item:hover {
+    background-color: #f8f9fa;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.icon-item.selected {
+    background-color: #e8f4ff;
+    border-color: #0d6efd;
+}
+
+/* Icône dans l'élément */
+.icon-item .iconify {
+    font-size: 1.5rem;
+    margin-bottom: 0.25rem;
+    display: block;
+}
+
+/* Message vide ou de chargement */
+.icon-search-message {
+    padding: 1rem;
+    text-align: center;
+    color: #6c757d;
+}
+
+/* Spinner de chargement */
+.icon-search-loading {
+    text-align: center;
+    padding: 1rem;
+}
+
+/* Zone d'aperçu */
+.icon-preview {
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.icon-preview .iconify {
+    font-size: 1.5rem;
+}
+
+/* Responsive */
+@media (max-width: 576px) {
+    .icon-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}

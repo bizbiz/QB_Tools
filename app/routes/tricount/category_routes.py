@@ -2,7 +2,7 @@
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from app.routes.tricount import tricount_bp
 from app.extensions import db
-from app.models.tricount import Category, Flag, Icon
+from app.models.tricount import Category, Flag
 from sqlalchemy.exc import IntegrityError
 
 @tricount_bp.route('/categories')
@@ -10,15 +10,24 @@ def categories_list():
     """Liste des catégories"""
     categories = Category.query.all()
     flags = Flag.query.all()
-    icons = Icon.query.all()  # Récupérer toutes les icônes disponibles
-    return render_template('tricount/categories.html', categories=categories, flags=flags, icons=icons)
+    
+    # Configuration pour le sélecteur d'icônes Iconify
+    iconify_config = {
+        'collections': ['mdi', 'fa-solid', 'material-symbols', 'fluent', 'carbon'],
+        'limit': 48
+    }
+    
+    return render_template('tricount/categories.html', 
+                          categories=categories, 
+                          flags=flags,
+                          iconify_config=iconify_config)
 
 @tricount_bp.route('/categories/add', methods=['POST'])
 def add_category():
     """Ajouter une nouvelle catégorie"""
     name = request.form.get('name')
     description = request.form.get('description', '')
-    icon_id = request.form.get('icon_id')  # Récupérer l'ID de l'icône
+    iconify_id = request.form.get('iconify_id', '')  # Récupérer l'ID Iconify
     color = request.form.get('color', '#e9ecef')  # Récupérer la couleur
     flag_ids = request.form.getlist('flags')
     
@@ -29,8 +38,8 @@ def add_category():
     category = Category(
         name=name, 
         description=description,
-        icon_id=icon_id,  # Assigner l'ID de l'icône
-        color=color  # Assigner la couleur
+        iconify_id=iconify_id,
+        color=color
     )
     
     # Associer les flags sélectionnés
@@ -56,7 +65,7 @@ def update_category(category_id):
     
     name = request.form.get('name')
     description = request.form.get('description', '')
-    icon_id = request.form.get('icon_id')  # Récupérer l'ID de l'icône
+    iconify_id = request.form.get('iconify_id', '')  # Récupérer l'ID Iconify
     color = request.form.get('color', '#e9ecef')  # Récupérer la couleur
     flag_ids = request.form.getlist('flags')
     
@@ -67,8 +76,8 @@ def update_category(category_id):
     try:
         category.name = name
         category.description = description
-        category.icon_id = icon_id  # Assigner l'ID de l'icône
-        category.color = color  # Assigner la couleur
+        category.iconify_id = iconify_id
+        category.color = color
         
         # Mettre à jour les flags
         if flag_ids:
@@ -87,22 +96,12 @@ def update_category(category_id):
 
 @tricount_bp.route('/categories/<int:category_id>/info')
 def category_info(category_id):
-    """API pour récupérer les informations d'une catégorie, y compris son icône"""
+    """API pour récupérer les informations d'une catégorie"""
     category = Category.query.get_or_404(category_id)
     
     # Obtenir le premier flag associé comme flag préféré
     preferred_flag = category.flags[0] if category.flags else None
     preferred_flag_id = preferred_flag.id if preferred_flag else None
-    
-    # Information sur l'icône
-    icon_info = None
-    if category.icon:
-        icon_info = {
-            'id': category.icon.id,
-            'name': category.icon.name,
-            'font_awesome_class': category.icon.font_awesome_class,
-            'unicode_emoji': category.icon.unicode_emoji
-        }
     
     return jsonify({
         'success': True,
@@ -110,11 +109,11 @@ def category_info(category_id):
             'id': category.id,
             'name': category.name,
             'description': category.description,
-            'color': category.color  # Inclure la couleur dans la réponse
+            'color': category.color,
+            'iconify_id': category.iconify_id
         },
         'preferred_flag_id': preferred_flag_id,
-        'flags': [{'id': flag.id, 'name': flag.name} for flag in category.flags],
-        'icon': icon_info
+        'flags': [{'id': flag.id, 'name': flag.name} for flag in category.flags]
     })
 
 @tricount_bp.route('/categories/delete/<int:category_id>', methods=['POST'])
@@ -131,4 +130,3 @@ def delete_category(category_id):
         flash(f'Erreur lors de la suppression de la catégorie: {str(e)}', 'danger')
     
     return redirect(url_for('tricount.categories_list'))
-

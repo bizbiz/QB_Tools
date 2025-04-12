@@ -13,12 +13,8 @@ class Flag(db.Model):
     description = db.Column(db.String(255))
     color = db.Column(db.String(50))  # Pour le styling (ex: "blue", "#0366d6")
     
-    # Relation avec le modèle Icon
-    icon_id = db.Column(db.Integer, db.ForeignKey('icons.id'))
-    icon = db.relationship('Icon', backref='flags')
-    
-    # Gardé pour la compatibilité avec les migrations existantes
-    legacy_icon = db.Column(db.String(50))
+    # Identifiant Iconify (remplace l'ancienne relation avec la table Icon)
+    iconify_id = db.Column(db.String(100))
     
     is_default = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -40,14 +36,10 @@ class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False, unique=True)
     description = db.Column(db.String(255))
-    color = db.Column(db.String(50), default="#e9ecef")  # Ajout du champ de couleur
+    color = db.Column(db.String(50), default="#e9ecef")  # Couleur de la catégorie
     
-    # Nouvelle relation avec la table des icônes
-    icon_id = db.Column(db.Integer, db.ForeignKey('icons.id'))
-    icon = db.relationship('Icon', backref='categories')
-    
-    # Pour la rétrocompatibilité - sera déprécié après migration
-    legacy_icon = db.Column(db.String(50))
+    # Identifiant Iconify (remplace l'ancienne relation avec la table Icon)
+    iconify_id = db.Column(db.String(100))
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -61,18 +53,14 @@ class Category(db.Model):
         return f'<Category {self.name}>'
     
     @property
-    def get_icon_class(self):
-        """Récupère la classe Font Awesome de l'icône (compatibilité rétroactive)"""
-        if self.icon:
-            return self.icon.font_awesome_class
-        return self.legacy_icon or 'fa-folder'
-    
-    @property
-    def get_icon_emoji(self):
-        """Récupère l'emoji de l'icône"""
-        if self.icon:
-            return self.icon.unicode_emoji
-        return None
+    def get_icon_html(self):
+        """Génère le HTML pour afficher l'icône de manière appropriée"""
+        if self.iconify_id:
+            return f'<span class="iconify" data-icon="{self.iconify_id}"></span>'
+        elif self.legacy_icon:
+            return f'<i class="fas {self.legacy_icon}"></i>'
+        else:
+            return f'<i class="fas fa-folder"></i>'  # Icône par défaut
 
 class Expense(db.Model):
     """Modèle pour stocker les dépenses importées"""
@@ -194,59 +182,6 @@ class PendingRuleApplication(db.Model):
     
     def __repr__(self):
         return f'<PendingRuleApplication rule={self.rule_id} expense={self.expense_id}>'
-
-class Icon(db.Model):
-    """Modèle amélioré pour stocker les icônes utilisables dans l'application"""
-    __tablename__ = 'icons'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False, unique=True)
-    description = db.Column(db.String(255))
-    
-    # Représentations de l'icône - ajout du support Iconify
-    font_awesome_class = db.Column(db.String(50), nullable=True)  # FontAwesome (legacy)
-    unicode_emoji = db.Column(db.String(20), nullable=False)      # Emoji Unicode
-    iconify_id = db.Column(db.String(100), nullable=True)         # ID Iconify (nouveau)
-    
-    # Métadonnées améliorées
-    category = db.Column(db.String(50))                           # Catégorie
-    tags = db.Column(db.String(255))                              # Tags pour recherche
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    def __repr__(self):
-        if self.iconify_id:
-            return f'<Icon {self.name} (Iconify:{self.iconify_id})>'
-        elif self.unicode_emoji:
-            return f'<Icon {self.name} (Emoji:{self.unicode_emoji})>'
-        else:
-            return f'<Icon {self.name} (FA:{self.font_awesome_class})>'
-    
-    @classmethod
-    def search(cls, query, limit=20):
-        """
-        Recherche des icônes par nom, description ou tags
-        
-        Args:
-            query (str): Terme de recherche
-            limit (int): Nombre maximum de résultats
-            
-        Returns:
-            list: Liste des icônes trouvées
-        """
-        if not query or len(query) < 2:
-            return []
-            
-        # Recherche dans les différents champs
-        return cls.query.filter(
-            or_(
-                cls.name.ilike(f'%{query}%'),
-                cls.description.ilike(f'%{query}%'),
-                cls.tags.ilike(f'%{query}%'),
-                cls.category.ilike(f'%{query}%'),
-                cls.iconify_id.ilike(f'%{query}%')
-            )
-        ).limit(limit).all()
 
 # Table de liaison entre règles et dépenses
 rule_expense_links = db.Table('rule_expense_links',
