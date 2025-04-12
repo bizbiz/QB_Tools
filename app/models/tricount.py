@@ -4,6 +4,8 @@ from datetime import datetime
 from sqlalchemy import or_
 import hashlib
 
+# Mise à jour de la classe Flag dans app/models/tricount.py
+
 class Flag(db.Model):
     """Modèle pour stocker les flags de dépenses (types de dépenses)"""
     __tablename__ = 'expense_flags'
@@ -16,15 +18,11 @@ class Flag(db.Model):
     # Identifiant Iconify (remplace l'ancienne relation avec la table Icon)
     iconify_id = db.Column(db.String(100))
     
+    # Champ legacy pour compatibilité avec l'ancien système d'icônes
+    legacy_icon = db.Column(db.String(50))
+    
     is_default = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    @property
-    def get_icon_emoji(self):
-        """Récupère l'emoji de l'icône"""
-        if self.icon:
-            return self.icon.unicode_emoji
-        return "🏷️"  # Emoji par défaut
     
     def __repr__(self):
         return f'<Flag {self.name}>'

@@ -8,8 +8,14 @@ from app.models.tricount import Flag
 def flags_list():
     """Liste des flags de dépenses"""
     flags = Flag.query.all()
-    icons = Icon.query.all()  # Récupérer toutes les icônes pour le sélecteur
-    return render_template('tricount/flags.html', flags=flags, icons=icons)
+    
+    # Configuration pour le sélecteur d'icônes Iconify
+    iconify_config = {
+        'collections': ['mdi', 'fa-solid', 'material-symbols', 'fluent', 'carbon'],
+        'limit': 48
+    }
+    
+    return render_template('tricount/flags.html', flags=flags, iconify_config=iconify_config)
 
 @tricount_bp.route('/flags/add', methods=['POST'])
 def add_flag():
@@ -17,7 +23,7 @@ def add_flag():
     name = request.form.get('name')
     description = request.form.get('description', '')
     color = request.form.get('color', '#0366d6')
-    icon_id = request.form.get('icon_id', type=int)  # Récupérer l'ID de l'icône
+    iconify_id = request.form.get('iconify_id', '')  # Récupérer l'ID Iconify
     is_default = request.form.get('is_default') == 'on'
     
     if not name:
@@ -32,7 +38,7 @@ def add_flag():
         name=name, 
         description=description,
         color=color,
-        icon_id=icon_id,
+        iconify_id=iconify_id,
         is_default=is_default
     )
     db.session.add(flag)
@@ -77,8 +83,7 @@ def update_flag(flag_id):
     name = request.form.get('name')
     description = request.form.get('description', '')
     color = request.form.get('color', '#0366d6')
-    icon_id = request.form.get('icon_id', type=int)
-    legacy_icon = request.form.get('legacy_icon')
+    iconify_id = request.form.get('iconify_id', '')
     is_default = request.form.get('is_default') == 'on'
     
     if not name:
@@ -93,8 +98,9 @@ def update_flag(flag_id):
         flag.name = name
         flag.description = description
         flag.color = color
-        flag.icon_id = icon_id
-        flag.legacy_icon = legacy_icon if not icon_id else None
+        flag.iconify_id = iconify_id
+        # Supprimer legacy_icon s'il existe, puisqu'on utilise maintenant iconify_id
+        flag.legacy_icon = None
         flag.is_default = is_default
         
         db.session.commit()
@@ -117,7 +123,7 @@ def get_all_flags():
             'name': flag.name,
             'description': flag.description,
             'color': flag.color,
-            'icon': flag.icon,
+            'iconify_id': flag.iconify_id,
             'is_default': flag.is_default,
             'expenses_count': flag.expenses.count()
         })

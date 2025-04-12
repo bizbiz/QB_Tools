@@ -30,7 +30,154 @@
         if (window.TableSorter && typeof window.TableSorter.init === 'function') {
             window.TableSorter.init();
         }
+        
+        // Ajouter des observateurs pour les champs d'icône
+        setupIconObservers();
     });
+    
+    /**
+     * Configure des observateurs pour les champs d'icône
+     */
+    function setupIconObservers() {
+        // Observateur pour le champ d'icône principal
+        const iconifyIdInput = document.getElementById('iconify_id');
+        if (iconifyIdInput) {
+            observeInputValue(iconifyIdInput, function(newValue) {
+                console.log(`Iconify input value changed to: ${newValue}`);
+                const previewBadge = document.getElementById('category-preview-badge');
+                if (previewBadge && newValue) {
+                    updatePreviewIcon(previewBadge, newValue);
+                }
+            });
+        }
+        
+        // Observateur pour le champ d'icône dans le modal d'édition
+        const editIconifyInput = document.getElementById('edit-iconify-id');
+        if (editIconifyInput) {
+            observeInputValue(editIconifyInput, function(newValue) {
+                console.log(`Edit iconify input value changed to: ${newValue}`);
+                const editPreviewBadge = findEditPreviewBadge();
+                if (editPreviewBadge && newValue) {
+                    updatePreviewIcon(editPreviewBadge, newValue);
+                }
+            });
+        }
+    }
+    
+    /**
+     * Observe les changements de valeur d'un champ input
+     * @param {HTMLElement} input - L'élément input à observer
+     * @param {Function} callback - Fonction appelée quand la valeur change
+     */
+    function observeInputValue(input, callback) {
+        if (!input) return;
+        
+        // Stocker la valeur actuelle
+        let lastValue = input.value;
+        
+        // Vérifier périodiquement si la valeur a changé
+        const observer = setInterval(function() {
+            if (input.value !== lastValue) {
+                lastValue = input.value;
+                callback(lastValue);
+            }
+        }, 300);
+        
+        // Nettoyer l'observateur quand la page est déchargée
+        window.addEventListener('unload', function() {
+            clearInterval(observer);
+        });
+        
+        // Écouter également les événements standard
+        input.addEventListener('change', function() {
+            if (this.value !== lastValue) {
+                lastValue = this.value;
+                callback(lastValue);
+            }
+        });
+        
+        input.addEventListener('input', function() {
+            if (this.value !== lastValue) {
+                lastValue = this.value;
+                callback(lastValue);
+            }
+        });
+    }
+    
+    /**
+     * Met à jour l'icône d'un badge d'aperçu
+     * @param {HTMLElement} badge - Le badge à mettre à jour
+     * @param {string} iconValue - La valeur de l'icône Iconify
+     */
+    function updatePreviewIcon(badge, iconValue) {
+        if (!badge || !iconValue) return;
+        
+        console.log(`Updating preview icon for badge: ${badge.id || 'unnamed'} to: ${iconValue}`);
+        
+        // Chercher un élément iconify existant
+        let iconElement = badge.querySelector('.iconify');
+        
+        if (iconElement) {
+            // Mettre à jour l'attribut data-icon
+            iconElement.setAttribute('data-icon', iconValue);
+            console.log("Updated existing iconify element");
+        } else {
+            // Chercher une icône Font Awesome existante
+            const fasIcon = badge.querySelector('.fas');
+            if (fasIcon) {
+                // Remplacer par une icône Iconify
+                fasIcon.outerHTML = `<span class="iconify me-2" data-icon="${iconValue}"></span>`;
+                console.log("Replaced Font Awesome icon with Iconify");
+            } else {
+                // Aucune icône trouvée, vérifier si le badge a du contenu
+                const badgeText = badge.textContent.trim();
+                if (badgeText) {
+                    // Insérer l'icône au début
+                    badge.innerHTML = `<span class="iconify me-2" data-icon="${iconValue}"></span> ${badgeText}`;
+                    console.log("Added iconify to existing text");
+                } else {
+                    // Badge vide, remplacer complètement
+                    badge.innerHTML = `<span class="iconify me-2" data-icon="${iconValue}"></span> Category`;
+                    console.log("Replaced badge content completely");
+                }
+            }
+        }
+        
+        // Rafraîchir les icônes Iconify
+        refreshIconify();
+    }
+    
+    /**
+     * Trouve le badge d'aperçu dans le modal d'édition
+     * @returns {HTMLElement|null} Le badge d'aperçu ou null s'il n'est pas trouvé
+     */
+    function findEditPreviewBadge() {
+        // Stratégie 1: Par ID
+        let badge = document.getElementById('edit-category-preview-badge');
+        if (badge) return badge;
+        
+        // Stratégie 2: Via le conteneur
+        const container = document.getElementById('edit-preview-container');
+        if (container) {
+            badge = container.querySelector('.category-badge');
+            if (badge) return badge;
+        }
+        
+        // Stratégie 3: Dans le modal
+        const modal = document.getElementById('editCategoryModal');
+        if (modal) {
+            badge = modal.querySelector('.preview-badge');
+            if (badge) return badge;
+        }
+        
+        // Stratégie 4: Dernière tentative
+        const allBadges = document.querySelectorAll('.preview-badge');
+        if (allBadges.length > 0) {
+            return allBadges[allBadges.length - 1];
+        }
+        
+        return null;
+    }
     
     /**
      * Initialise la modal de suppression
@@ -113,26 +260,7 @@
                     // Attendre un peu que le DOM soit complètement rendu
                     setTimeout(function() {
                         // Stratégie multiple pour trouver le badge d'aperçu
-                        let editPreviewBadge = null;
-                        
-                        // Méthode 1: Par ID direct
-                        editPreviewBadge = document.getElementById('edit-category-preview-badge');
-                        
-                        // Méthode 2: Chercher via le conteneur d'aperçu
-                        if (!editPreviewBadge) {
-                            console.log("Badge not found by ID, trying container...");
-                            const previewContainer = document.getElementById('edit-preview-container');
-                            if (previewContainer) {
-                                console.log("Found preview container:", previewContainer);
-                                editPreviewBadge = previewContainer.querySelector('.category-badge');
-                            }
-                        }
-                        
-                        // Méthode 3: Chercher dans le modal actuel
-                        if (!editPreviewBadge) {
-                            console.log("Badge not found in container, trying modal...");
-                            editPreviewBadge = editModalElement.querySelector('.preview-badge');
-                        }
+                        const editPreviewBadge = findEditPreviewBadge();
                         
                         if (editPreviewBadge) {
                             console.log("Found preview badge:", editPreviewBadge);
@@ -144,18 +272,7 @@
                             
                             // Mise à jour de l'icône
                             if (categoryIconifyId) {
-                                const iconElement = editPreviewBadge.querySelector('.iconify');
-                                if (iconElement) {
-                                    console.log("Updating iconify element:", iconElement);
-                                    iconElement.setAttribute('data-icon', categoryIconifyId);
-                                } else {
-                                    console.log("No iconify element found, creating one");
-                                    // S'il n'y a pas d'élément iconify, réinitialiser le contenu
-                                    editPreviewBadge.innerHTML = `
-                                        <span class="iconify me-2" data-icon="${categoryIconifyId}"></span>
-                                        ${categoryName}
-                                    `;
-                                }
+                                updatePreviewIcon(editPreviewBadge, categoryIconifyId);
                             } else if (categoryLegacyIcon) {
                                 const iconElement = editPreviewBadge.querySelector('.fas');
                                 if (iconElement) {
@@ -185,7 +302,7 @@
                         }
                     }, 250); // Délai plus long pour s'assurer que le DOM est prêt
                 });
-
+                
                 // Récupérer les flags associés à cette catégorie
                 fetch(`/tricount/categories/${categoryId}/info`)
                     .then(response => response.json())
@@ -233,7 +350,7 @@
         if (editNameInput) {
             editNameInput.addEventListener('input', function() {
                 console.log("Edit name input changed:", this.value);
-                const editPreviewBadge = document.getElementById('edit-category-preview-badge');
+                const editPreviewBadge = findEditPreviewBadge();
                 if (editPreviewBadge) {
                     updateCategoryText(editPreviewBadge, this.value || 'Nom de la catégorie');
                 }
@@ -246,7 +363,7 @@
             editColorInput.addEventListener('input', function() {
                 console.log("Edit color input changed:", this.value);
                 // Badge d'aperçu
-                const editPreviewBadge = document.getElementById('edit-category-preview-badge');
+                const editPreviewBadge = findEditPreviewBadge();
                 if (editPreviewBadge) {
                     editPreviewBadge.style.borderColor = this.value;
                 }
@@ -309,7 +426,6 @@
         // Éléments du formulaire d'ajout
         const nameInput = document.getElementById('name');
         const colorInput = document.getElementById('color');
-        const iconifyIdInput = document.getElementById('iconify_id');
         
         // Élément badge d'aperçu pour le formulaire d'ajout
         const previewBadge = document.getElementById('category-preview-badge');
@@ -325,31 +441,6 @@
         if (colorInput && previewBadge) {
             colorInput.addEventListener('input', function() {
                 previewBadge.style.borderColor = this.value;
-            });
-        }
-        
-        // Mise à jour de l'icône en temps réel
-        if (iconifyIdInput && previewBadge) {
-            iconifyIdInput.addEventListener('change', function() {
-                if (this.value) {
-                    console.log("Iconify input changed:", this.value);
-                    const iconElement = previewBadge.querySelector('.iconify');
-                    if (iconElement) {
-                        console.log("Updating existing iconify element");
-                        iconElement.setAttribute('data-icon', this.value);
-                    } else {
-                        console.log("No iconify element found, rebuilding");
-                        // Reconstruire avec la nouvelle icône
-                        const badgeText = previewBadge.textContent.trim();
-                        previewBadge.innerHTML = `
-                            <span class="iconify me-2" data-icon="${this.value}"></span>
-                            ${badgeText}
-                        `;
-                    }
-                    
-                    // Rafraîchir Iconify
-                    refreshIconify();
-                }
             });
         }
     }

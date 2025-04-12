@@ -2,7 +2,9 @@
 {# Macro pour générer un badge de flag cohérent dans toute l'application #}
 {% macro flag_badge(flag, extra_classes='', text_hidden=False) %}
 <span class="flag-badge {{ extra_classes }}" style="background-color: {{ flag.color }}" {% if text_hidden %}title="{{ flag.name }}"{% endif %}>
-    {% if flag.icon %}
+    {% if flag.iconify_id %}
+    <span class="iconify me-1" data-icon="{{ flag.iconify_id }}"></span>
+    {% elif flag.icon %}
     <span class="me-1">{{ flag.get_icon_emoji }}</span>
     {% elif flag.legacy_icon %}
     <i class="fas {{ flag.legacy_icon }} me-1"></i>
@@ -14,9 +16,11 @@
 {% endmacro %}
 
 {# Version simplifiée pour l'aperçu en édition ou création #}
-{% macro flag_badge_preview(name, color, emoji=None, icon_class=None, extra_classes='', text_hidden=False) %}
+{% macro flag_badge_preview(name, color, iconify_id=None, emoji=None, icon_class=None, extra_classes='', text_hidden=False) %}
 <span class="flag-badge {{ extra_classes }}" style="background-color: {{ color }}" {% if text_hidden %}title="{{ name }}"{% endif %}>
-    {% if emoji %}
+    {% if iconify_id %}
+    <span class="iconify me-1" data-icon="{{ iconify_id }}"></span>
+    {% elif emoji %}
     <span class="me-1">{{ emoji }}</span>
     {% elif icon_class %}
     <i class="fas {{ icon_class }} me-1"></i>
@@ -46,8 +50,7 @@
             <option value="{{ flag.id }}" 
                     {% if selected_flag == flag.id %}selected{% endif %}
                     data-color="{{ flag.color }}"
-                    data-icon="{{ flag.legacy_icon or '' }}"
-                    data-emoji="{{ flag.get_icon_emoji }}">
+                    data-iconify-id="{{ flag.iconify_id or '' }}">
                 {{ flag.name }}
             </option>
         {% endfor %}
@@ -55,7 +58,7 @@
     
     {% if show_preview %}
     <div id="{{ select_id }}-preview" class="flag-preview mt-2">
-        {# Le prévisualisation sera inséré ici via JavaScript #}
+        {# La prévisualisation sera insérée ici via JavaScript #}
     </div>
     
     <script>
@@ -69,25 +72,29 @@
                     if (flagSelect.selectedIndex > 0) {
                         const selectedOption = flagSelect.options[flagSelect.selectedIndex];
                         const color = selectedOption.dataset.color;
-                        const emoji = selectedOption.dataset.emoji;
-                        const icon = selectedOption.dataset.icon;
+                        const iconifyId = selectedOption.dataset.iconifyId;
                         const name = selectedOption.text;
                         
                         previewContainer.innerHTML = `
                             <span class="flag-badge" style="background-color: ${color}">
-                                ${emoji ? `<span class="me-1">${emoji}</span>` : (icon ? `<i class="fas ${icon} me-1"></i>` : '')}
+                                ${iconifyId ? `<span class="iconify me-1" data-icon="${iconifyId}"></span>` : ''}
                                 ${name}
                             </span>
                         `;
+                        
+                        // Scan for new iconify elements
+                        if (window.Iconify) {
+                            window.Iconify.scan();
+                        }
                     } else {
                         previewContainer.innerHTML = '';
                     }
                 }
                 
-                // Initialiser la prévisualisation
+                // Initialize the preview
                 updateFlagPreview();
                 
-                // Mettre à jour lors du changement
+                // Update on change
                 flagSelect.addEventListener('change', updateFlagPreview);
             }
         });
