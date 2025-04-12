@@ -1,4 +1,5 @@
-/* app/static/css/tricount/category_badge.css */
+/* app/static/css/common/badges.css */
+/* Styles communs pour les badges de catégorie et type */
 
 /* Styles pour les badges de catégories */
 .category-badge {
@@ -12,7 +13,6 @@
     margin-right: 0.5rem;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     font-size: 0.9rem;
-    transition: all 0.2s ease;
     border-width: 2px;
     border-style: solid;
 }
@@ -22,16 +22,34 @@
     margin-right: 0.5rem;
 }
 
-/* Styles pour l'aperçu */
-.category-preview {
-    margin-top: 0.5rem;
-}
-
 /* Badge actif */
 .category-badge.active {
     background-color: rgba(13, 110, 253, 0.1);
     border-color: #0d6efd;
     color: #0d6efd;
+}
+
+/* Styles pour les badges de flags/types */
+.flag-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 2rem;
+    font-weight: 500;
+    color: white;
+    margin-right: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.flag-badge i {
+    margin-right: 0.5rem;
+}
+
+/* Versions compactes des badges */
+.flag-badge.btn-sm,
+.category-badge.btn-sm {
+    padding: 0.15rem 0.5rem;
+    font-size: 0.8rem;
 }
 
 /* Style pour le conteneur de prévisualisation */
@@ -45,7 +63,20 @@
     background-color: #f9f9f9;
 }
 
-/* Style pour le badge de prévisualisation */
+/* Style pour les badges de prévisualisation */
 .preview-badge {
     font-size: 1.1rem;
+}
+
+/* Catégories spécifiques pour compatibilité */
+.category-badge.me {
+    border-color: #0366d6;
+}
+
+.category-badge.tricount {
+    border-color: #0d6efd;
+}
+
+.category-badge.professional {
+    border-color: #198754;
 }

@@ -1,4 +1,4 @@
-<!-- app/templates/base.html - Mettre à jour -->
+<!-- app/templates/base.html -->
 
 <!DOCTYPE html>
 <html lang="fr">
@@ -12,6 +12,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Table Sorter CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/common/table_sorter.css') }}">
+    <!-- Common Badges CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/common/badges.css') }}">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block extra_css %}{% endblock %}

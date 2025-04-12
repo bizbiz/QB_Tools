@@ -150,6 +150,14 @@ function sortTable(table, columnIndex) {
         let aValue = a.cells[columnIndex].textContent.trim();
         let bValue = b.cells[columnIndex].textContent.trim();
         
+        // Check for data-sort-value attribute which helps with category badges
+        if (a.cells[columnIndex].dataset.sortValue) {
+            aValue = a.cells[columnIndex].dataset.sortValue;
+        }
+        if (b.cells[columnIndex].dataset.sortValue) {
+            bValue = b.cells[columnIndex].dataset.sortValue;
+        }
+        
         // Special case for icon column
         if (header.dataset.type === 'icon') {
             // Sort based on presence of icon
