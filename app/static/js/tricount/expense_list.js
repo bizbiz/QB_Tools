@@ -222,3 +222,29 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialiser les tooltips Bootstrap
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Réinitialiser les tooltips après chargement dynamique ou modification DOM
+    function reinitTooltips() {
+        // Détruire les anciens tooltips
+        tooltipList.forEach(function(tooltip) {
+            tooltip.dispose();
+        });
+        
+        // Initialiser les nouveaux tooltips
+        tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    }
+    
+    // Exposer la fonction pour une utilisation ailleurs
+    window.reinitTooltips = reinitTooltips;
+});

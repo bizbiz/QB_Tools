@@ -1,0 +1,229 @@
+{# app/templates/tricount/admin/fix_renamed_merchants.html #}
+{% extends "base.html" %}
+
+{% block title %}QB Tools - Correction des noms de marchands{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('tricount.index') }}">Tricount Helper</a></li>
+                    <li class="breadcrumb-item active">Correction des noms de marchands</li>
+                </ol>
+            </nav>
+            
+            <div class="d-flex justify-content-between align-items-center">
+                <h1>Correction des noms de marchands</h1>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h3 class="card-title">Explication</h3>
+                </div>
+                <div class="card-body">
+                    <p>Cet outil permet de corriger la structure des données pour les noms de marchands. Voici le processus :</p>
+                    
+                    <div class="alert alert-info">
+                        <h5><i class="fas fa-info-circle me-2"></i>Comment fonctionne la migration :</h5>
+                        <ol class="mb-0">
+                            <li>Analyser le texte original de chaque dépense pour extraire le nom du marchand tel qu'il apparaît dans le relevé bancaire</li>
+                            <li>Comparer ce nom extrait avec le nom actuellement stocké dans la base de données</li>
+                            <li>Si les deux sont différents et qu'aucun renommage n'existe déjà :
+                                <ul>
+                                    <li>Déplacer le nom actuel vers le champ "renamed_merchant" (qui s'affichera avec l'icône d'info)</li>
+                                    <li>Remplacer le nom actuel par le nom extrait du texte original</li>
+                                </ul>
+                            </li>
+                        </ol>
+                    </div>
+                    
+                    <div class="card mb-3 mt-3">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Exemple de transformation</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr class="table-secondary">
+                                            <th></th>
+                                            <th>Avant migration</th>
+                                            <th>Après migration</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <th>Champ "merchant"</th>
+                                            <td>Carrefour (modifié manuellement)</td>
+                                            <td>CARREFOUR MARKET PARIS (extrait du texte original)</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Champ "renamed_merchant"</th>
+                                            <td><em>vide</em></td>
+                                            <td>Carrefour (l'ancienne valeur du champ merchant)</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Affichage à l'utilisateur</th>
+                                            <td>Carrefour</td>
+                                            <td>Carrefour <small><i class="fas fa-tag" title="Nom original: CARREFOUR MARKET PARIS"></i></small></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Attention :</strong> Cette opération est irréversible. Il est recommandé de faire une sauvegarde de la base de données avant de continuer.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% if executed %}
+        <div class="row mb-4">
+            <div class="col">
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        <h3 class="card-title">Résultats de la migration</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-success">
+                            <h4 class="alert-heading">Migration terminée</h4>
+                            <p>La migration des noms de marchands est terminée. Voici les résultats :</p>
+                            <ul>
+                                <li><strong>Total de dépenses analysées :</strong> {{ results.total }}</li>
+                                <li><strong>Marchands migrés :</strong> {{ results.modified }}</li>
+                                <li><strong>Dépenses ignorées :</strong> {{ results.skipped }}</li>
+                                <li><strong>Erreurs :</strong> {{ results.errors }}</li>
+                            </ul>
+                        </div>
+                        
+                        {% if results.error_details and results.error_details|length > 0 %}
+                            <div class="accordion mt-3" id="errorAccordion">
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="headingErrors">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseErrors" aria-expanded="false" aria-controls="collapseErrors">
+                                            Détails des erreurs ({{ results.errors }})
+                                        </button>
+                                    </h2>
+                                    <div id="collapseErrors" class="accordion-collapse collapse" aria-labelledby="headingErrors" data-bs-parent="#errorAccordion">
+                                        <div class="accordion-body">
+                                            <div class="table-responsive">
+                                                <table class="table table-sm table-hover">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>ID Dépense</th>
+                                                            <th>Erreur</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for error in results.error_details %}
+                                                        <tr>
+                                                            <td>{{ error.expense_id }}</td>
+                                                            <td>{{ error.error }}</td>
+                                                        </tr>
+                                                        {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                        
+                        <div class="mt-4">
+                            <a href="{{ url_for('tricount.expenses_list') }}" class="btn btn-primary">
+                                <i class="fas fa-list me-2"></i>Voir la liste des dépenses
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="row mb-4">
+            <div class="col">
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        <h3 class="card-title">Prévisualisation</h3>
+                    </div>
+                    <div class="card-body">
+                        <p>Voici un aperçu de quelques dépenses qui seront analysées :</p>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr class="table-light">
+                                        <th>ID</th>
+                                        <th>Date</th>
+                                        <th>Montant</th>
+                                        <th>Marchand actuel</th>
+                                        <th>Marchand extrait</th>
+                                        <th>Après migration</th>
+                                        <th>Statut</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for expense in preview_data %}
+                                    <tr>
+                                        <td>{{ expense.id }}</td>
+                                        <td>{{ expense.date }}</td>
+                                        <td>{{ expense.amount }}</td>
+                                        <td>{{ expense.current_merchant }}</td>
+                                        <td>
+                                            <span class="text-success">
+                                                {{ expense.extracted_merchant or "Non détecté" }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if expense.will_be_migrated %}
+                                                <strong>merchant:</strong> {{ expense.extracted_merchant }}<br>
+                                                <strong>renamed_merchant:</strong> {{ expense.current_merchant }}
+                                            {% else %}
+                                                <em>Inchangé</em>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if expense.will_be_migrated %}
+                                                <span class="badge bg-primary">À migrer</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">À ignorer</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="alert alert-info mt-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Seules les dépenses où le nom original diffère du nom actuel et qui n'ont pas déjà un nom renommé seront modifiées.
+                        </div>
+                        
+                        <div class="mt-4">
+                            <a href="{{ url_for('tricount.fix_renamed_merchants', action='execute') }}" class="btn btn-danger">
+                                <i class="fas fa-cogs me-2"></i>Exécuter la migration
+                            </a>
+                            <a href="{{ url_for('tricount.index') }}" class="btn btn-secondary ms-2">
+                                <i class="fas fa-times me-2"></i>Annuler
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

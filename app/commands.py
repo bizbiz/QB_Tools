@@ -120,7 +120,112 @@ def tricount_init():
     """Alias simplifié pour initialiser les catégories Tricount"""
     return init_tricount_categories()
 
+
+
+@click.command('migrate_merchant_names')
+@with_appcontext
+def migrate_merchant_names():
+    """Migre les noms de marchands modifiés vers la structure renamed_merchant"""
+    from app.extensions import db
+    from app.models.tricount import Expense
+    from app.services.tricount.bank_statement_parser import SocieteGeneraleParser
+    
+    # Compteurs pour statistiques
+    total = 0
+    modified = 0
+    skipped = 0
+    errors = 0
+    
+    # Récupérer toutes les dépenses avec un original_text
+    expenses = Expense.query.filter(Expense.original_text.isnot(None)).all()
+    
+    click.echo(f"Analyse de {len(expenses)} dépenses avec texte original...")
+    
+    for expense in expenses:
+        total += 1
+        try:
+            # Extraire le nom du marchand du texte original
+            original_merchant = None
+            
+            # Si c'est une carte, le marchand est généralement sur la première ligne
+            if 'CARTE' in expense.original_text and '\n' in expense.original_text:
+                first_line = expense.original_text.split('\n')[0].strip()
+                
+                # Format typique: "CARTE XXXX 01/02 MARCHAND"
+                parts = first_line.split(' ')
+                if len(parts) > 3:
+                    # Tout après la date (qui est au format XX/XX) est le marchand
+                    date_index = -1
+                    for i, part in enumerate(parts):
+                        if '/' in part and len(part) == 5:  # Format XX/XX
+                            date_index = i
+                            break
+                    
+                    if date_index >= 0 and date_index < len(parts) - 1:
+                        original_merchant = ' '.join(parts[date_index + 1:])
+            
+            # Si c'est un prélèvement, chercher après "DE:" ou "POUR:"
+            elif 'PRELEVEMENT' in expense.original_text and '\n' in expense.original_text:
+                first_line = expense.original_text.split('\n')[0].strip()
+                
+                if 'DE:' in first_line:
+                    original_merchant = first_line.split('DE:')[1].strip()
+                elif 'POUR:' in first_line:
+                    original_merchant = first_line.split('POUR:')[1].strip()
+            
+            # Si c'est un virement, chercher après "DE:" ou "POUR:"
+            elif 'VIR' in expense.original_text and '\n' in expense.original_text:
+                first_line = expense.original_text.split('\n')[0].strip()
+                
+                if 'DE:' in first_line:
+                    original_merchant = first_line.split('DE:')[1].strip()
+                elif 'POUR:' in first_line:
+                    original_merchant = first_line.split('POUR:')[1].strip()
+            
+            # Si on n'a pas trouvé de marchand, utiliser le service d'analyse
+            if not original_merchant and expense.original_text:
+                # Essayer de parser avec le service existant
+                try:
+                    transactions = SocieteGeneraleParser.parse_statement(expense.original_text)
+                    if transactions:
+                        original_merchant = transactions[0].get('merchant')
+                except:
+                    pass
+            
+            # Si on a trouvé un marchand original différent du merchant actuel
+            if original_merchant and original_merchant != expense.merchant and not expense.renamed_merchant:
+                click.echo(f"ID {expense.id}: Migrer '{expense.merchant}' -> '{original_merchant}'")
+                
+                # Le nom actuel devient le nom renommé
+                expense.renamed_merchant = expense.merchant
+                
+                # Le nom original devient le merchant
+                expense.merchant = original_merchant
+                
+                modified += 1
+            else:
+                skipped += 1
+                
+        except Exception as e:
+            click.echo(f"Erreur lors du traitement de la dépense {expense.id}: {str(e)}")
+            errors += 1
+    
+    # Sauvegarder les modifications
+    try:
+        db.session.commit()
+        click.echo(f"Migration terminée: {modified} marchands migrés, {skipped} ignorés, {errors} erreurs")
+    except Exception as e:
+        db.session.rollback()
+        click.echo(f"Erreur lors de l'enregistrement des modifications: {str(e)}")
+    
+    return True
+
+# Ajouter la nouvelle commande au registre des commandes
 def register_commands(app):
     """Enregistre toutes les commandes personnalisées"""
+    # Commandes existantes...
     app.cli.add_command(init_tricount_categories)
-    app.cli.add_command(tricount_init)  # Ajouter également la version simplifiée
+    app.cli.add_command(tricount_init)
+    
+    # Nouvelle commande
+    app.cli.add_command(migrate_merchant_names)
