@@ -2,7 +2,7 @@
 from flask import render_template, redirect, url_for, flash, request
 from app.routes.tricount import tricount_bp
 from app.extensions import db
-from app.models.tricount import AutoCategorizationRule, Expense, PendingRuleApplication, Category, Flag
+from app.models.tricount import AutoCategorizationRule, Expense, PendingRuleApplication, Category, Flag, ModificationSource
 from app.utils.rename_helpers import apply_rule_rename
 import re
 
@@ -50,13 +50,15 @@ def confirm_rule_application(rule_id):
         # Appliquer les actions activées
         if rule.apply_category and rule.category_id:
             expense.category_id = rule.category_id
+            expense.category_modified_by = ModificationSource.AUTO_RULE_CONFIRMED.value
         
         if rule.apply_flag and rule.flag_id:
             expense.flag_id = rule.flag_id
+            expense.flag_modified_by = ModificationSource.AUTO_RULE_CONFIRMED.value
         
         if rule.apply_rename and rule.rename_pattern:
             # Utiliser la fonction helper pour le renommage
-            apply_rule_rename(expense, rule)
+            apply_rule_rename(expense, rule, ModificationSource.AUTO_RULE_CONFIRMED.value)
         
         # Enregistrer la relation entre la règle et la dépense
         rule.affected_expenses.append(expense)
@@ -106,16 +108,15 @@ def confirm_expense_rule(pending_id):
     # Appliquer les actions activées
     if rule.apply_category and rule.category_id:
         expense.category_id = rule.category_id
+        expense.category_modified_by = ModificationSource.AUTO_RULE_CONFIRMED.value
     
     if rule.apply_flag and rule.flag_id:
         expense.flag_id = rule.flag_id
+        expense.flag_modified_by = ModificationSource.AUTO_RULE_CONFIRMED.value
     
     if rule.apply_rename and rule.rename_pattern:
         # Appliquer le renommage si configuré
-        if rule.rename_pattern and expense.merchant:
-            expense.merchant = re.sub(rule.rename_pattern, 
-                                     rule.rename_replacement or '', 
-                                     expense.merchant)
+        apply_rule_rename(expense, rule, ModificationSource.AUTO_RULE_CONFIRMED.value)
     
     # Enregistrer la relation entre la règle et la dépense
     rule.affected_expenses.append(expense)
@@ -166,12 +167,16 @@ def edit_pending_rule_application(pending_id):
         # Mettre à jour les valeurs de la dépense
         if category_id:
             expense.category_id = category_id
+            expense.category_modified_by = ModificationSource.AUTO_RULE_CONFIRMED.value
         
         if flag_id:
             expense.flag_id = flag_id
+            expense.flag_modified_by = ModificationSource.AUTO_RULE_CONFIRMED.value
             
         # Mettre à jour les notes
-        expense.notes = notes
+        if expense.notes != notes:
+            expense.notes = notes
+            expense.notes_modified_by = ModificationSource.AUTO_RULE_CONFIRMED.value
         
         # Si l'utilisateur a demandé d'appliquer la règle
         if apply_rule:

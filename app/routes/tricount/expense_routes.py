@@ -2,7 +2,7 @@
 from flask import render_template, jsonify, request
 from app.routes.tricount import tricount_bp
 from app.extensions import db
-from app.models.tricount import Expense, Category, Flag
+from app.models.tricount import Expense, Category, Flag, ModificationSource
 from datetime import datetime
 from sqlalchemy import or_
 
@@ -121,20 +121,26 @@ def update_expense():
     # Mettre à jour la catégorie (None si category_id est vide)
     if category_id:
         expense.category_id = int(category_id)
+        expense.category_modified_by = ModificationSource.MANUAL.value
     else:
         expense.category_id = None
+        expense.category_modified_by = ModificationSource.MANUAL.value
     
     # Mettre à jour le flag
     if flag_id:
         expense.flag_id = flag_id
+        expense.flag_modified_by = ModificationSource.MANUAL.value
     else:
         # Si aucun flag n'est fourni, utiliser le flag par défaut
         default_flag = Flag.query.filter_by(is_default=True).first()
         if default_flag:
             expense.flag_id = default_flag.id
+            expense.flag_modified_by = ModificationSource.MANUAL.value
     
     # Mettre à jour les notes utilisateur
-    expense.notes = notes
+    if expense.notes != notes:
+        expense.notes = notes
+        expense.notes_modified_by = ModificationSource.MANUAL.value
     
     try:
         db.session.commit()

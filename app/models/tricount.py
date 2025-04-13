@@ -3,6 +3,7 @@ from app.extensions import db
 from datetime import datetime
 from sqlalchemy import or_
 import hashlib
+import enum
 
 # Mise à jour de la classe Flag dans app/models/tricount.py
 
@@ -78,6 +79,12 @@ class Expense(db.Model):
     reference = db.Column(db.String(200))
     original_text = db.Column(db.Text)  # Texte original pour référence
     
+    # Sources de modification - suivi de qui a modifié chaque attribut
+    category_modified_by = db.Column(db.String(50), default=ModificationSource.IMPORT.value)
+    flag_modified_by = db.Column(db.String(50), default=ModificationSource.IMPORT.value)
+    merchant_modified_by = db.Column(db.String(50), default=ModificationSource.IMPORT.value)
+    notes_modified_by = db.Column(db.String(50), default=ModificationSource.IMPORT.value)
+    
     # Métadonnées
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -105,7 +112,7 @@ class Expense(db.Model):
     @property
     def display_name(self):
         """Retourne le nom à afficher pour cette dépense (renommé ou original)"""
-        return self.renamed_merchant if self.renamed_merchant else self.merchant 
+        return self.renamed_merchant if self.renamed_merchant else self.merchant
 
 class AutoCategorizationRule(db.Model):
     """Modèle pour stocker les règles d'auto-catégorisation des dépenses"""
@@ -190,6 +197,20 @@ class PendingRuleApplication(db.Model):
     
     def __repr__(self):
         return f'<PendingRuleApplication rule={self.rule_id} expense={self.expense_id}>'
+
+class ModificationSource(enum.Enum):
+    """
+    Énumération des différentes sources de modification possibles
+    pour les dépenses et autres objets du système.
+    """
+    MANUAL = "manual"  # Modification manuelle par l'utilisateur
+    AUTO_RULE = "auto_rule"  # Modification par une règle automatique sans confirmation
+    AUTO_RULE_CONFIRMED = "auto_rule_confirmed"  # Modification par une règle avec confirmation
+    IMPORT = "import"  # Valeur importée initialement
+    
+    def __str__(self):
+        """Convertit l'énumération en chaîne de caractères"""
+        return self.value
 
 # Table de liaison entre règles et dépenses
 rule_expense_links = db.Table('rule_expense_links',

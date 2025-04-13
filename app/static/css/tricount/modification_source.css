@@ -1,0 +1,53 @@
+/* app/static/css/tricount/modification_source.css */
+
+/* Styles pour les badges de source de modification */
+.source-badge {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.4rem;
+    margin-left: 0.3rem;
+    vertical-align: middle;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Badge pour modifications manuelles */
+.source-badge-manual {
+    background-color: #0d6efd;
+    color: white;
+}
+
+/* Badge pour règles automatiques */
+.source-badge-auto {
+    background-color: #17a2b8;
+    color: white;
+}
+
+/* Badge pour règles confirmées */
+.source-badge-confirmed {
+    background-color: #198754;
+    color: white;
+}
+
+/* Style pour l'animation au survol */
+.source-badge:hover {
+    transform: scale(1.1);
+    transition: transform 0.2s ease;
+}
+
+/* Style pour indiquer qu'une modification manuelle est protégée */
+.manual-protected {
+    border-left: 3px solid #0d6efd;
+    padding-left: 0.5rem;
+}
+
+/* Icônes dans les cellules du tableau */
+table td .source-badge {
+    margin-left: 0.3rem;
+    font-size: 0.65rem;
+    width: 18px;
+    height: 18px;
+}

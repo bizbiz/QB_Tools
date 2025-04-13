@@ -8,6 +8,7 @@
                 {% set content = expense.renamed_merchant|truncate(max_length, true, "...") %}
             {% endif %}
             {{ content }}
+            {{ display_modification_source(expense.merchant_modified_by, tooltip) }}
             {% if tooltip %}
                 <small class="text-muted ms-1" 
                        data-bs-toggle="tooltip" 
@@ -25,6 +26,7 @@
             {% endif %}
             {{ content }}
             <small class="text-muted ms-1">(renommé en: {{ expense.renamed_merchant|truncate(30) }})</small>
+            {{ display_modification_source(expense.merchant_modified_by, tooltip) }}
         </div>
     {% else %}
         <div class="expense-name {{ extra_classes }}">
@@ -33,6 +35,7 @@
                 {% set content = expense.merchant|truncate(max_length, true, "...") %}
             {% endif %}
             {{ content }}
+            {{ display_modification_source(expense.merchant_modified_by, tooltip) }}
         </div>
     {% endif %}
 {% endmacro %}
@@ -45,6 +48,7 @@
                 {% set content = expense.notes|truncate(max_length, true, "...") %}
             {% endif %}
             {{ content }}
+            {{ display_modification_source(expense.notes_modified_by, tooltip) }}
             {% if tooltip %}
                 <small class="text-muted ms-1" 
                        data-bs-toggle="tooltip" 
@@ -62,6 +66,7 @@
             {% endif %}
             {{ content }}
             <small class="text-muted ms-1">(note: {{ expense.notes|truncate(30) }})</small>
+            {{ display_modification_source(expense.notes_modified_by, tooltip) }}
         </div>
     {% else %}
         <div class="expense-description {{ extra_classes }}">
@@ -122,4 +127,22 @@
             {{ display_expense_description(expense, show_original, tooltip=false, max_length=50) }}
         </p>
     </div>
+{% endmacro %}
+
+{% macro display_modification_source(source, tooltip=true) %}
+    {% if source == 'manual' %}
+        <span class="badge bg-primary ms-1" {% if tooltip %}data-bs-toggle="tooltip" title="Modifié manuellement"{% endif %}>
+            <i class="fas fa-user"></i>
+        </span>
+    {% elif source == 'auto_rule' %}
+        <span class="badge bg-info ms-1" {% if tooltip %}data-bs-toggle="tooltip" title="Appliqué par règle automatique"{% endif %}>
+            <i class="fas fa-magic"></i>
+        </span>
+    {% elif source == 'auto_rule_confirmed' %}
+        <span class="badge bg-success ms-1" {% if tooltip %}data-bs-toggle="tooltip" title="Appliqué par règle confirmée"{% endif %}>
+            <i class="fas fa-check-circle"></i>
+        </span>
+    {% elif source == 'import' %}
+        {# Pas de badge pour les valeurs initiales importées #}
+    {% endif %}
 {% endmacro %}
