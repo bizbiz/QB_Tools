@@ -6,6 +6,19 @@ import hashlib
 import enum
 
 # Mise à jour de la classe Flag dans app/models/tricount.py
+class ModificationSource(enum.Enum):
+    """
+    Énumération des différentes sources de modification possibles
+    pour les dépenses et autres objets du système.
+    """
+    MANUAL = "manual"  # Modification manuelle par l'utilisateur
+    AUTO_RULE = "auto_rule"  # Modification par une règle automatique sans confirmation
+    AUTO_RULE_CONFIRMED = "auto_rule_confirmed"  # Modification par une règle avec confirmation
+    IMPORT = "import"  # Valeur importée initialement
+    
+    def __str__(self):
+        """Convertit l'énumération en chaîne de caractères"""
+        return self.value
 
 class Flag(db.Model):
     """Modèle pour stocker les flags de dépenses (types de dépenses)"""
@@ -197,20 +210,6 @@ class PendingRuleApplication(db.Model):
     
     def __repr__(self):
         return f'<PendingRuleApplication rule={self.rule_id} expense={self.expense_id}>'
-
-class ModificationSource(enum.Enum):
-    """
-    Énumération des différentes sources de modification possibles
-    pour les dépenses et autres objets du système.
-    """
-    MANUAL = "manual"  # Modification manuelle par l'utilisateur
-    AUTO_RULE = "auto_rule"  # Modification par une règle automatique sans confirmation
-    AUTO_RULE_CONFIRMED = "auto_rule_confirmed"  # Modification par une règle avec confirmation
-    IMPORT = "import"  # Valeur importée initialement
-    
-    def __str__(self):
-        """Convertit l'énumération en chaîne de caractères"""
-        return self.value
 
 # Table de liaison entre règles et dépenses
 rule_expense_links = db.Table('rule_expense_links',

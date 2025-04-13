@@ -16,12 +16,64 @@ class AutoCategorizationService:
         Args:
             expense (Expense): Dépense de référence
             filters (dict): Filtres supplémentaires (merchant_contains, description_contains, etc.)
-            
+                
         Returns:
             list: Liste des dépenses similaires
         """
-        # [Code existant inchangé]
-        pass
+        if not expense:
+            return []
+        
+        # Initialiser les filtres par défaut
+        if filters is None:
+            filters = {}
+        
+        # Récupérer les valeurs des filtres ou utiliser les valeurs de la dépense
+        merchant_contains = filters.get('merchant_contains', expense.merchant)
+        description_contains = filters.get('description_contains', '')
+        min_amount = filters.get('min_amount')
+        max_amount = filters.get('max_amount')
+        search_original_text = filters.get('search_original_text', False)
+        
+        # Construire la requête
+        query = Expense.query
+        
+        # Exclure la dépense de référence si elle existe dans la base
+        if expense.id > 0:  # Si l'ID est valide (pas une dépense fictive)
+            query = query.filter(Expense.id != expense.id)
+        
+        # Filtrer par marchand
+        if merchant_contains:
+            if search_original_text:
+                from sqlalchemy import or_
+                query = query.filter(or_(
+                    Expense.merchant.ilike(f'%{merchant_contains}%'),
+                    Expense.original_text.ilike(f'%{merchant_contains}%')
+                ))
+            else:
+                query = query.filter(Expense.merchant.ilike(f'%{merchant_contains}%'))
+        
+        # Filtrer par description
+        if description_contains:
+            query = query.filter(Expense.description.ilike(f'%{description_contains}%'))
+        
+        # Filtrer par montant minimum
+        if min_amount is not None:
+            try:
+                min_amount_float = float(min_amount)
+                query = query.filter(Expense.amount >= min_amount_float)
+            except (ValueError, TypeError):
+                pass  # Ignorer les valeurs non valides
+        
+        # Filtrer par montant maximum
+        if max_amount is not None:
+            try:
+                max_amount_float = float(max_amount)
+                query = query.filter(Expense.amount <= max_amount_float)
+            except (ValueError, TypeError):
+                pass  # Ignorer les valeurs non valides
+        
+        # Récupérer et retourner les résultats (limités à 50 pour éviter les problèmes de performance)
+        return query.limit(50).all()
     
     @staticmethod
     def suggest_category(expense):

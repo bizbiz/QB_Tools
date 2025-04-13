@@ -34,8 +34,10 @@ def auto_categorize(expense_id):
     """Page pour créer une règle d'auto-catégorisation basée sur une dépense"""
     expense = Expense.query.get_or_404(expense_id)
     
-    # Trouver des dépenses similaires
+    # Trouver des dépenses similaires - s'assurer qu'on a toujours une liste, même si None est retourné
     similar_expenses = AutoCategorizationService.find_similar_expenses(expense)
+    if similar_expenses is None:
+        similar_expenses = []
     
     # Récupérer toutes les catégories ET les flags disponibles
     categories = Category.query.all()
