@@ -4,6 +4,9 @@
  * Module pour améliorer les selects avec Select2 et ajouter des icônes
  */
 (function() {
+    // Variable pour éviter les boucles infinies
+    let flagSelectionInProgress = false;
+    
     // Initialiser au chargement du document
     document.addEventListener('DOMContentLoaded', function() {
         console.log("Initializing enhanced selects...");
@@ -39,6 +42,10 @@
             
             // Gérer le changement de flag pour filtrer les catégories
             flagSelect.on('change', function() {
+                // Éviter les boucles infinies
+                if (flagSelectionInProgress) return;
+                flagSelectionInProgress = true;
+                
                 const flagId = $(this).val();
                 console.log(`Flag changed to ${flagId} for expense ${expenseId}`);
                 
@@ -56,23 +63,32 @@
                     
                     // 2. Détruire et recréer Select2 pour que les changements prennent effet
                     setTimeout(function() {
-                        categorySelect.select2('destroy');
-                        categorySelect.select2({
-                            theme: 'bootstrap-5',
-                            width: '100%',
-                            placeholder: categorySelect.data('placeholder') || 'Choisir une catégorie',
-                            allowClear: true,
-                            minimumResultsForSearch: 10,
-                            templateResult: formatCategoryOption,
-                            templateSelection: formatCategorySelection,
-                            escapeMarkup: function(markup) { return markup; }
-                        });
-                        
-                        // Actualiser les icônes Iconify
-                        if (window.Iconify) {
-                            window.Iconify.scan();
+                        try {
+                            categorySelect.select2('destroy');
+                            categorySelect.select2({
+                                theme: 'bootstrap-5',
+                                width: '100%',
+                                placeholder: categorySelect.data('placeholder') || 'Choisir une catégorie',
+                                allowClear: true,
+                                minimumResultsForSearch: 10,
+                                templateResult: formatCategoryOption,
+                                templateSelection: formatCategorySelection,
+                                escapeMarkup: function(markup) { return markup; }
+                            });
+                            
+                            // Actualiser les icônes Iconify
+                            if (window.Iconify) {
+                                window.Iconify.scan();
+                            }
+                        } catch (e) {
+                            console.error("Erreur lors de la reconstruction du select2:", e);
+                        } finally {
+                            // Réinitialiser le flag de protection
+                            flagSelectionInProgress = false;
                         }
                     }, 100);
+                } else {
+                    flagSelectionInProgress = false;
                 }
             });
         });
@@ -170,7 +186,7 @@
         }
         
         // Utiliser directement les données de la catégorie depuis window.categoryData
-        const categoryData = window.categoryData[category.id] || {};
+        const categoryData = window.categoryData && window.categoryData[category.id] ? window.categoryData[category.id] : {};
         const color = categoryData.color || '#e9ecef';
         const iconifyId = categoryData.iconify_id;
         
@@ -201,7 +217,7 @@
         }
         
         // Utiliser directement les données de la catégorie depuis window.categoryData
-        const categoryData = window.categoryData[category.id] || {};
+        const categoryData = window.categoryData && window.categoryData[category.id] ? window.categoryData[category.id] : {};
         const color = categoryData.color || '#e9ecef';
         const iconifyId = categoryData.iconify_id;
         
