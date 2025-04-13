@@ -4,7 +4,13 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/main.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/category_select.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/select_styles.css') }}">
 {% endblock %}
+
+{# Importer les macros pour badges de flag et catégorie #}
+{% from "macros/tricount/flag_macros.html" import flag_badge, flag_select %}
+{% from "macros/tricount/category_select.html" import category_badge, category_select_with_js %}
 
 {% block content %}
 <div class="container py-4">
@@ -40,6 +46,7 @@
                     <ol>
                         <li>Vérifiez les dépenses qui seraient affectées</li>
                         <li>Confirmez l'application de la règle pour toutes les dépenses ou individuellement</li>
+                        <li>Utilisez le bouton <i class="fas fa-edit"></i> pour modifier les détails d'une dépense avant de confirmer</li>
                         <li>Rejetez l'application si les dépenses ne doivent pas être catégorisées par cette règle</li>
                     </ol>
                     <div class="alert alert-info">
@@ -102,16 +109,19 @@
                                 <h5>Actions à appliquer</h5>
                                 <ul>
                                     {% if group.rule.apply_category %}
-                                    <li><strong>Catégorie :</strong> {{ group.rule.category.name if group.rule.category else 'Non définie' }}</li>
+                                    <li><strong>Catégorie :</strong> 
+                                        {% if group.rule.category %}
+                                        {{ category_badge(group.rule.category) }}
+                                        {% else %}
+                                        Non définie
+                                        {% endif %}
+                                    </li>
                                     {% endif %}
                                     
                                     {% if group.rule.apply_flag %}
                                     <li><strong>Type :</strong> 
                                         {% if group.rule.flag %}
-                                        <span class="flag-badge" style="background-color: {{ group.rule.flag.color }}">
-                                            <i class="fas {{ group.rule.flag.icon }}"></i>
-                                            {{ group.rule.flag.name }}
-                                        </span>
+                                        {{ flag_badge(group.rule.flag) }}
                                         {% else %}
                                         Non défini
                                         {% endif %}
@@ -150,16 +160,26 @@
                                             {% set pending_index = loop.index0 %}
                                             {% if pending_index < group.pending_ids|length %}
                                                 {% set pending_id = group.pending_ids[pending_index] %}
-                                                <form method="POST" action="{{ url_for('tricount.confirm_expense_rule', pending_id=pending_id) }}" class="d-inline">
-                                                    <button type="submit" class="btn btn-sm btn-success" data-bs-toggle="tooltip" title="Confirmer">
-                                                        <i class="fas fa-check"></i>
+                                                <div class="btn-group">
+                                                    <button type="button" class="btn btn-sm btn-outline-primary edit-pending-btn" 
+                                                            data-pending-id="{{ pending_id }}" 
+                                                            data-bs-toggle="tooltip" 
+                                                            title="Éditer avant de confirmer"
+                                                            data-expense-id="{{ expense.id }}"
+                                                            data-rule-id="{{ rule_id }}">
+                                                        <i class="fas fa-edit"></i>
                                                     </button>
-                                                </form>
-                                                <form method="POST" action="{{ url_for('tricount.reject_expense_rule', pending_id=pending_id) }}" class="d-inline">
-                                                    <button type="submit" class="btn btn-sm btn-danger" data-bs-toggle="tooltip" title="Rejeter">
-                                                        <i class="fas fa-times"></i>
-                                                    </button>
-                                                </form>
+                                                    <form method="POST" action="{{ url_for('tricount.confirm_expense_rule', pending_id=pending_id) }}" class="d-inline">
+                                                        <button type="submit" class="btn btn-sm btn-success" data-bs-toggle="tooltip" title="Confirmer">
+                                                            <i class="fas fa-check"></i>
+                                                        </button>
+                                                    </form>
+                                                    <form method="POST" action="{{ url_for('tricount.reject_expense_rule', pending_id=pending_id) }}" class="d-inline">
+                                                        <button type="submit" class="btn btn-sm btn-danger" data-bs-toggle="tooltip" title="Rejeter">
+                                                            <i class="fas fa-times"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
                                             {% endif %}
                                         </td>
                                     </tr>
@@ -195,16 +215,99 @@
     </div>
     {% endif %}
 </div>
+
+<!-- Modal d'édition d'une application en attente -->
+<div class="modal fade" id="editPendingModal" tabindex="-1" aria-labelledby="editPendingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editPendingModalLabel">Modifier avant confirmation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-pending-form" method="POST">
+                    <input type="hidden" id="pending-id" name="pending_id" value="">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="edit-merchant" class="form-label">Marchand</label>
+                            <input type="text" class="form-control" id="edit-merchant" disabled>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit-amount" class="form-label">Montant</label>
+                            <input type="text" class="form-control" id="edit-amount" disabled>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="edit-flag-id" class="form-label">Type de dépense</label>
+                            <div id="flag-select-container">
+                                <!-- Flag Select sera ajouté dynamiquement ici -->
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit-category-id" class="form-label">Catégorie</label>
+                            <div id="category-select-container">
+                                <!-- Category Select sera ajouté dynamiquement ici -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit-notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="edit-notes" name="notes" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="edit-apply-rule" name="apply_rule" value="true" checked>
+                        <label class="form-check-label" for="edit-apply-rule">
+                            Appliquer la règle à cette dépense
+                        </label>
+                        <div class="form-text">Décochez pour enregistrer uniquement vos modifications sans associer la règle à cette dépense</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="save-pending-edit">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
+<script src="{{ url_for('static', filename='js/tricount/category_select.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tricount/enhanced_selects.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tricount/pending_rules.js') }}"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize tooltips
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl)
-        });
-    });
+    // Données de catégories pour le filtrage
+    window.categoryData = {
+        {% for category in categories %}
+        "{{ category.id }}": {
+            name: "{{ category.name }}",
+            color: "{{ category.color }}",
+            iconify_id: "{{ category.iconify_id }}",
+            flagIds: [{% for flag in category.flags %}{{ flag.id }}{% if not loop.last %},{% endif %}{% endfor %}]
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+    
+    // Données des flags
+    window.flagData = {
+        {% for flag in flags %}
+        "{{ flag.id }}": {
+            name: "{{ flag.name }}",
+            color: "{{ flag.color }}",
+            iconify_id: "{{ flag.iconify_id }}",
+            icon: "{{ flag.legacy_icon }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+    
+    // URLs pour les actions AJAX
+    window.pendingRuleEditUrl = "{{ url_for('tricount.edit_pending_rule_application', pending_id=0) }}";
+    window.pendingDetailsUrl = "{{ url_for('tricount.get_pending_details', pending_id=0) }}";
 </script>
 {% endblock %}

@@ -1,0 +1,79 @@
+{# app/templates/macros/tricount/expense_macros.html #}
+
+{% macro display_expense_name(expense, show_original=false, extra_classes='', tooltip=true) %}
+    {% if expense.renamed_merchant and not show_original %}
+        <div class="expense-name {{ extra_classes }}">
+            {{ expense.renamed_merchant }}
+            {% if tooltip %}
+                <small class="text-muted ms-1" 
+                       data-bs-toggle="tooltip" 
+                       title="Nom original: {{ expense.merchant }}"
+                       data-bs-placement="top">
+                    <i class="fas fa-edit"></i>
+                </small>
+            {% endif %}
+        </div>
+    {% elif expense.renamed_merchant and show_original %}
+        <div class="expense-name {{ extra_classes }}">
+            {{ expense.merchant }}
+            <small class="text-muted ms-1">(renommé en: {{ expense.renamed_merchant }})</small>
+        </div>
+    {% else %}
+        <div class="expense-name {{ extra_classes }}">
+            {{ expense.merchant }}
+        </div>
+    {% endif %}
+{% endmacro %}
+
+{# Macro pour afficher une carte de dépense complète avec nom formaté #}
+{% macro display_expense_card(expense, show_original=false, card_classes='', show_actions=true) %}
+    <div class="card expense-card {{ card_classes }}">
+        <div class="card-header bg-light">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted small">{{ expense.date.strftime('%d/%m/%Y') }}</span>
+                <span class="expense-amount {% if expense.is_debit %}text-danger{% else %}text-success{% endif %}">
+                    {% if expense.is_debit %}-{% endif %}{{ "%.2f"|format(expense.amount) }} €
+                </span>
+            </div>
+        </div>
+        <div class="card-body">
+            <h5 class="card-title">
+                {{ display_expense_name(expense, show_original) }}
+            </h5>
+            <p class="card-text text-muted small">{{ expense.description }}</p>
+            
+            {% if expense.notes %}
+                <div class="card-text text-muted fst-italic mt-2 small">
+                    <i class="fas fa-sticky-note me-1"></i> {{ expense.notes }}
+                </div>
+            {% endif %}
+            
+            {% if show_actions %}
+                <div class="d-flex justify-content-between mt-3">
+                    <a href="{{ url_for('tricount.edit_expense', expense_id=expense.id) }}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-edit me-1"></i>Modifier
+                    </a>
+                    <a href="{{ url_for('tricount.auto_categorize', expense_id=expense.id) }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-magic me-1"></i>Auto-catégoriser
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+{% endmacro %}
+
+{# Version simple pour les listes de dépenses #}
+{% macro expense_list_item(expense, show_original=false) %}
+    <div class="expense-list-item">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <span class="text-muted me-2 small">{{ expense.date.strftime('%d/%m/%Y') }}</span>
+                {{ display_expense_name(expense, show_original, tooltip=false) }}
+            </div>
+            <span class="{% if expense.is_debit %}text-danger{% else %}text-success{% endif %}">
+                {% if expense.is_debit %}-{% endif %}{{ "%.2f"|format(expense.amount) }} €
+            </span>
+        </div>
+        <p class="small text-muted mb-0">{{ expense.description|truncate(50) }}</p>
+    </div>
+{% endmacro %}

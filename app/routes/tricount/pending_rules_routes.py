@@ -2,7 +2,8 @@
 from flask import render_template, redirect, url_for, flash, request
 from app.routes.tricount import tricount_bp
 from app.extensions import db
-from app.models.tricount import AutoCategorizationRule, Expense, PendingRuleApplication
+from app.models.tricount import AutoCategorizationRule, Expense, PendingRuleApplication, Category, Flag
+from app.utils.rename_helpers import apply_rule_rename
 import re
 
 @tricount_bp.route('/pending-rules')
@@ -23,8 +24,14 @@ def pending_rules_list():
         grouped_applications[pending.rule_id]['expenses'].append(pending.expense)
         grouped_applications[pending.rule_id]['pending_ids'].append(pending.id)
     
+    # Récupérer toutes les catégories et flags pour les sélecteurs
+    categories = Category.query.all()
+    flags = Flag.query.all()
+    
     return render_template('tricount/pending_rules.html', 
-                           grouped_applications=grouped_applications)
+                           grouped_applications=grouped_applications,
+                           categories=categories,
+                           flags=flags)
 
 @tricount_bp.route('/pending-rules/confirm/<int:rule_id>', methods=['POST'])
 def confirm_rule_application(rule_id):
@@ -48,11 +55,8 @@ def confirm_rule_application(rule_id):
             expense.flag_id = rule.flag_id
         
         if rule.apply_rename and rule.rename_pattern:
-            # Appliquer le renommage si configuré
-            if rule.rename_pattern and expense.merchant:
-                expense.merchant = re.sub(rule.rename_pattern, 
-                                         rule.rename_replacement or '', 
-                                         expense.merchant)
+            # Utiliser la fonction helper pour le renommage
+            apply_rule_rename(expense, rule)
         
         # Enregistrer la relation entre la règle et la dépense
         rule.affected_expenses.append(expense)
@@ -144,3 +148,89 @@ def reject_expense_rule(pending_id):
         flash(f'Erreur lors du rejet de l\'application: {str(e)}', 'danger')
     
     return redirect(url_for('tricount.pending_rules_list'))
+
+@tricount_bp.route('/pending-rules/edit/<int:pending_id>', methods=['POST'])
+def edit_pending_rule_application(pending_id):
+    """Éditer une application de règle en attente avant de la confirmer"""
+    pending = PendingRuleApplication.query.get_or_404(pending_id)
+    expense = pending.expense
+    rule = pending.rule
+    
+    # Récupérer les nouvelles valeurs
+    category_id = request.form.get('category_id', type=int)
+    flag_id = request.form.get('flag_id', type=int)
+    notes = request.form.get('notes', '')
+    apply_rule = request.form.get('apply_rule') == 'true'
+    
+    try:
+        # Mettre à jour les valeurs de la dépense
+        if category_id:
+            expense.category_id = category_id
+        
+        if flag_id:
+            expense.flag_id = flag_id
+            
+        # Mettre à jour les notes
+        expense.notes = notes
+        
+        # Si l'utilisateur a demandé d'appliquer la règle
+        if apply_rule:
+            # Enregistrer l'association avec la règle
+            rule.affected_expenses.append(expense)
+            
+            # Supprimer l'application en attente
+            db.session.delete(pending)
+            
+            flash('Règle appliquée avec les modifications.', 'success')
+        else:
+            # Juste sauvegarder les modifications sans appliquer la règle
+            db.session.delete(pending)
+            flash('Modifications sauvegardées, règle non appliquée.', 'info')
+        
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erreur lors de la modification: {str(e)}', 'danger')
+    
+    return redirect(url_for('tricount.pending_rules_list'))
+
+@tricount_bp.route('/pending-rules/details/<int:pending_id>')
+def get_pending_details(pending_id):
+    """API pour récupérer les détails d'une application en attente"""
+    pending = PendingRuleApplication.query.get_or_404(pending_id)
+    
+    # Récupérer la règle et la dépense
+    rule = pending.rule
+    expense = pending.expense
+    
+    # Préparer les données de la règle
+    rule_data = {
+        'id': rule.id,
+        'name': rule.name,
+        'merchant_contains': rule.merchant_contains,
+        'description_contains': rule.description_contains,
+        'category_id': rule.category_id,
+        'flag_id': rule.flag_id,
+        'apply_category': rule.apply_category,
+        'apply_flag': rule.apply_flag,
+        'apply_rename': rule.apply_rename
+    }
+    
+    # Préparer les données de la dépense
+    expense_data = {
+        'id': expense.id,
+        'date': expense.date.strftime('%d/%m/%Y'),
+        'merchant': expense.merchant,
+        'description': expense.description,
+        'amount': float(expense.amount),
+        'is_debit': expense.is_debit,
+        'notes': expense.notes,
+        'category_id': expense.category_id,
+        'flag_id': expense.flag_id
+    }
+    
+    return jsonify({
+        'success': True,
+        'rule': rule_data,
+        'expense': expense_data
+    })

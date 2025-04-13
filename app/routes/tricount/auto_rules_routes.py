@@ -3,8 +3,9 @@
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from app.routes.tricount import tricount_bp
 from app.extensions import db
-from app.models.tricount import AutoCategorizationRule, Expense, Category, Flag
+from app.models.tricount import AutoCategorizationRule, Expense, Category, Flag, PendingRuleApplication
 from app.services.tricount.auto_categorization import AutoCategorizationService
+from app.utils.rename_helpers import apply_rule_rename
 from datetime import datetime
 
 @tricount_bp.route('/auto-rules')
@@ -67,12 +68,8 @@ def apply_auto_rule(rule_id):
                 expense.flag_id = rule.flag_id
                 
             if rule.apply_rename and rule.rename_pattern:
-                # Appliquer le renommage si configuré
-                import re
-                if rule.rename_pattern and expense.merchant:
-                    expense.merchant = re.sub(rule.rename_pattern, 
-                                             rule.rename_replacement or '', 
-                                             expense.merchant)
+                # Utiliser la fonction helper pour le renommage
+                apply_rule_rename(expense, rule)
             
             # Enregistrer la relation entre la règle et la dépense
             rule.affected_expenses.append(expense)
@@ -80,7 +77,14 @@ def apply_auto_rule(rule_id):
     
     try:
         db.session.commit()
-        flash(f'Règle appliquée avec succès à {count} dépenses.', 'success')
+        
+        if rule.requires_confirmation and pending_count > 0:
+            flash(f'{pending_count} dépenses ajoutées à la liste d\'attente pour confirmation.', 'info')
+            flash(f'<a href="{url_for("tricount.pending_rules_list")}">Voir les dépenses en attente de confirmation</a>', 'info')
+        elif rule.requires_confirmation and pending_count == 0:
+            flash('Aucune dépense ne correspond aux critères de cette règle.', 'info')
+        else:
+            flash(f'Règle appliquée avec succès à {count} dépenses.', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Erreur lors de l\'application de la règle: {str(e)}', 'danger')
@@ -137,6 +141,11 @@ def create_auto_rule():
         flash('Un motif de recherche doit être spécifié si l\'option de renommage est activée.', 'warning')
         return redirect(url_for('tricount.auto_categorize', expense_id=expense_id))
     
+    # Vérification de cohérence entre les options
+    if not apply_now and not requires_confirmation:
+        flash('Configuration invalide : si "Appliquer immédiatement" est décoché, "Nécessite une confirmation" doit être coché pour que la règle soit utile.', 'warning')
+        return redirect(url_for('tricount.auto_categorize', expense_id=expense_id))
+    
     # Créer la règle
     rule = AutoCategorizationRule(
         name=rule_name,
@@ -162,6 +171,11 @@ def create_auto_rule():
         db.session.commit()
         flash(f'Règle "{rule_name}" créée avec succès.', 'success')
         
+        # Récupérer les dépenses non catégorisées
+        uncategorized = Expense.query.filter_by(category_id=None).all()
+        count = 0
+        pending_count = 0
+        
         # Appliquer immédiatement si demandé
         if apply_now:
             count = 0
@@ -177,11 +191,8 @@ def create_auto_rule():
                         expense.flag_id = flag_id
                     
                     if apply_rename and rename_pattern:
-                        import re
-                        if rename_pattern and expense.merchant:
-                            expense.merchant = re.sub(rename_pattern, 
-                                                     rename_replacement or '', 
-                                                     expense.merchant)
+                        # Utiliser la fonction helper pour le renommage
+                        apply_rule_rename(expense, rule)
                     
                     # Enregistrer la relation règle-dépense
                     rule.affected_expenses.append(expense)
@@ -189,6 +200,32 @@ def create_auto_rule():
             
             db.session.commit()
             flash(f'Règle appliquée avec succès à {count} dépenses.', 'success')
+        
+        # Si la règle nécessite une confirmation, ajouter aux applications en attente
+        elif requires_confirmation:
+            for expense in uncategorized:
+                if rule.matches_expense(expense):
+                    # Vérifier si cette application n'existe pas déjà
+                    existing = PendingRuleApplication.query.filter_by(
+                        rule_id=rule.id, 
+                        expense_id=expense.id
+                    ).first()
+                    
+                    if not existing:
+                        pending_application = PendingRuleApplication(
+                            rule_id=rule.id,
+                            expense_id=expense.id
+                        )
+                        db.session.add(pending_application)
+                        pending_count += 1
+            
+            db.session.commit()
+            if pending_count > 0:
+                flash(f'{pending_count} dépenses ajoutées à la liste d\'attente pour confirmation.', 'info')
+                # Ajouter un lien vers la page des règles en attente
+                flash(f'<a href="{url_for("tricount.pending_rules_list")}">Voir les dépenses en attente de confirmation</a>', 'info')
+            else:
+                flash('Aucune dépense ne correspond aux critères de cette règle pour le moment.', 'info')
     except Exception as e:
         db.session.rollback()
         flash(f'Erreur lors de la création de la règle: {str(e)}', 'danger')
@@ -306,16 +343,17 @@ def find_similar_expenses():
                         original_merchant = expense.original_text.split('\n')[0] if '\n' in expense.original_text else expense.original_text
                     break
             
-            expense_data = {
-                'id': expense.id,
-                'date': expense.date.strftime('%d/%m/%Y'),
-                'merchant': expense.merchant,
-                'original_merchant': original_merchant,
-                'renamed_by_rule': renamed_by_rule,
-                'amount': float(expense.amount),
-                'is_debit': expense.is_debit,
-                'description': expense.description
-            }
+            expenses_data = []
+            for expense in similar_expenses:
+                expense_data = {
+                    'id': expense.id,
+                    'date': expense.date.strftime('%d/%m/%Y'),
+                    'merchant': expense.merchant,
+                    'renamed_merchant': expense.renamed_merchant,  # Ajouter le nom renommé
+                    'amount': float(expense.amount),
+                    'is_debit': expense.is_debit,
+                    'description': expense.description
+                }
             
             # Vérifier si la dépense est déjà associée à une règle
             applied_rules = list(expense.applied_rules)

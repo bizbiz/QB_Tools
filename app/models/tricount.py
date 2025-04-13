@@ -72,7 +72,8 @@ class Expense(db.Model):
     notes = db.Column(db.Text, nullable=True)  # Notes explicatives ajoutées par l'utilisateur
     
     # Informations supplémentaires extraites
-    merchant = db.Column(db.String(200))
+    merchant = db.Column(db.String(200))  # Nom original du marchand/commerçant
+    renamed_merchant = db.Column(db.String(200))  # Nom renommé du marchand (si règle appliquée)
     payment_method = db.Column(db.String(100))
     reference = db.Column(db.String(200))
     original_text = db.Column(db.Text)  # Texte original pour référence
@@ -100,6 +101,11 @@ class Expense(db.Model):
         # Concaténer les informations clés et hasher
         identifier_str = f"{date.isoformat()}|{description}|{amount}"
         return hashlib.md5(identifier_str.encode()).hexdigest()
+    
+    @property
+    def display_name(self):
+        """Retourne le nom à afficher pour cette dépense (renommé ou original)"""
+        return self.renamed_merchant if self.renamed_merchant else self.merchant 
 
 class AutoCategorizationRule(db.Model):
     """Modèle pour stocker les règles d'auto-catégorisation des dépenses"""
@@ -150,7 +156,10 @@ class AutoCategorizationRule(db.Model):
     
     def matches_expense(self, expense):
         """Vérifie si la règle correspond à une dépense"""
-        if self.merchant_contains and self.merchant_contains.lower() not in expense.merchant.lower():
+        # Utiliser le nom d'affichage (renommé ou original)
+        merchant_name = expense.renamed_merchant if expense.renamed_merchant else expense.merchant
+        
+        if self.merchant_contains and self.merchant_contains.lower() not in merchant_name.lower():
             return False
         
         if self.description_contains and self.description_contains.lower() not in expense.description.lower():
