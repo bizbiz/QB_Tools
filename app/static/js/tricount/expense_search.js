@@ -4,6 +4,17 @@
  * Module pour la gestion de la recherche et des filtres dans les dépenses
  */
 document.addEventListener('DOMContentLoaded', function() {
+    // Éléments du DOM
+    const searchInput = document.getElementById('search');
+    const filterForm = document.getElementById('filter-form');
+    const categorySelect = document.getElementById('category_id');
+    const flagSelect = document.getElementById('flag_id');
+    const startDateInput = document.getElementById('start_date');
+    const endDateInput = document.getElementById('end_date');
+    
+    // Vérifier si les éléments existent
+    if (!filterForm) return;
+    
     // Configuration
     const CONFIG = {
         ENABLE_LIVE_FILTERS: true, // Active tous les filtres en temps réel
@@ -26,17 +37,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     }
-
-    // Éléments du DOM
-    const searchInput = document.getElementById('search');
-    const filterForm = document.getElementById('filter-form');
-    const categorySelect = document.getElementById('category_id');
-    const flagSelect = document.getElementById('flag_id');
-    const startDateInput = document.getElementById('start_date');
-    const endDateInput = document.getElementById('end_date');
-    
-    // Vérifier si les éléments existent
-    if (!filterForm) return;
     
     // Variable pour stocker le délai avant soumission
     let filterTimeout = null;

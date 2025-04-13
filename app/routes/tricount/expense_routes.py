@@ -54,7 +54,7 @@ def expenses_list():
         except ValueError:
             end_date = None
     
-    # Filtre par recherche textuelle (nouveau)
+    # Filtre par recherche textuelle
     if search_query:
         search_term = f"%{search_query}%"
         query = query.filter(
@@ -74,23 +74,16 @@ def expenses_list():
     else:
         query = query.order_by(Expense.date.desc())  # Tri par défaut
     
-    # Pagination seulement si aucun filtre n'est appliqué
-    max_per_page = 1000
+    # Configuration de pagination
+    max_per_page = 50
+    page = request.args.get('page', 1, type=int)
     
-    if not filters_applied:
-        # Pagination standard (20 par page)
-        page = request.args.get('page', 1, type=int)
-        per_page = 20
-        expenses = query.paginate(page=page, per_page=per_page)
-        paginated = True
-    else:
-        # Tous les résultats sur une page (limité à 1000)
-        total_count = query.count()
-        exceeds_limit = total_count > max_per_page
-        
-        # Limiter à max_per_page résultats
-        expenses = query.limit(max_per_page).all()
-        paginated = False
+    # Toujours paginer, que des filtres soient appliqués ou non
+    paginated = True
+    expenses = query.paginate(page=page, per_page=max_per_page, error_out=False)
+    
+    # Vérifier si le nombre total de résultats dépasse la limite par page
+    exceeds_limit = expenses.total > max_per_page
     
     # Catégories et flags pour les filtres
     categories = Category.query.all()
@@ -109,7 +102,7 @@ def expenses_list():
                           order=order,
                           filters_applied=filters_applied,
                           paginated=paginated,
-                          exceeds_limit=exceeds_limit if filters_applied else False,
+                          exceeds_limit=exceeds_limit,
                           max_per_page=max_per_page)
 
 @tricount_bp.route('/expenses/update', methods=['POST'])

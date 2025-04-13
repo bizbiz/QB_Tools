@@ -105,9 +105,9 @@
                                             <i class="fas fa-bolt small"></i>
                                         </span>
                                     </label>
-                                    <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date }}">
+                                    <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date or '' }}">
                                 </div>
-                                
+                                                                
                                 <div class="col-md-3 mb-3">
                                     <label for="end_date" class="form-label">
                                         Date de fin
@@ -115,7 +115,7 @@
                                             <i class="fas fa-bolt small"></i>
                                         </span>
                                     </label>
-                                    <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date }}">
+                                    <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date or '' }}">
                                 </div>
                                 
                                 <div class="col-md-6 mb-3 text-end">
@@ -252,17 +252,7 @@
                 </div>
 
                 <div class="card-footer">
-                    {% if filters_applied and expenses|length > 0 %}
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="text-muted">Affichage de {{ expenses|length }} dépense(s)</span>
-                            {% if exceeds_limit %}
-                            <div class="alert alert-info mb-0 py-1 px-3">
-                                <i class="fas fa-info-circle me-2"></i>
-                                Les résultats sont limités aux {{ max_per_page }} premières dépenses. Affinez vos filtres pour des résultats plus précis.
-                            </div>
-                            {% endif %}
-                        </div>
-                    {% elif paginated %}
+                    {% if expenses.total > 0 %}
                         <nav aria-label="Pagination des dépenses">
                             <ul class="pagination justify-content-center mb-0">
                                 {% if expenses.has_prev %}
@@ -309,14 +299,21 @@
                                 {% endif %}
                             </ul>
                         </nav>
+                        
+                        {% if exceeds_limit %}
+                        <div class="alert alert-info mt-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Les résultats sont limités à {{ max_per_page }} dépenses par page. Utilisez les filtres pour affiner votre recherche.
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Aucune dépense trouvée avec les filtres appliqués. 
+                            <a href="{{ url_for('tricount.expenses_list') }}">Réinitialiser les filtres</a>.
+                        </div>
                     {% endif %}
                 </div>
-                {% if exceeds_limit %}
-                <div class="alert alert-info mt-3">
-                    <i class="fas fa-info-circle me-2"></i>
-                    Les résultats sont limités aux {{ max_per_page }} premières dépenses. Utilisez les filtres pour affiner votre recherche.
-                </div>
-                {% endif %}
             </div>
         </div>
     </div>
