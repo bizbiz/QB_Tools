@@ -176,3 +176,93 @@ th.sortable {
 .form-check-label {
     font-weight: 500;
 }
+
+.description-cell {
+    max-width: 350px;
+    width: 350px;
+}
+
+.description-cell .expense-description {
+    white-space: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-height: 3em; /* Limiter à environ 3 lignes */
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* Nombre de lignes à afficher */
+    -webkit-box-orient: vertical;
+}
+
+/* Style pour le hover sur les descriptions tronquées */
+.description-cell:hover .expense-description {
+    position: relative;
+}
+
+/* Amélioration pour les tooltips */
+.tooltip-inner {
+    max-width: 300px;
+    text-align: left;
+}
+
+/* Ajouter à app/static/css/tricount/main.css */
+
+/* Style pour les cellules de description dans le tableau des dépenses */
+.description-cell {
+    max-width: 350px;
+    width: 350px;
+}
+
+/* Styles communs pour les noms et descriptions d'expense */
+.expense-name, .expense-description {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* Style pour les icônes dans les noms et descriptions */
+.expense-name .fas, .expense-description .fas {
+    color: #6c757d;
+    font-size: 0.8em;
+    transition: color 0.2s ease;
+}
+
+/* Animation au survol des icônes */
+.expense-name:hover .fas, .expense-description:hover .fas {
+    color: #0d6efd;
+}
+
+/* Style spécifique pour l'icône de tag (nom renommé) */
+.expense-name .fa-tag {
+    margin-left: 4px;
+    cursor: help;
+}
+
+/* Style spécifique pour l'icône de note (description personnalisée) */
+.expense-description .fa-sticky-note {
+    margin-left: 4px;
+    cursor: help;
+}
+
+/* Limitation de hauteur pour les descriptions */
+.description-cell .expense-description {
+    white-space: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-height: 3em; /* Limiter à environ 3 lignes */
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* Nombre de lignes à afficher */
+    -webkit-box-orient: vertical;
+}
+
+/* Amélioration pour les tooltips */
+.tooltip-inner {
+    max-width: 300px;
+    text-align: left;
+    font-size: 0.85rem;
+    padding: 8px 10px;
+    background-color: rgba(33, 37, 41, 0.95);
+}
+
+/* Animation du tooltip */
+.tooltip.show {
+    opacity: 1;
+}

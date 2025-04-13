@@ -7,9 +7,10 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/category_badge.css') }}">
 {% endblock %}
 
-{# Importer la macro flag_badge #}
+{# Importer les macros #}
 {% from "macros/tricount/flag_macros.html" import flag_badge %}
 {% from "macros/tricount/category_select.html" import category_badge %}
+{% from "macros/tricount/expense_macros.html" import display_expense_name, display_expense_description %}
 
 {% block content %}
 <div class="container py-4">
@@ -160,9 +161,9 @@
                                     {% for expense in expenses.items %}
                                     <tr data-expense-id="{{ expense.id }}">
                                         <td>{{ expense.date.strftime('%d/%m/%Y') }}</td>
-                                        <td>
-                                            <div class="fw-bold">{{ expense.merchant }}</div>
-                                            <div class="small text-muted">{{ expense.description|truncate(80) }}</div>
+                                        <td class="description-cell">
+                                            <div class="fw-bold">{{ display_expense_name(expense, max_length=70) }}</div>
+                                            <div class="small text-muted">{{ display_expense_description(expense, max_length=70) }}</div>
                                         </td>
                                         <td class="{% if expense.is_debit %}text-danger{% else %}text-success{% endif %}">
                                             {% if expense.is_debit %}-{% endif %}{{ "%.2f"|format(expense.amount) }} €
@@ -205,8 +206,8 @@
                                     <tr data-expense-id="{{ expense.id }}">
                                         <td>{{ expense.date.strftime('%d/%m/%Y') }}</td>
                                         <td>
-                                            <div class="fw-bold">{{ expense.merchant }}</div>
-                                            <div class="small text-muted">{{ expense.description|truncate(80) }}</div>
+                                            <div class="fw-bold">{{ display_expense_name(expense) }}</div>
+                                            <div class="small text-muted">{{ display_expense_description(expense)|truncate(80) }}</div>
                                         </td>
                                         <td class="{% if expense.is_debit %}text-danger{% else %}text-success{% endif %}">
                                             {% if expense.is_debit %}-{% endif %}{{ "%.2f"|format(expense.amount) }} €
