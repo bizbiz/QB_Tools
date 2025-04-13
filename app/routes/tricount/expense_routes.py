@@ -4,13 +4,7 @@ from app.routes.tricount import tricount_bp
 from app.extensions import db
 from app.models.tricount import Expense, Category, Flag
 from datetime import datetime
-
-# app/routes/tricount/expense_routes.py
-from flask import render_template, jsonify, request
-from app.routes.tricount import tricount_bp
-from app.extensions import db
-from app.models.tricount import Expense, Category, Flag
-from datetime import datetime
+from sqlalchemy import or_
 
 @tricount_bp.route('/expenses')
 def expenses_list():
@@ -20,10 +14,12 @@ def expenses_list():
     flag_id = request.args.get('flag_id', type=int)
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
+    search_query = request.args.get('search', '')
     
     # Vérifier si des filtres sont appliqués
     filters_applied = (category_id is not None or flag_id is not None or 
-                      start_date is not None or end_date is not None)
+                      start_date is not None or end_date is not None or
+                      search_query != '')
     
     # Paramètres de tri
     sort_by = request.args.get('sort', 'date')
@@ -57,6 +53,18 @@ def expenses_list():
             query = query.filter(Expense.date <= end_date_obj)
         except ValueError:
             end_date = None
+    
+    # Filtre par recherche textuelle (nouveau)
+    if search_query:
+        search_term = f"%{search_query}%"
+        query = query.filter(
+            or_(
+                Expense.merchant.ilike(search_term),
+                Expense.renamed_merchant.ilike(search_term),
+                Expense.description.ilike(search_term),
+                Expense.notes.ilike(search_term)
+            )
+        )
     
     # Appliquer le tri
     if sort_by == 'date':
@@ -96,6 +104,7 @@ def expenses_list():
                           selected_flag_id=flag_id,
                           start_date=start_date,
                           end_date=end_date,
+                          search_query=search_query,
                           sort_by=sort_by,
                           order=order,
                           filters_applied=filters_applied,

@@ -112,3 +112,17 @@ Ces améliorations pourraient être implémentées progressivement, en commença
 
 
 . Ajouter la possibilité au client d'ajouter des icones et charger la liste d'icone modulable là où on en a besoin
+
+. rename remplace name et notes remplace description
+
+. Il faut vérifier que seulement si flag & catégorie sont remplacé on fais disparaitre de à catégoriser
+
+. Gérer le cas où deux regles se superposent mais pour des champs différents (types, rename, catégorie) alors ok
+
+. Afficher une page de récap où on valide les remboursement d'un type de dépense (rien, déclaré, remboursé) ? Il faut ajouter un champ dans expense pour l'état et un champ dans les flags pour is_verifiable
+
+. Autres manières d'importer (N26)
+
+. Importer les N2F pour les croiser avec remboursable
+
+. Importer le tricount a partir de screen ?

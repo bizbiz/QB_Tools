@@ -1,0 +1,125 @@
+/* app/static/css/tricount/search_highlight.css */
+
+/* Style pour le surlignage des termes de recherche */
+.search-highlight {
+    background-color: rgba(255, 255, 0, 0.4);
+    padding: 0 2px;
+    border-radius: 2px;
+    font-weight: bold;
+}
+
+/* Style pour le champ de recherche */
+.search-input-container {
+    position: relative;
+}
+
+.search-input-container .form-control {
+    padding-right: 30px; /* Espace pour l'icône de suppression */
+}
+
+.search-input-container .search-clear-btn {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    border: none;
+    background: transparent;
+    font-size: 0.9rem;
+    color: #6c757d;
+    cursor: pointer;
+    padding: 0 10px;
+    display: none;
+}
+
+.search-input-container .form-control:focus + .search-clear-btn,
+.search-input-container .form-control:not(:placeholder-shown) + .search-clear-btn {
+    display: block;
+}
+
+/* Animation lors du filtrage */
+@keyframes highlightNew {
+    from { background-color: rgba(13, 110, 253, 0.1); }
+    to { background-color: transparent; }
+}
+
+.highlight-row {
+    animation: highlightNew 1.5s ease-out;
+}
+
+/* Style pour le compteur de résultats */
+.search-results-count {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-left: 15px;
+}
+
+.search-results-count.has-results {
+    color: #198754;
+}
+
+/* Raccourci clavier infobulle */
+.keyboard-shortcut {
+    font-size: 0.75rem;
+    color: #6c757d;
+    padding: 2px 5px;
+    background-color: #f8f9fa;
+    border-radius: 3px;
+    border: 1px solid #dee2e6;
+    margin-left: 5px;
+}
+
+/* Indicateur de chargement */
+#filter-loading-indicator {
+    z-index: 2000;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Styles pour les filtres actifs */
+.form-select.active-filter, 
+.form-control.active-filter {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Animation lors du changement de filtre */
+.filter-transition {
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Sélecteurs de date avec filtres actifs */
+input[type="date"]:not(:placeholder-shown) {
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+/* Style spécifique pour le conteneur des filtres */
+.filters-container {
+    position: relative;
+}
+
+/* Bouton de réinitialisation des filtres */
+.reset-filters-btn {
+    position: absolute;
+    right: 15px;
+    bottom: 15px;
+    transition: all 0.3s ease;
+}
+
+.reset-filters-btn:hover {
+    transform: scale(1.05);
+}
+
+/* Badge indiquant le nombre de filtres actifs */
+.active-filters-badge {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    font-size: 0.7rem;
+    padding: 3px 6px;
+}

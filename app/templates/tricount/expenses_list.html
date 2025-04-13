@@ -43,60 +43,92 @@
                 <div class="card-header">
                     <h3 class="card-title">Filtres</h3>
                 </div>
-                <div class="card-body">
-                    <form id="filter-form" method="GET" action="{{ url_for('tricount.expenses_list') }}">
-                        <div class="row">
-                            <div class="col-md-3 mb-3">
-                                <label for="category_id" class="form-label">Catégorie</label>
-                                <select class="form-select" id="category_id" name="category_id">
-                                    <option value="-1" {% if selected_category_id is none or selected_category_id < 0 %}selected{% endif %}>Toutes les catégories</option>
-                                    <option value="0" {% if selected_category_id == 0 %}selected{% endif %}>Non catégorisées</option>
-                                    {% for category in categories %}
-                                    <option value="{{ category.id }}" {% if selected_category_id == category.id %}selected{% endif %}>{{ category.name }}</option>
-                                    {% endfor %}
-                                </select>
+                    <div class="card-body">
+                        <form id="filter-form" method="GET" action="{{ url_for('tricount.expenses_list') }}">
+                            <div class="row mb-3">
+                                <div class="col-md-3 mb-3">
+                                    <label for="category_id" class="form-label">
+                                        Catégorie
+                                        <span class="badge bg-primary ms-1" title="Filtrage en temps réel">
+                                            <i class="fas fa-bolt small"></i>
+                                        </span>
+                                    </label>
+                                    <select class="form-select" id="category_id" name="category_id">
+                                        <option value="-1" {% if selected_category_id is none or selected_category_id < 0 %}selected{% endif %}>Toutes les catégories</option>
+                                        <option value="0" {% if selected_category_id == 0 %}selected{% endif %}>Non catégorisées</option>
+                                        {% for category in categories %}
+                                        <option value="{{ category.id }}" {% if selected_category_id == category.id %}selected{% endif %}>{{ category.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="col-md-3 mb-3">
+                                    <label for="flag_id" class="form-label">
+                                        Type de dépense
+                                        <span class="badge bg-primary ms-1" title="Filtrage en temps réel">
+                                            <i class="fas fa-bolt small"></i>
+                                        </span>
+                                    </label>
+                                    <select class="form-select" id="flag_id" name="flag_id">
+                                        <option value="-1" {% if selected_flag_id is none or selected_flag_id < 0 %}selected{% endif %}>Tous les types</option>
+                                        {% for flag in flags %}
+                                        <option value="{{ flag.id }}" {% if selected_flag_id == flag.id %}selected{% endif %}>{{ flag.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="col-md-3 mb-3">
+                                    <label for="search" class="form-label">
+                                        Recherche
+                                        <span class="badge bg-primary ms-1" title="Filtrage en temps réel">
+                                            <i class="fas fa-bolt small"></i>
+                                        </span>
+                                    </label>
+                                    <input type="text" class="form-control" id="search" name="search" value="{{ search_query or '' }}" 
+                                           placeholder="Rechercher dans les dépenses..." 
+                                           autocomplete="off">
+                                    <div class="form-text">Recherche dans marchand, description et notes</div>
+                                </div>
+                                
+                                <div class="col-md-3 mb-3 d-flex align-items-end">
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="fas fa-search me-2"></i>Rechercher
+                                    </button>
+                                </div>
                             </div>
                             
-                            <div class="col-md-3 mb-3">
-                                <label for="flag_id" class="form-label">Type de dépense</label>
-                                <select class="form-select" id="flag_id" name="flag_id">
-                                    <option value="-1" {% if selected_flag_id is none or selected_flag_id < 0 %}selected{% endif %}>Tous les types</option>
-                                    {% for flag in flags %}
-                                    <option value="{{ flag.id }}" {% if selected_flag_id == flag.id %}selected{% endif %}>{{ flag.name }}</option>
-                                    {% endfor %}
-                                </select>
+                            <div class="row">
+                                <div class="col-md-3 mb-3">
+                                    <label for="start_date" class="form-label">
+                                        Date de début
+                                        <span class="badge bg-primary ms-1" title="Filtrage en temps réel">
+                                            <i class="fas fa-bolt small"></i>
+                                        </span>
+                                    </label>
+                                    <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date }}">
+                                </div>
+                                
+                                <div class="col-md-3 mb-3">
+                                    <label for="end_date" class="form-label">
+                                        Date de fin
+                                        <span class="badge bg-primary ms-1" title="Filtrage en temps réel">
+                                            <i class="fas fa-bolt small"></i>
+                                        </span>
+                                    </label>
+                                    <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date }}">
+                                </div>
+                                
+                                <div class="col-md-6 mb-3 text-end">
+                                    <input type="hidden" name="sort" value="{{ sort_by }}">
+                                    <input type="hidden" name="order" value="{{ order }}">
+                                    
+                                    <a href="{{ url_for('tricount.expenses_list') }}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-undo me-2"></i>Réinitialiser les filtres
+                                    </a>
+                                </div>
                             </div>
-                            
-                            <div class="col-md-2 mb-3">
-                                <label for="start_date" class="form-label">Date de début</label>
-                                <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date }}">
-                            </div>
-                            
-                            <div class="col-md-2 mb-3">
-                                <label for="end_date" class="form-label">Date de fin</label>
-                                <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date }}">
-                            </div>
-                            
-                            <div class="col-md-2 mb-3 d-flex align-items-end">
-                                <button type="submit" class="btn btn-primary w-100">
-                                    <i class="fas fa-filter me-2"></i>Filtrer
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <!-- Préserver les paramètres de tri -->
-                        <input type="hidden" name="sort" value="{{ sort_by }}">
-                        <input type="hidden" name="order" value="{{ order }}">
-                        
-                        <div class="row mt-2">
-                            <div class="col-12 text-end">
-                                <a href="{{ url_for('tricount.expenses_list') }}" class="btn btn-outline-secondary">
-                                    <i class="fas fa-undo me-2"></i>Réinitialiser les filtres
-                                </a>
-                            </div>
-                        </div>
-                    </form>
-                </div>
+                        </form>
+                    </div>
             </div>
         </div>
     </div>
@@ -299,7 +331,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="edit-expense-form">
+                <form id="edit-expense-form" action="{{ url_for('tricount.update_expense') }}" method="POST">
                     <input type="hidden" id="edit-expense-id" name="expense_id">
                     
                     <div class="mb-3">
@@ -312,18 +344,27 @@
                         </select>
                     </div>
                     
-                    <div class="col-md-6 mb-3">
+                    <div class="mb-3">
                         <label class="form-label">Types de dépenses</label>
                         <div class="d-flex flex-wrap gap-2">
                             {% for flag in flags %}
                             <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="flag_{{ flag.id }}" name="flag_{{ flag.id }}" value="1" {% if request.args.get('flag_' ~ flag.id) == '1' %}checked{% endif %}>
+                                <input class="form-check-input" type="checkbox" 
+                                       id="flag_{{ flag.id }}" 
+                                       name="flag_{{ flag.id }}" 
+                                       value="{{ flag.id }}">
                                 <label class="form-check-label" for="flag_{{ flag.id }}">
                                     {{ flag_badge(flag) }}
                                 </label>
                             </div>
                             {% endfor %}
                         </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit-notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="edit-notes" name="notes" rows="3"></textarea>
+                        <div class="form-text">Notes personnelles sur cette dépense</div>
                     </div>
                     
                     <div class="alert alert-info">
@@ -342,111 +383,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialiser les tooltips
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl)
-        });
-        
-        // Gestion de la modal d'édition
-        const editButtons = document.querySelectorAll('.edit-expense');
-        const editModal = new bootstrap.Modal(document.getElementById('editExpenseModal'));
-        const editForm = document.getElementById('edit-expense-form');
-        const editExpenseId = document.getElementById('edit-expense-id');
-        const editCategory = document.getElementById('edit-category');
-        const editTricount = document.getElementById('edit-tricount');
-        const editProfessional = document.getElementById('edit-professional');
-        const saveButton = document.getElementById('save-expense');
-        
-        // Ouvrir la modal d'édition
-        editButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const row = this.closest('tr');
-                const expenseId = row.dataset.expenseId;
-                
-                // Récupérer l'état actuel
-                const categoryBadge = row.querySelector('td:nth-child(4) .badge');
-                const isForMe = row.querySelector('td:nth-child(5) .fa-check') !== null;
-                const isTricount = row.querySelector('td:nth-child(6) .fa-check') !== null;
-                const isProfessional = row.querySelector('td:nth-child(7) .fa-check') !== null;
-                
-                // Remplir le formulaire
-                editExpenseId.value = expenseId;
-                
-                // Trouver la catégorie
-                if (categoryBadge && categoryBadge.textContent !== 'Non catégorisé') {
-                    // Trouver l'option correspondante
-                    const categoryOptions = Array.from(editCategory.options);
-                    const matchingOption = categoryOptions.find(option => option.textContent === categoryBadge.textContent);
-                    if (matchingOption) {
-                        editCategory.value = matchingOption.value;
-                    } else {
-                        editCategory.value = ''; // Non catégorisé par défaut
-                    }
-                } else {
-                    editCategory.value = '';
-                }
-                
-                // Définir les flags (un seul peut être actif)
-                editForMe.checked = isForMe;
-                editTricount.checked = isTricount;
-                editProfessional.checked = isProfessional;
-                
-                // Ajouter des écouteurs pour s'assurer qu'un seul flag est actif
-                const ensureOnlyOneActive = function() {
-                    if (this === editForMe && this.checked) {
-                        editTricount.checked = false;
-                        editProfessional.checked = false;
-                    } else if (this === editTricount && this.checked) {
-                        editForMe.checked = false;
-                        editProfessional.checked = false;
-                    } else if (this === editProfessional && this.checked) {
-                        editForMe.checked = false;
-                        editTricount.checked = false;
-                    }
-                    
-                    // S'assurer qu'au moins un est coché
-                    if (!editForMe.checked && !editTricount.checked && !editProfessional.checked) {
-                        editForMe.checked = true; // Par défaut
-                    }
-                };
-                
-                editForMe.addEventListener('change', ensureOnlyOneActive);
-                editTricount.addEventListener('change', ensureOnlyOneActive);
-                editProfessional.addEventListener('change', ensureOnlyOneActive);
-                
-                // Ouvrir la modal
-                editModal.show();
-            });
-        });
-        
-        // Enregistrer les modifications
-        saveButton.addEventListener('click', function() {
-            const formData = new FormData(editForm);
-            
-            fetch('{{ url_for("tricount.update_expense") }}', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Fermer la modal
-                    editModal.hide();
-                    
-                    // Recharger la page pour voir les changements
-                    window.location.reload();
-                } else {
-                    alert('Erreur lors de la mise à jour: ' + (data.error || 'Erreur inconnue'));
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Erreur de connexion au serveur.');
-            });
-        });
-    });
-</script>
+<script src="{{ url_for('static', filename='js/tricount/expense_search.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tricount/search_highlight.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tricount/expense_list.js') }}"></script>
 {% endblock %}
