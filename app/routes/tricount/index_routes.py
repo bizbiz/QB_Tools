@@ -1,7 +1,8 @@
 # app/routes/tricount/index_routes.py
 from flask import render_template
 from app.routes.tricount import tricount_bp
-from app.models.tricount import Expense, Flag, PendingRuleApplication
+from app.models.tricount import Expense, Flag, PendingRuleApplication, ReimbursementType, DeclarationStatus
+from sqlalchemy import and_
 
 @tricount_bp.route('/')
 def index():
@@ -23,8 +24,25 @@ def index():
     # Compter les règles en attente de confirmation
     pending_count = PendingRuleApplication.query.count()
     
+    # Compter les dépenses remboursables non déclarées
+    try:
+        reimbursable_count = Expense.query.join(Flag).filter(
+            and_(
+                Flag.reimbursement_type.in_([
+                    ReimbursementType.PARTIALLY_REIMBURSABLE.value,
+                    ReimbursementType.FULLY_REIMBURSABLE.value
+                ]),
+                Expense.declaration_status == DeclarationStatus.NOT_DECLARED.value
+            )
+        ).count()
+    except Exception as e:
+        # En cas d'erreur, on met une valeur par défaut
+        print(f"Erreur lors du calcul des dépenses remboursables : {str(e)}")
+        reimbursable_count = 0
+    
     return render_template('tricount/index.html', 
                            expenses_stats=expenses_stats,
                            flags=flags,
                            recent_expenses=recent_expenses,
-                           pending_count=pending_count)
+                           pending_count=pending_count,
+                           reimbursable_count=reimbursable_count)
