@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+
+{% block title %}QB Tools - Importer depuis N26 CSV{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/main.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('tricount.index') }}">Tricount Helper</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('tricount.import_expenses') }}">Importer des dépenses</a></li>
+                    <li class="breadcrumb-item active">N26 CSV</li>
+                </ol>
+            </nav>
+            
+            <h1>Importer depuis N26 (CSV)</h1>
+            <p class="lead">Téléchargez votre relevé bancaire au format CSV pour importer vos dépenses</p>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h3 class="card-title">Instructions</h3>
+                </div>
+                <div class="card-body">
+                    <ol>
+                        <li>Connectez-vous à votre espace bancaire N26</li>
+                        <li>Accédez à la section "Transactions" ou "Relevés"</li>
+                        <li>Téléchargez vos transactions au format CSV</li>
+                        <li>Sélectionnez le fichier téléchargé ci-dessous</li>
+                        <li>Cliquez sur "Analyser et importer"</li>
+                    </ol>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Les données sont traitées localement et ne sont jamais envoyées à des serveurs externes.
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Format attendu :</strong> Le fichier CSV doit contenir les colonnes suivantes :
+                        <code>Booking Date, Value Date, Partner Name, Type, Payment Reference, Amount (EUR), Original Amount, Original Currency</code>.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h3 class="card-title">Importer un fichier CSV</h3>
+                </div>
+                <div class="card-body">
+                    <form id="import-form" method="POST" action="{{ url_for('tricount.import_expenses_n26') }}" enctype="multipart/form-data">
+                        <div class="mb-4">
+                            <label for="csv_file" class="form-label">Fichier CSV de N26</label>
+                            <input class="form-control" type="file" id="csv_file" name="csv_file" accept=".csv" required>
+                            <div class="form-text">Sélectionnez le fichier CSV téléchargé depuis votre compte N26.</div>
+                        </div>
+                        
+                        <div id="preview-container" class="mb-3 d-none">
+                            <h4>Aperçu des transactions</h4>
+                            <div class="alert alert-info mb-3">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <span id="preview-count">0</span> transactions détectées.
+                            </div>
+                            
+                            <div class="table-responsive preview-table">
+                                <table class="table table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Marchand</th>
+                                            <th>Description</th>
+                                            <th>Montant</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="preview-tbody">
+                                        {# Les transactions seront ajoutées ici par JavaScript #}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <button type="button" id="preview-btn" class="btn btn-outline-success">
+                                <i class="fas fa-eye me-2"></i>Aperçu
+                            </button>
+                            
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-file-import me-2"></i>Analyser et importer
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h3 class="card-title">Comment obtenir un relevé CSV de N26</h3>
+                </div>
+                <div class="card-body">
+                    <ol>
+                        <li>Connectez-vous à votre application ou site web N26</li>
+                        <li>Accédez à la section "Espace personnel" ou "Mon compte"</li>
+                        <li>Naviguez vers "Relevés bancaires" ou "Transactions"</li>
+                        <li>Sélectionnez la période souhaitée</li>
+                        <li>Cliquez sur "Exporter" ou "Télécharger" et choisissez le format CSV</li>
+                        <li>Enregistrez le fichier sur votre appareil</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const fileInput = document.getElementById('csv_file');
+        const previewBtn = document.getElementById('preview-btn');
+        const previewContainer = document.getElementById('preview-container');
+        const previewCount = document.getElementById('preview-count');
+        const previewTbody = document.getElementById('preview-tbody');
+        
+        // Vérifier que le fichier est un CSV
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                const fileName = this.files[0].name;
+                if (!fileName.toLowerCase().endsWith('.csv')) {
+                    alert('Veuillez sélectionner un fichier CSV.');
+                    this.value = '';
+                }
+            }
+        });
+        
+        // Fonction pour prévisualiser les transactions
+        previewBtn.addEventListener('click', function() {
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert('Veuillez d\'abord sélectionner un fichier CSV.');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const content = e.target.result;
+                
+                // Analyser le CSV pour l'aperçu
+                const transactions = parseCSVPreview(content);
+                
+                // Mettre à jour le compteur
+                previewCount.textContent = transactions.length;
+                
+                // Effacer le contenu précédent
+                previewTbody.innerHTML = '';
+                
+                // Ajouter les transactions à l'aperçu
+                transactions.forEach(transaction => {
+                    const row = document.createElement('tr');
+                    
+                    const dateCell = document.createElement('td');
+                    dateCell.textContent = transaction.date;
+                    row.appendChild(dateCell);
+                    
+                    const merchantCell = document.createElement('td');
+                    merchantCell.textContent = transaction.merchant;
+                    row.appendChild(merchantCell);
+                    
+                    const descriptionCell = document.createElement('td');
+                    descriptionCell.textContent = transaction.description || '';
+                    row.appendChild(descriptionCell);
+                    
+                    const amountCell = document.createElement('td');
+                    amountCell.textContent = `${transaction.amount} €`;
+                    // Mettre le montant en rouge si c'est négatif (débit)
+                    amountCell.className = parseFloat(transaction.amount) < 0 ? 'text-danger' : 'text-success';
+                    row.appendChild(amountCell);
+                    
+                    previewTbody.appendChild(row);
+                });
+                
+                // Afficher le conteneur d'aperçu
+                previewContainer.classList.remove('d-none');
+            };
+            
+            reader.readAsText(file);
+        });
+        
+        // Fonction pour analyser le CSV pour la prévisualisation
+        function parseCSVPreview(content) {
+            const transactions = [];
+            
+            // Séparer le contenu en lignes
+            const lines = content.split('\n');
+            
+            // La première ligne contient les en-têtes
+            if (lines.length < 2) return transactions;
+            
+            // Extraire les en-têtes
+            const headers = parseCSVLine(lines[0]);
+            
+            // Trouver les indices des colonnes importantes
+            const dateIndex = headers.findIndex(h => h.includes('Booking Date'));
+            const partnerIndex = headers.findIndex(h => h.includes('Partner Name'));
+            const typeIndex = headers.findIndex(h => h.includes('Type'));
+            const referenceIndex = headers.findIndex(h => h.includes('Payment Reference'));
+            const amountIndex = headers.findIndex(h => h.includes('Amount (EUR)'));
+            
+            // Vérifier que les colonnes nécessaires existent
+            if (dateIndex === -1 || partnerIndex === -1 || amountIndex === -1) {
+                alert('Format de CSV non reconnu. Veuillez vérifier que le fichier est bien exporté depuis N26.');
+                return transactions;
+            }
+            
+            // Traiter les lignes de données (en commençant à la deuxième ligne)
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue; // Ignorer les lignes vides
+                
+                // Analyser la ligne
+                const values = parseCSVLine(line);
+                
+                // Vérifier qu'on a suffisamment de valeurs
+                if (values.length <= Math.max(dateIndex, partnerIndex, amountIndex)) continue;
+                
+                // Créer une transaction
+                const date = values[dateIndex];
+                const merchant = values[partnerIndex];
+                const description = referenceIndex !== -1 ? values[referenceIndex] : '';
+                const type = typeIndex !== -1 ? values[typeIndex] : '';
+                const amount = values[amountIndex];
+                
+                // Filtrer les lignes sans date ou montant
+                if (!date || !amount) continue;
+                
+                transactions.push({
+                    date,
+                    merchant,
+                    description: description || type,
+                    amount
+                });
+                
+                // Limiter à 50 transactions pour l'aperçu
+                if (transactions.length >= 50) break;
+            }
+            
+            return transactions;
+        }
+        
+        // Fonction pour analyser une ligne CSV
+        function parseCSVLine(line) {
+            const result = [];
+            let inQuotes = false;
+            let currentValue = '';
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                
+                if (char === '"') {
+                    // Toggle le mode "dans les guillemets"
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    // Ajouter la valeur au résultat et réinitialiser
+                    result.push(currentValue);
+                    currentValue = '';
+                } else {
+                    // Ajouter le caractère à la valeur courante
+                    currentValue += char;
+                }
+            }
+            
+            // Ajouter la dernière valeur
+            result.push(currentValue);
+            
+            return result;
+        }
+    });
+</script>
+{% endblock %}

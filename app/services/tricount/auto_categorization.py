@@ -16,64 +16,48 @@ class AutoCategorizationService:
         Args:
             expense (Expense): Dépense de référence
             filters (dict): Filtres supplémentaires (merchant_contains, description_contains, etc.)
-                
+            
         Returns:
             list: Liste des dépenses similaires
         """
-        if not expense:
-            return []
+        from app.models.tricount import Expense
         
-        # Initialiser les filtres par défaut
+        # Si des filtres sont fournis, les utiliser, sinon créer en fonction de la dépense
         if filters is None:
             filters = {}
         
-        # Récupérer les valeurs des filtres ou utiliser les valeurs de la dépense
-        merchant_contains = filters.get('merchant_contains', expense.merchant)
+        # Valeurs par défaut pour les filtres
+        merchant_contains = filters.get('merchant_contains', expense.merchant if expense else '')
         description_contains = filters.get('description_contains', '')
-        min_amount = filters.get('min_amount')
-        max_amount = filters.get('max_amount')
-        search_original_text = filters.get('search_original_text', False)
+        min_amount = filters.get('min_amount', None)
+        max_amount = filters.get('max_amount', None)
         
-        # Construire la requête
+        # Point de départ de la requête
         query = Expense.query
         
-        # Exclure la dépense de référence si elle existe dans la base
-        if expense.id > 0:  # Si l'ID est valide (pas une dépense fictive)
+        # Exclure la dépense courante si elle a un ID positif
+        if expense and expense.id > 0:
             query = query.filter(Expense.id != expense.id)
         
-        # Filtrer par marchand
+        # Appliquer les filtres de texte
         if merchant_contains:
-            if search_original_text:
-                from sqlalchemy import or_
-                query = query.filter(or_(
-                    Expense.merchant.ilike(f'%{merchant_contains}%'),
-                    Expense.original_text.ilike(f'%{merchant_contains}%')
-                ))
-            else:
-                query = query.filter(Expense.merchant.ilike(f'%{merchant_contains}%'))
+            # SIMPLIFICATION: Rechercher uniquement dans merchant (nom original)
+            query = query.filter(Expense.merchant.ilike(f'%{merchant_contains}%'))
         
-        # Filtrer par description
         if description_contains:
             query = query.filter(Expense.description.ilike(f'%{description_contains}%'))
         
-        # Filtrer par montant minimum
+        # Appliquer les filtres de montant
         if min_amount is not None:
-            try:
-                min_amount_float = float(min_amount)
-                query = query.filter(Expense.amount >= min_amount_float)
-            except (ValueError, TypeError):
-                pass  # Ignorer les valeurs non valides
+            query = query.filter(Expense.amount >= min_amount)
         
-        # Filtrer par montant maximum
         if max_amount is not None:
-            try:
-                max_amount_float = float(max_amount)
-                query = query.filter(Expense.amount <= max_amount_float)
-            except (ValueError, TypeError):
-                pass  # Ignorer les valeurs non valides
+            query = query.filter(Expense.amount <= max_amount)
         
-        # Récupérer et retourner les résultats (limités à 50 pour éviter les problèmes de performance)
-        return query.limit(50).all()
+        # Récupérer toutes les dépenses correspondantes et les trier par date
+        similar_expenses = query.order_by(Expense.date.desc()).all()
+        
+        return similar_expenses
     
     @staticmethod
     def suggest_category(expense):

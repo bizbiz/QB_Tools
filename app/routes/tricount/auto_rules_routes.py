@@ -1,4 +1,5 @@
-# app/routes/tricount/auto_rules_routes.py - version sans fréquence
+# app/routes/tricount/auto_rules_routes.py
+# Version simplifiée qui recherche uniquement dans merchant
 
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from app.routes.tricount import tricount_bp
@@ -34,10 +35,8 @@ def auto_categorize(expense_id):
     """Page pour créer une règle d'auto-catégorisation basée sur une dépense"""
     expense = Expense.query.get_or_404(expense_id)
     
-    # Trouver des dépenses similaires - s'assurer qu'on a toujours une liste, même si None est retourné
+    # Trouver des dépenses similaires
     similar_expenses = AutoCategorizationService.find_similar_expenses(expense)
-    if similar_expenses is None:
-        similar_expenses = []
     
     # Récupérer toutes les catégories ET les flags disponibles
     categories = Category.query.all()
@@ -59,23 +58,42 @@ def apply_auto_rule(rule_id):
     
     # Compter les dépenses affectées
     count = 0
+    pending_count = 0
     
     for expense in uncategorized:
         if rule.matches_expense(expense):
-            # N'appliquer que les actions activées dans la règle
-            if rule.apply_category and rule.category_id:
-                expense.category_id = rule.category_id
-            
-            if rule.apply_flag and rule.flag_id:
-                expense.flag_id = rule.flag_id
+            # Vérifier si cette règle nécessite une confirmation
+            if rule.requires_confirmation:
+                # Vérifier si cette application n'existe pas déjà
+                existing = PendingRuleApplication.query.filter_by(
+                    rule_id=rule.id, 
+                    expense_id=expense.id
+                ).first()
                 
-            if rule.apply_rename and rule.rename_pattern:
-                # Utiliser la fonction helper pour le renommage
-                apply_rule_rename(expense, rule)
-            
-            # Enregistrer la relation entre la règle et la dépense
-            rule.affected_expenses.append(expense)
-            count += 1
+                if not existing:
+                    pending_application = PendingRuleApplication(
+                        rule_id=rule.id,
+                        expense_id=expense.id
+                    )
+                    db.session.add(pending_application)
+                    pending_count += 1
+            else:
+                # N'appliquer que les actions activées dans la règle
+                if rule.apply_category and rule.category_id:
+                    expense.category_id = rule.category_id
+                    expense.category_modified_by = ModificationSource.AUTO_RULE.value
+                
+                if rule.apply_flag and rule.flag_id:
+                    expense.flag_id = rule.flag_id
+                    expense.flag_modified_by = ModificationSource.AUTO_RULE.value
+                    
+                if rule.apply_rename and rule.rename_pattern:
+                    # Utiliser la fonction helper pour le renommage
+                    apply_rule_rename(expense, rule)
+                
+                # Enregistrer la relation entre la règle et la dépense
+                rule.affected_expenses.append(expense)
+                count += 1
     
     try:
         db.session.commit()
@@ -120,8 +138,27 @@ def create_auto_rule():
     requires_confirmation = 'requires_confirmation' in request.form
     apply_now = 'apply_now' in request.form
     
-    # [Validation existante inchangée]
-
+    # Validation basique
+    if not rule_name:
+        flash('Le nom de la règle est requis.', 'warning')
+        return redirect(url_for('tricount.auto_categorize', expense_id=expense_id))
+    
+    if not merchant_contains:
+        flash('Le critère sur le marchand est requis.', 'warning')
+        return redirect(url_for('tricount.auto_categorize', expense_id=expense_id))
+    
+    if apply_category and not category_id:
+        flash('Une catégorie est requise si l\'option de catégorisation est activée.', 'warning')
+        return redirect(url_for('tricount.auto_categorize', expense_id=expense_id))
+    
+    if apply_flag and not flag_id:
+        flash('Un type de dépense est requis si l\'option de flag est activée.', 'warning')
+        return redirect(url_for('tricount.auto_categorize', expense_id=expense_id))
+    
+    if apply_rename and not rename_pattern:
+        flash('Un motif de renommage est requis si l\'option de renommage est activée.', 'warning')
+        return redirect(url_for('tricount.auto_categorize', expense_id=expense_id))
+    
     # Créer la règle
     rule = AutoCategorizationRule(
         name=rule_name,
@@ -271,16 +308,10 @@ def find_similar_expenses():
               f"description_contains='{description_contains}', "
               f"min_amount={min_amount}, max_amount={max_amount}")
         
-        # Flag pour indiquer si nous sommes en mode édition de règle avec renommage
-        search_original_text = is_edit_mode and current_rule_id is not None
-        
         # Appliquer les filtres uniquement s'ils sont non vides
         if merchant_contains and merchant_contains.strip():
-            from sqlalchemy import or_
-            query = query.filter(or_(
-                Expense.merchant.ilike(f'%{merchant_contains}%'),
-                Expense.original_text.ilike(f'%{merchant_contains}%')
-            ))
+            # SIMPLIFICATION: Chercher uniquement dans merchant (nom original)
+            query = query.filter(Expense.merchant.ilike(f'%{merchant_contains}%'))
         
         if description_contains and description_contains.strip():
             query = query.filter(Expense.description.ilike(f'%{description_contains}%'))
@@ -308,32 +339,20 @@ def find_similar_expenses():
         # Préparer les données pour le JSON
         expenses_data = []
         for expense in similar_expenses:
-            # Déterminer si l'expense a été renommée par une règle
-            renamed_by_rule = False
-            original_merchant = None
+            # Créer les données de base de la dépense
+            expense_data = {
+                'id': expense.id,
+                'date': expense.date.strftime('%d/%m/%Y'),
+                'merchant': expense.merchant,
+                'renamed_merchant': expense.renamed_merchant,
+                'amount': float(expense.amount),
+                'is_debit': expense.is_debit,
+                'description': expense.description
+            }
             
-            # Vérifier si cette dépense a été renommée
-            for rule in expense.applied_rules:
-                if rule.apply_rename and rule.rename_pattern:
-                    renamed_by_rule = True
-                    # Utiliser le texte original s'il est disponible
-                    if expense.original_text:
-                        # Extraire le marchand d'origine du texte original
-                        # C'est une approximation - nous utilisons le texte avant renommage
-                        original_merchant = expense.original_text.split('\n')[0] if '\n' in expense.original_text else expense.original_text
-                    break
-            
-            expenses_data = []
-            for expense in similar_expenses:
-                expense_data = {
-                    'id': expense.id,
-                    'date': expense.date.strftime('%d/%m/%Y'),
-                    'merchant': expense.merchant,
-                    'renamed_merchant': expense.renamed_merchant,  # Ajouter le nom renommé
-                    'amount': float(expense.amount),
-                    'is_debit': expense.is_debit,
-                    'description': expense.description
-                }
+            # Vérifier si la dépense a été renommée
+            if expense.renamed_merchant:
+                expense_data['original_merchant'] = expense.merchant
             
             # Vérifier si la dépense est déjà associée à une règle
             applied_rules = list(expense.applied_rules)
@@ -438,13 +457,11 @@ def edit_auto_rule(rule_id):
     )
     
     # Trouver des dépenses similaires en utilisant les critères de la règle
-    # MODIFICATION : Utiliser le merchant_contains au lieu du pattern de renommage
     filters = {
-        'merchant_contains': rule.merchant_contains,  # Important: utiliser merchant_contains et non le pattern de renommage
+        'merchant_contains': rule.merchant_contains,
         'description_contains': rule.description_contains,
         'min_amount': float(rule.min_amount) if rule.min_amount else None,
         'max_amount': float(rule.max_amount) if rule.max_amount else None,
-        'search_original_text': True  # Nouveau flag pour indiquer de chercher dans le texte original
     }
     
     similar_expenses = AutoCategorizationService.find_similar_expenses(virtual_expense, filters)
@@ -570,6 +587,7 @@ def check_rule_conflicts():
     query = Expense.query
     
     if merchant_contains:
+        # SIMPLIFICATION: Chercher uniquement dans merchant (nom original)
         query = query.filter(Expense.merchant.ilike(f'%{merchant_contains}%'))
     
     if description_contains:

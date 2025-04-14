@@ -91,6 +91,7 @@ class Expense(db.Model):
     payment_method = db.Column(db.String(100))
     reference = db.Column(db.String(200))
     original_text = db.Column(db.Text)  # Texte original pour référence
+    source = db.Column(db.String(50), nullable=True)  # 'societe_generale', 'n26', etc.
     
     # Sources de modification - suivi de qui a modifié chaque attribut
     category_modified_by = db.Column(db.String(50), default=ModificationSource.IMPORT.value)
@@ -173,15 +174,15 @@ class AutoCategorizationRule(db.Model):
     
     def __repr__(self):
         return f'<AutoCategorizationRule {self.name}>'
-    
+
     def matches_expense(self, expense):
         """Vérifie si la règle correspond à une dépense"""
-        # Utiliser le nom d'affichage (renommé ou original)
-        merchant_name = expense.renamed_merchant if expense.renamed_merchant else expense.merchant
-        
-        if self.merchant_contains and self.merchant_contains.lower() not in merchant_name.lower():
+        # Vérifier correspondance avec le nom du marchand
+        # Rechercher uniquement dans merchant (nom original)
+        if self.merchant_contains and self.merchant_contains.lower() not in expense.merchant.lower():
             return False
         
+        # Vérifier correspondance avec la description
         if self.description_contains and self.description_contains.lower() not in expense.description.lower():
             return False
         

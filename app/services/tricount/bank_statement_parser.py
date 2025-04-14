@@ -268,3 +268,160 @@ class SocieteGeneraleParser:
                 merchant = merchant.split(suffix)[0].strip()
         
         return merchant
+
+class N26Parser:
+    """Parser pour les relevés de compte au format CSV de N26"""
+    
+    @staticmethod
+    def parse_csv(csv_content):
+        """
+        Parse le contenu CSV de N26 et extrait les transactions
+        
+        Args:
+            csv_content (str): Contenu CSV du relevé bancaire
+            
+        Returns:
+            list: Liste des transactions extraites sous forme de dictionnaires
+        """
+        transactions = []
+        
+        # Utiliser le module csv pour analyser le contenu
+        import csv
+        from io import StringIO
+        from decimal import Decimal
+        
+        csv_file = StringIO(csv_content)
+        reader = csv.DictReader(csv_file)
+        
+        for row in reader:
+            # Extraire les informations pertinentes
+            booking_date = row.get('Booking Date')
+            value_date = row.get('Value Date')
+            partner_name = row.get('Partner Name', '')
+            partner_iban = row.get('Partner Iban', '')
+            transaction_type = row.get('Type', '')
+            payment_reference = row.get('Payment Reference', '')
+            amount_str = row.get('Amount (EUR)', '0')
+            original_amount = row.get('Original Amount', '0')
+            original_currency = row.get('Original Currency', 'EUR')
+            
+            # Vérification des données essentielles
+            if not booking_date or not amount_str:
+                continue
+            
+            # Convertir la date
+            try:
+                # Format N26: YYYY-MM-DD
+                date_obj = datetime.strptime(booking_date, '%Y-%m-%d')
+            except (ValueError, TypeError):
+                # En cas d'erreur, utiliser la date actuelle
+                date_obj = datetime.utcnow()
+            
+            # Déterminer si c'est un débit ou un crédit
+            # N26 utilise des montants négatifs pour les débits
+            try:
+                amount = Decimal(amount_str.replace(',', '.'))
+                is_debit = amount < 0
+                # Stocker le montant en valeur absolue
+                amount = abs(amount)
+            except (ValueError, decimal.InvalidOperation):
+                # Si la conversion échoue, essayer de nettoyer davantage
+                amount_str = amount_str.replace(',', '.')
+                try:
+                    amount = Decimal(''.join(c for c in amount_str if c.isdigit() or c == '.'))
+                    is_debit = '-' in amount_str
+                    amount = abs(amount)
+                except (ValueError, decimal.InvalidOperation):
+                    # Dernier recours, mettre 0
+                    amount = Decimal('0')
+                    is_debit = True
+            
+            # Identifier le type de paiement
+            payment_method = N26Parser._determine_payment_method(transaction_type, partner_name)
+            
+            # Créer la description
+            description = N26Parser._create_description(partner_name, payment_reference, transaction_type)
+            
+            # Créer une représentation de l'original pour référence
+            original_text = '|'.join([
+                booking_date, 
+                partner_name or '', 
+                transaction_type or '', 
+                payment_reference or '',
+                amount_str or '0'
+            ])
+            
+            transaction = {
+                'date': date_obj,
+                'description': description,
+                'amount': amount,
+                'is_debit': is_debit,
+                'payment_method': payment_method,
+                'merchant': partner_name,
+                'reference': payment_reference,
+                'original_text': original_text
+            }
+            
+            transactions.append(transaction)
+        
+        return transactions
+    
+    @staticmethod
+    def _determine_payment_method(transaction_type, partner_name):
+        """
+        Détermine le type de paiement basé sur le type de transaction et le partenaire
+        
+        Args:
+            transaction_type (str): Type de transaction (Presentment, MasterCard, etc.)
+            partner_name (str): Nom du partenaire
+            
+        Returns:
+            str: Méthode de paiement (CARTE, VIREMENT, etc.)
+        """
+        # Mapper les types de transaction N26 vers des catégories plus génériques
+        type_mapping = {
+            'Presentment': 'CARTE',
+            'MasterCard Payment': 'CARTE',
+            'CreditTransfer': 'VIREMENT',
+            'DirectDebit': 'PRELEVEMENT',
+            'Transfer': 'VIREMENT',
+            'Income': 'VIREMENT',
+            'Outgoing Transfer': 'VIREMENT',
+            'Withdrawal': 'RETRAIT'
+        }
+        
+        # Utiliser le mapping ou retourner le type original si non trouvé
+        return type_mapping.get(transaction_type, transaction_type)
+    
+    @staticmethod
+    def _create_description(partner_name, payment_reference, transaction_type):
+        """
+        Crée une description basée sur les informations disponibles
+        
+        Args:
+            partner_name (str): Nom du partenaire
+            payment_reference (str): Référence du paiement
+            transaction_type (str): Type de transaction
+            
+        Returns:
+            str: Description formatée
+        """
+        # Commencer avec le nom du partenaire
+        description = partner_name if partner_name else ''
+        
+        # Ajouter la référence si elle existe
+        if payment_reference:
+            if description:
+                description += f" - {payment_reference}"
+            else:
+                description = payment_reference
+        
+        # Si ni le partenaire ni la référence n'existent, utiliser le type
+        if not description and transaction_type:
+            description = f"Transaction {transaction_type}"
+        
+        # Si aucune information n'est disponible
+        if not description:
+            description = "Transaction N26"
+        
+        return description
