@@ -5,6 +5,18 @@ from sqlalchemy import or_
 import hashlib
 import enum
 
+class ReimbursementType(enum.Enum):
+    """
+    Énumération des types de remboursement possibles pour les flags.
+    """
+    NOT_REIMBURSABLE = "not_reimbursable"  # Dépenses personnelles non remboursables
+    PARTIALLY_REIMBURSABLE = "partially_reimbursable"  # Dépenses partagées, partiellement remboursables
+    FULLY_REIMBURSABLE = "fully_reimbursable"  # Dépenses professionnelles entièrement remboursables
+    
+    def __str__(self):
+        """Convertit l'énumération en chaîne de caractères"""
+        return self.value
+
 # Mise à jour de la classe Flag dans app/models/tricount.py
 class ModificationSource(enum.Enum):
     """
@@ -15,6 +27,18 @@ class ModificationSource(enum.Enum):
     AUTO_RULE = "auto_rule"  # Modification par une règle automatique sans confirmation
     AUTO_RULE_CONFIRMED = "auto_rule_confirmed"  # Modification par une règle avec confirmation
     IMPORT = "import"  # Valeur importée initialement
+    
+    def __str__(self):
+        """Convertit l'énumération en chaîne de caractères"""
+        return self.value
+
+class DeclarationStatus(enum.Enum):
+    """
+    Énumération des statuts possibles pour une déclaration de remboursement.
+    """
+    NOT_DECLARED = "not_declared"  # Non déclarée
+    DECLARED = "declared"  # Déclarée mais pas encore remboursée
+    REIMBURSED = "reimbursed"  # Déclarée et remboursée
     
     def __str__(self):
         """Convertit l'énumération en chaîne de caractères"""
@@ -38,8 +62,19 @@ class Flag(db.Model):
     is_default = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+    # Nouveau champ pour le type de remboursement
+    reimbursement_type = db.Column(db.String(50), default=ReimbursementType.NOT_REIMBURSABLE.value)
+    
     def __repr__(self):
         return f'<Flag {self.name}>'
+    
+    @property
+    def is_reimbursable(self):
+        """Vérifie si ce flag correspond à des dépenses remboursables"""
+        return self.reimbursement_type in [
+            ReimbursementType.PARTIALLY_REIMBURSABLE.value,
+            ReimbursementType.FULLY_REIMBURSABLE.value
+        ]
 
 class Category(db.Model):
     """Modèle pour stocker les catégories de dépenses"""
@@ -99,6 +134,13 @@ class Expense(db.Model):
     merchant_modified_by = db.Column(db.String(50), default=ModificationSource.IMPORT.value)
     notes_modified_by = db.Column(db.String(50), default=ModificationSource.IMPORT.value)
     
+    # Nouveaux champs pour le suivi des remboursements
+    declaration_status = db.Column(db.String(50), default=DeclarationStatus.NOT_DECLARED.value)
+    declaration_reference = db.Column(db.String(255))  # Référence externe (ex: numéro de note de frais)
+    declaration_date = db.Column(db.DateTime)  # Date de déclaration
+    reimbursement_date = db.Column(db.DateTime)  # Date de remboursement effectif
+    declaration_notes = db.Column(db.Text)  # Notes sur la déclaration
+    
     # Métadonnées
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -127,6 +169,23 @@ class Expense(db.Model):
     def display_name(self):
         """Retourne le nom à afficher pour cette dépense (renommé ou original)"""
         return self.renamed_merchant if self.renamed_merchant else self.merchant
+    
+    @property
+    def is_reimbursable(self):
+        """Vérifie si cette dépense est remboursable (partiellement ou totalement)"""
+        if not self.flag:
+            return False
+        return self.flag.is_reimbursable
+    
+    @property
+    def is_declared(self):
+        """Vérifie si cette dépense a été déclarée pour remboursement"""
+        return self.declaration_status != DeclarationStatus.NOT_DECLARED.value
+    
+    @property
+    def is_reimbursed(self):
+        """Vérifie si cette dépense a été remboursée"""
+        return self.declaration_status == DeclarationStatus.REIMBURSED.value
 
 class AutoCategorizationRule(db.Model):
     """Modèle pour stocker les règles d'auto-catégorisation des dépenses"""

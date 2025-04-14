@@ -1,0 +1,31 @@
+{# app/templates/macros/tricount/reimbursement_macros.html #}
+
+{% macro declaration_status_badge(status, extra_classes='') %}
+    {% if status == 'not_declared' %}
+        <span class="badge bg-secondary declaration-status-badge {{ extra_classes }}">Non déclarée</span>
+    {% elif status == 'declared' %}
+        <span class="badge bg-primary declaration-status-badge {{ extra_classes }}">Déclarée</span>
+    {% elif status == 'reimbursed' %}
+        <span class="badge bg-success declaration-status-badge {{ extra_classes }}">Remboursée</span>
+    {% else %}
+        <span class="badge bg-secondary declaration-status-badge {{ extra_classes }}">{{ status }}</span>
+    {% endif %}
+{% endmacro %}
+
+{% macro reimbursement_type_badge(type, extra_classes='') %}
+    {% if type == 'not_reimbursable' %}
+        <span class="badge bg-secondary reimbursement-type-badge {{ extra_classes }}">
+            <i class="fas fa-ban me-1"></i>Non remboursable
+        </span>
+    {% elif type == 'partially_reimbursable' %}
+        <span class="badge bg-info reimbursement-type-badge {{ extra_classes }}">
+            <i class="fas fa-percent me-1"></i>Partiellement remboursable
+        </span>
+    {% elif type == 'fully_reimbursable' %}
+        <span class="badge bg-success reimbursement-type-badge {{ extra_classes }}">
+            <i class="fas fa-check-circle me-1"></i>Entièrement remboursable
+        </span>
+    {% else %}
+        <span class="badge bg-secondary reimbursement-type-badge {{ extra_classes }}">{{ type }}</span>
+    {% endif %}
+{% endmacro %}

@@ -83,6 +83,24 @@
                             <label class="form-check-label" for="is_default">Définir comme type par défaut</label>
                         </div>
                     </div>
+
+                    <div class="mb-3">
+                        <label for="reimbursement_type" class="form-label">Type de remboursement</label>
+                        <select class="form-select" id="reimbursement_type" name="reimbursement_type">
+                            <option value="not_reimbursable" {% if flag.reimbursement_type == 'not_reimbursable' %}selected{% endif %}>
+                                Non remboursable (personnel)
+                            </option>
+                            <option value="partially_reimbursable" {% if flag.reimbursement_type == 'partially_reimbursable' %}selected{% endif %}>
+                                Partiellement remboursable (partagé)
+                            </option>
+                            <option value="fully_reimbursable" {% if flag.reimbursement_type == 'fully_reimbursable' %}selected{% endif %}>
+                                Entièrement remboursable (professionnel)
+                            </option>
+                        </select>
+                        <div class="form-text">
+                            Définit si les dépenses avec ce flag sont remboursables et apparaîtront dans le suivi des remboursements
+                        </div>
+                    </div>
                     
                     <div class="col-12 mt-3">
                         <button type="submit" class="btn btn-primary">
@@ -264,6 +282,24 @@
                     </div>
                     <div class="form-text">
                         Si activé, ce type sera appliqué par défaut aux nouvelles dépenses.
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="reimbursement_type" class="form-label">Type de remboursement</label>
+                    <select class="form-select" id="reimbursement_type" name="reimbursement_type">
+                        <option value="not_reimbursable" {% if flag.reimbursement_type == 'not_reimbursable' %}selected{% endif %}>
+                            Non remboursable (personnel)
+                        </option>
+                        <option value="partially_reimbursable" {% if flag.reimbursement_type == 'partially_reimbursable' %}selected{% endif %}>
+                            Partiellement remboursable (partagé)
+                        </option>
+                        <option value="fully_reimbursable" {% if flag.reimbursement_type == 'fully_reimbursable' %}selected{% endif %}>
+                            Entièrement remboursable (professionnel)
+                        </option>
+                    </select>
+                    <div class="form-text">
+                        Définit si les dépenses avec ce flag sont remboursables et apparaîtront dans le suivi des remboursements
                     </div>
                 </div>
                 

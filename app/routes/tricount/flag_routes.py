@@ -25,6 +25,8 @@ def add_flag():
     color = request.form.get('color', '#0366d6')
     iconify_id = request.form.get('iconify_id', '')  # Récupérer l'ID Iconify
     is_default = request.form.get('is_default') == 'on'
+    # Nouvelle propriété : type de remboursement
+    reimbursement_type = request.form.get('reimbursement_type', 'not_reimbursable')
     
     if not name:
         flash('Le nom du flag est requis.', 'warning')
@@ -39,7 +41,8 @@ def add_flag():
         description=description,
         color=color,
         iconify_id=iconify_id,
-        is_default=is_default
+        is_default=is_default,
+        reimbursement_type=reimbursement_type  # Ajout du type de remboursement
     )
     db.session.add(flag)
     
@@ -85,6 +88,8 @@ def update_flag(flag_id):
     color = request.form.get('color', '#0366d6')
     iconify_id = request.form.get('iconify_id', '')
     is_default = request.form.get('is_default') == 'on'
+    # Nouvelle propriété : type de remboursement
+    reimbursement_type = request.form.get('reimbursement_type', 'not_reimbursable')
     
     if not name:
         flash('Le nom du flag est requis.', 'warning')
@@ -99,9 +104,8 @@ def update_flag(flag_id):
         flag.description = description
         flag.color = color
         flag.iconify_id = iconify_id
-        # Supprimer legacy_icon s'il existe, puisqu'on utilise maintenant iconify_id
-        flag.legacy_icon = None
         flag.is_default = is_default
+        flag.reimbursement_type = reimbursement_type  # Mise à jour du type de remboursement
         
         db.session.commit()
         flash(f'Flag "{name}" mis à jour avec succès.', 'success')

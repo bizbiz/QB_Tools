@@ -126,3 +126,50 @@ Ces améliorations pourraient être implémentées progressivement, en commença
 . Importer les N2F pour les croiser avec remboursable
 
 . Importer le tricount a partir de screen ?
+
+
+
+Possibilité d'extraire plus d'info de N26 :
+1. Informations sur les transactions internationales
+- Original Amount
+- Original Currency  
+- Exchange Rate
+Ces données sont particulièrement utiles pour :
+
+Suivre les dépenses à l'étranger
+Calculer combien vous avez réellement payé en devise originale
+Analyser l'efficacité des taux de change appliqués
+
+2. Données bancaires supplémentaires
+- Value Date (différente de la Booking Date)
+- Partner IBAN
+- Account Name
+Ces informations pourraient servir à :
+
+Datation plus précise : La date de valeur (quand l'argent est effectivement débité/crédité) vs date de transaction
+Identification unique des bénéficiaires : L'IBAN permet d'identifier un destinataire de manière fiable, même si son nom change légèrement
+Gestion multi-comptes : Si l'utilisateur a plusieurs comptes N26
+
+Améliorations possibles
+
+Règles d'auto-catégorisation basées sur l'IBAN
+
+Plus précis que le nom du marchand qui peut varier
+Idéal pour les virements récurrents (loyer, salaire, etc.)
+
+
+Tableau de bord des dépenses internationales
+
+Visualiser les dépenses par pays/devise
+Analyser si vous avez obtenu de bons taux de change
+
+
+Champs supplémentaires dans l'interface
+
+Afficher l'IBAN pour les virements
+Afficher le montant original + devise pour les transactions étrangères
+
+
+Amélioration de la détection des doublons
+
+Utiliser l'IBAN comme critère supplémentaire pour identifier les transactions similaires

@@ -1,0 +1,127 @@
+/* app/static/css/tricount/reimbursements.css */
+
+/* Styles pour les badges de statut */
+.declaration-status-badge {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Styles pour la case à cocher globale */
+.select-all-column {
+    width: 40px;
+    text-align: center;
+}
+
+/* Styles pour les références */
+.reference-number {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    padding: 0.2rem 0.4rem;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    color: #0d6efd;
+}
+
+/* Style pour le cercle de progression */
+.progress-circle {
+    position: relative;
+    height: 120px;
+    width: 120px;
+    margin: 0 auto;
+}
+
+.progress-circle-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    border-radius: 50%;
+}
+
+.progress-circle-inner {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    background-color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+
+.progress-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #0d6efd;
+}
+
+/* Ligne avec dépense déclarée */
+tr.expense-declared {
+    background-color: rgba(13, 110, 253, 0.05) !important;
+}
+
+/* Ligne avec dépense remboursée */
+tr.expense-reimbursed {
+    background-color: rgba(25, 135, 84, 0.05) !important;
+}
+
+/* Animation pour mise à jour du statut */
+.status-updated {
+    animation: status-update-flash 1.5s ease-out;
+}
+
+@keyframes status-update-flash {
+    0% { background-color: rgba(13, 110, 253, 0.3); }
+    100% { background-color: transparent; }
+}
+
+/* Icône du bouton bulk déclarer */
+#bulk-declare-btn i {
+    transition: transform 0.3s ease;
+}
+
+#bulk-declare-btn:hover i {
+    transform: scale(1.2);
+}
+
+/* Style pour les cases à cocher */
+.form-check-input {
+    cursor: pointer;
+}
+
+.form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+/* Sélection de lignes */
+tr.selected {
+    background-color: rgba(13, 110, 253, 0.08) !important;
+}
+
+/* Tooltip info declaration */
+.declaration-info {
+    margin-left: 0.5rem;
+    color: #6c757d;
+    cursor: help;
+}
+
+.declaration-info:hover {
+    color: #0d6efd;
+}
+
+/* Animation de sélection */
+@keyframes checkbox-pop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.expense-checkbox:checked {
+    animation: checkbox-pop 0.3s ease-in-out;
+}
