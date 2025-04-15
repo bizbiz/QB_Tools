@@ -1,4 +1,4 @@
-<!-- app/templates/tricount/edit_auto_rule.html -->
+{# app/templates/tricount/edit_auto_rule.html #}
 {% extends "base.html" %}
 
 {% from "macros/tricount/flag_macros.html" import flag_select %}
@@ -153,39 +153,84 @@
                             </div>
                         </div>
                         
-                        <!-- Section Renommage -->
-                        <div id="rename-section" class="rule-action-section mb-4">
+                        <!-- Section Renommage du marchand -->
+                        <div id="rename-merchant-section" class="rule-action-section mb-4">
                             <div class="section-header">
                                 <div class="section-title">
-                                    <i class="fas fa-edit me-1"></i>
-                                    <h5 class="mb-0">Renommage</h5>
+                                    <i class="fas fa-tag me-1"></i>
+                                    <h5 class="mb-0">Renommage du marchand</h5>
                                 </div>
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input section-toggle" type="checkbox" id="apply-rename" name="apply_rename" value="true" {% if rule.apply_rename %}checked{% endif %}>
+                                    <input class="form-check-input section-toggle" type="checkbox" id="apply-rename-merchant" name="apply_rename_merchant" value="true" {% if rule.apply_rename_merchant %}checked{% endif %}>
                                 </div>
                             </div>
                             
                             <div class="section-content">
                                 <div class="mb-3">
-                                    <label for="rename-pattern" class="form-label">Motif à rechercher</label>
-                                    <input type="text" class="form-control rule-input" id="rename-pattern" name="rename_pattern" value="{{ rule.rename_pattern or '' }}" data-required="true">
-                                    <div id="rename-pattern-error" class="validation-error">Le motif de recherche est requis</div>
+                                    <label for="rename-merchant-pattern" class="form-label">Motif à rechercher</label>
+                                    <input type="text" class="form-control rule-input" id="rename-merchant-pattern" name="rename_merchant_pattern" value="{{ rule.rename_merchant_pattern or '' }}" data-required="true">
+                                    <div id="rename-merchant-pattern-error" class="validation-error">Le motif de recherche est requis</div>
                                     <div class="form-text">Texte à rechercher dans le nom du marchand. Peut être une expression régulière.</div>
                                 </div>
                                 
                                 <div class="mb-3">
-                                    <label for="rename-replacement" class="form-label">Texte de remplacement</label>
-                                    <input type="text" class="form-control rule-input" id="rename-replacement" name="rename_replacement" value="{{ rule.rename_replacement or '' }}">
+                                    <label for="rename-merchant-replacement" class="form-label">Texte de remplacement</label>
+                                    <input type="text" class="form-control rule-input" id="rename-merchant-replacement" name="rename_merchant_replacement" value="{{ rule.rename_merchant_replacement or '' }}">
                                     <div class="form-text">Texte qui remplacera le motif trouvé. Laissez vide pour supprimer le motif.</div>
                                 </div>
                                 
                                 <div class="mb-3">
                                     <div class="alert alert-info">
-                                        <strong>Aperçu:</strong> <span id="rename-preview">{{ example_merchant }}</span>
+                                        <strong>Aperçu:</strong> <span id="rename-merchant-preview">{{ example_merchant }}</span>
                                     </div>
+                                </div>
+                                <div class="form-text text-muted">
+                                    <i class="fas fa-info-circle me-1"></i> Cette action modifiera uniquement le champ "renamed_merchant" sans altérer le nom original.
                                 </div>
                             </div>
                         </div>
+                        
+                        <!-- Section Modification de la description -->
+                        <div id="rename-description-section" class="rule-action-section mb-4">
+                            <div class="section-header">
+                                <div class="section-title">
+                                    <i class="fas fa-file-alt me-1"></i>
+                                    <h5 class="mb-0">Modification de la description</h5>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input section-toggle" type="checkbox" id="apply-rename-description" name="apply_rename_description" value="true" {% if rule.apply_rename_description %}checked{% endif %}>
+                                </div>
+                            </div>
+                            
+                            <div class="section-content">
+                                <div class="mb-3">
+                                    <label for="rename-description-pattern" class="form-label">Motif à rechercher</label>
+                                    <input type="text" class="form-control rule-input" id="rename-description-pattern" name="rename_description_pattern" value="{{ rule.rename_description_pattern or '' }}" data-required="true">
+                                    <div id="rename-description-pattern-error" class="validation-error">Le motif de recherche est requis</div>
+                                    <div class="form-text">Texte à rechercher dans la description. Peut être une expression régulière.</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="rename-description-replacement" class="form-label">Texte de remplacement</label>
+                                    <input type="text" class="form-control rule-input" id="rename-description-replacement" name="rename_description_replacement" value="{{ rule.rename_description_replacement or '' }}">
+                                    <div class="form-text">Texte qui remplacera le motif trouvé. Laissez vide pour supprimer le motif.</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div class="alert alert-info">
+                                        <strong>Aperçu:</strong> <span id="rename-description-preview">{{ rule.description_contains or example_merchant }}</span>
+                                    </div>
+                                </div>
+                                <div class="form-text text-muted">
+                                    <i class="fas fa-info-circle me-1"></i> Cette action stockera les modifications dans le champ "notes" sans altérer la description originale.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Conserver pour compatibilité avec l'ancien système (champs cachés) -->
+                        <input type="hidden" name="apply_rename" value="{{ 'true' if rule.apply_rename or rule.apply_rename_merchant else 'false' }}">
+                        <input type="hidden" name="rename_pattern" value="{{ rule.rename_pattern or rule.rename_merchant_pattern or '' }}">
+                        <input type="hidden" name="rename_replacement" value="{{ rule.rename_replacement or rule.rename_merchant_replacement or '' }}">
                         
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary">
@@ -234,7 +279,14 @@
                                     {% for exp in similar_expenses %}
                                     <tr class="apply-expense-row" data-expense-id="{{ exp.id }}">
                                         <td>{{ exp.date.strftime('%d/%m/%Y') }}</td>
-                                        <td>{{ exp.merchant }}</td>
+                                        <td>
+                                            {% if exp.renamed_merchant %}
+                                            <div class="original-merchant">{{ exp.merchant }}</div>
+                                            <div class="renamed-merchant"><small><em>Renommé en: {{ exp.renamed_merchant }}</em></small></div>
+                                            {% else %}
+                                            {{ exp.merchant }}
+                                            {% endif %}
+                                        </td>
                                         <td class="{% if exp.is_debit %}text-danger{% else %}text-success{% endif %}">
                                             {% if exp.is_debit %}-{% endif %}{{ "%.2f"|format(exp.amount) }} €
                                         </td>
@@ -379,23 +431,6 @@
         
         if (originalGetFilters) {
             // Remplacer la fonction getFilters pour utiliser virtualExpenseId
-            window.AutoCategorize.getFilters = function() {
-                const filters = originalGetFilters();
-                // Remplacer l'ID de la dépense par notre ID virtuel
-                filters.expense_id = window.virtualExpenseId;
-                return filters;
-            };
-        }
-    });
-</script>
-<script>
-    // Surcharge pour le mode édition
-    document.addEventListener('DOMContentLoaded', function() {
-        // Adapter le comportement pour le mode édition
-        const originalGetFilters = window.AutoCategorize.getFilters;
-        
-        if (originalGetFilters) {
-            // Remplacer la fonction getFilters pour utiliser virtualExpenseId, current_rule_id et search_original_text
             window.AutoCategorize.getFilters = function() {
                 const filters = originalGetFilters();
                 // Remplacer l'ID de la dépense par notre ID virtuel

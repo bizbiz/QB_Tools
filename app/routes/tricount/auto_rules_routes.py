@@ -422,7 +422,21 @@ def edit_auto_rule(rule_id):
         # Mise à jour des options d'action
         rule.apply_category = 'apply_category' in request.form
         rule.apply_flag = 'apply_flag' in request.form
-        rule.apply_rename = 'apply_rename' in request.form
+        
+        # Nouvelle option: Renommage du marchand
+        rule.apply_rename_merchant = 'apply_rename_merchant' in request.form
+        rule.rename_merchant_pattern = request.form.get('rename_merchant_pattern')
+        rule.rename_merchant_replacement = request.form.get('rename_merchant_replacement', '')
+        
+        # Nouvelle option: Modification de la description
+        rule.apply_rename_description = 'apply_rename_description' in request.form
+        rule.rename_description_pattern = request.form.get('rename_description_pattern')
+        rule.rename_description_replacement = request.form.get('rename_description_replacement', '')
+        
+        # Conserver pour la compatibilité avec l'ancien système
+        rule.apply_rename = 'apply_rename' in request.form or rule.apply_rename_merchant
+        rule.rename_pattern = request.form.get('rename_pattern') or rule.rename_merchant_pattern
+        rule.rename_replacement = request.form.get('rename_replacement') or rule.rename_merchant_replacement
         
         # Mise à jour des cibles d'action
         if rule.apply_category:
@@ -430,10 +444,6 @@ def edit_auto_rule(rule_id):
         
         if rule.apply_flag:
             rule.flag_id = request.form.get('flag_id', type=int)
-        
-        if rule.apply_rename:
-            rule.rename_pattern = request.form.get('rename_pattern')
-            rule.rename_replacement = request.form.get('rename_replacement', '')
         
         # Autres options
         rule.min_amount = request.form.get('min_amount', type=float)

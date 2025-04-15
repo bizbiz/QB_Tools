@@ -221,11 +221,6 @@ class AutoCategorizationRule(db.Model):
     rename_description_pattern = db.Column(db.String(200))
     rename_description_replacement = db.Column(db.String(200))
     
-    # Champs de compatibilité avec l'ancien système (à retirer dans une future version)
-    apply_rename = db.Column(db.Boolean, default=False)
-    rename_pattern = db.Column(db.String(200))
-    rename_replacement = db.Column(db.String(200))
-    
     # Métadonnées
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
