@@ -280,7 +280,15 @@
                                     <tr class="apply-expense-row" data-expense-id="{{ exp.id }}">
                                         <td>{{ exp.date.strftime('%d/%m/%Y') }}</td>
                                         <td>
-                                            {{ exp.merchant }}
+                                            {% if exp.renamed_merchant %}
+                                            <div class="original-merchant">{{ exp.merchant }}</div>
+                                            <!-- N'afficher que si la modification n'est pas liée à la règle en cours d'édition -->
+                                            {% if not (exp.applied_rules.count() > 0 and exp.applied_rules.first().id == rule.id) %}
+                                            <div class="renamed-merchant"><small><em>Renommé en: {{ exp.renamed_merchant }}</em></small></div>
+                                            {% endif %}
+                                            {% else %}
+                                            <div class="original-merchant">{{ exp.merchant }}</div>
+                                            {% endif %}
                                         </td>
                                         <td class="{% if exp.is_debit %}text-danger{% else %}text-success{% endif %}">
                                             {% if exp.is_debit %}-{% endif %}{{ "%.2f"|format(exp.amount) }} €
