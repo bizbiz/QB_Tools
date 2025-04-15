@@ -1,125 +1,255 @@
-// app/static/js/tricount/auto_categorize/rename.js
-// Mise à jour pour supporter à la fois le renommage du marchand et la modification de la description
+// À ajouter/remplacer dans app/static/js/tricount/auto_categorize/rename.js
 
 /**
- * Module de gestion des renommages pour l'auto-catégorisation
- * Gère la prévisualisation du renommage du marchand et de la description
+ * Met à jour la simulation de renommage sur les dépenses similaires
  */
-
-// Assurer que l'objet global existe
-window.AutoCategorize = window.AutoCategorize || {};
+function updateRenamingSimulation() {
+    // Récupérer les valeurs actuelles
+    const merchantPattern = document.getElementById('rename-merchant-pattern');
+    const merchantReplacement = document.getElementById('rename-merchant-replacement');
+    const descriptionPattern = document.getElementById('rename-description-pattern');
+    const descriptionReplacement = document.getElementById('rename-description-replacement');
+    const applyMerchantRename = document.getElementById('apply-rename-merchant');
+    const applyDescriptionRename = document.getElementById('apply-rename-description');
+    
+    // Vérifier si les éléments existent
+    if (!merchantPattern || !merchantReplacement || !descriptionPattern || 
+        !descriptionReplacement || !applyMerchantRename || !applyDescriptionRename) {
+        console.warn("Éléments de formulaire manquants pour la simulation");
+        return;
+    }
+    
+    // Vérifier si les conditions sont remplies pour la simulation
+    const simulateMerchant = applyMerchantRename.checked && 
+                           merchantPattern.value.trim() !== '';
+    
+    const simulateDescription = applyDescriptionRename.checked && 
+                             descriptionPattern.value.trim() !== '';
+    
+    // Stocker les données de simulation pour l'affichage
+    window.AutoCategorize.simulationData = {
+        merchant: simulateMerchant ? {
+            pattern: merchantPattern.value,
+            replacement: merchantReplacement.value || ''
+        } : null,
+        description: simulateDescription ? {
+            pattern: descriptionPattern.value,
+            replacement: descriptionReplacement.value || ''
+        } : null
+    };
+    
+    console.log("Données de simulation mises à jour:", window.AutoCategorize.simulationData);
+    
+    // Appliquer la simulation aux dépenses actuellement affichées
+    applySimulationToExpenses();
+}
 
 /**
- * Initialise la gestion des renommages
+ * Applique la simulation aux dépenses actuellement affichées
  */
-AutoCategorize.initRename = function() {
-    // Initialiser le renommage du marchand
-    initMerchantRename();
+function applySimulationToExpenses() {
+    // Récupérer les données de simulation
+    const simulationData = window.AutoCategorize.simulationData;
+    if (!simulationData) {
+        console.warn("Aucune donnée de simulation disponible");
+        return;
+    }
     
-    // Initialiser la modification de la description
-    initDescriptionRename();
+    console.log("Application des simulations:", simulationData);
     
-    /**
-     * Initialise la gestion du renommage du marchand
-     */
-    function initMerchantRename() {
-        // Éléments du DOM pour le marchand
-        const renamePattern = document.getElementById('rename-merchant-pattern');
-        const renameReplacement = document.getElementById('rename-merchant-replacement');
-        const renamePreview = document.getElementById('rename-merchant-preview');
+    // Récupérer toutes les lignes de dépenses
+    const expenseRows = document.querySelectorAll('tr.apply-expense-row');
+    
+    if (expenseRows.length === 0) {
+        console.warn("Aucune ligne de dépense trouvée pour appliquer la simulation");
+        return;
+    }
+    
+    expenseRows.forEach(row => {
+        const expenseId = row.dataset.expenseId;
         
-        // Mettre à jour l'aperçu de renommage en temps réel
-        if (renamePattern && renameReplacement && renamePreview) {
-            renamePattern.addEventListener('input', updateMerchantPreview);
-            renameReplacement.addEventListener('input', updateMerchantPreview);
+        // Chercher les éléments de marchand et description
+        const merchantElement = row.querySelector('.original-merchant');
+        const simulatedMerchantElement = row.querySelector('.simulated-merchant');
+        const detailsContainer = row.querySelector('.details-container');
+        const descContainer = row.querySelector('.description-info');
+        
+        // Simuler le renommage du marchand
+        if (simulationData.merchant && merchantElement) {
+            const originalMerchant = merchantElement.textContent.trim().replace(/Original$/, '').trim();
             
-            // Initialiser l'aperçu
-            updateMerchantPreview();
-        }
-    }
-    
-    /**
-     * Initialise la gestion de la modification de description
-     */
-    function initDescriptionRename() {
-        // Éléments du DOM pour la description
-        const renamePattern = document.getElementById('rename-description-pattern');
-        const renameReplacement = document.getElementById('rename-description-replacement');
-        const renamePreview = document.getElementById('rename-description-preview');
-        
-        // Mettre à jour l'aperçu de renommage en temps réel
-        if (renamePattern && renameReplacement && renamePreview) {
-            renamePattern.addEventListener('input', updateDescriptionPreview);
-            renameReplacement.addEventListener('input', updateDescriptionPreview);
-            
-            // Initialiser l'aperçu
-            updateDescriptionPreview();
-        }
-    }
-    
-    /**
-     * Met à jour l'aperçu du renommage du marchand en fonction des valeurs des champs
-     */
-    function updateMerchantPreview() {
-        updatePreview(
-            'rename-merchant-pattern',
-            'rename-merchant-replacement',
-            'rename-merchant-preview',
-            window.sourceExpenseData ? window.sourceExpenseData.merchant : 'Exemple de marchand'
-        );
-    }
-    
-    /**
-     * Met à jour l'aperçu de la modification de description en fonction des valeurs des champs
-     */
-    function updateDescriptionPreview() {
-        updatePreview(
-            'rename-description-pattern',
-            'rename-description-replacement',
-            'rename-description-preview',
-            window.sourceExpenseData ? window.sourceExpenseData.description : 'Exemple de description'
-        );
-    }
-    
-    /**
-     * Fonction générique pour mettre à jour un aperçu de renommage
-     * @param {string} patternId - ID du champ de motif
-     * @param {string} replacementId - ID du champ de remplacement
-     * @param {string} previewId - ID de l'élément d'aperçu
-     * @param {string} originalText - Texte original à utiliser comme base
-     */
-    function updatePreview(patternId, replacementId, previewId, originalText) {
-        const patternElement = document.getElementById(patternId);
-        const replacementElement = document.getElementById(replacementId);
-        const previewElement = document.getElementById(previewId);
-        
-        if (!patternElement || !replacementElement || !previewElement) return;
-        
-        const pattern = patternElement.value;
-        const replacement = replacementElement.value;
-        
-        try {
-            if (pattern) {
-                const regex = new RegExp(pattern, 'g');
-                previewElement.textContent = originalText.replace(regex, replacement);
-            } else {
-                previewElement.textContent = originalText;
+            try {
+                // Créer une expression régulière à partir du pattern
+                const merchantRegex = new RegExp(simulationData.merchant.pattern, 'g');
+                
+                // Appliquer le remplacement
+                const simulatedMerchant = originalMerchant.replace(merchantRegex, simulationData.merchant.replacement);
+                
+                // Vérifier si cela a changé quelque chose
+                if (simulatedMerchant !== originalMerchant) {
+                    // Créer ou mettre à jour l'élément simulé
+                    if (!simulatedMerchantElement) {
+                        // Créer un nouvel élément
+                        const simulatedElement = document.createElement('div');
+                        simulatedElement.className = 'simulated-merchant small text-warning';
+                        simulatedElement.innerHTML = `
+                            <i class="fas fa-magic me-1"></i>Sera renommé en: <strong>${simulatedMerchant}</strong>
+                        `;
+                        
+                        // Insérer après le marchand original
+                        if (merchantElement.nextSibling) {
+                            merchantElement.parentNode.insertBefore(simulatedElement, merchantElement.nextSibling);
+                        } else {
+                            merchantElement.parentNode.appendChild(simulatedElement);
+                        }
+                    } else {
+                        // Mettre à jour l'élément existant
+                        simulatedMerchantElement.innerHTML = `
+                            <i class="fas fa-magic me-1"></i>Sera renommé en: <strong>${simulatedMerchant}</strong>
+                        `;
+                    }
+                } else if (simulatedMerchantElement) {
+                    // Supprimer l'élément simulé s'il n'y a plus de changement
+                    simulatedMerchantElement.remove();
+                }
+            } catch (e) {
+                console.error("Erreur lors de la simulation de renommage:", e);
             }
-        } catch (e) {
-            // En cas d'erreur dans l'expression régulière
-            previewElement.textContent = `Erreur: ${e.message}`;
+        } else if (simulatedMerchantElement) {
+            // Supprimer l'élément simulé si la simulation est désactivée
+            simulatedMerchantElement.remove();
         }
         
-        // Signaler un changement dans le formulaire
-        if (typeof AutoCategorize.markFormChanged === 'function') {
-            AutoCategorize.markFormChanged();
+        // Gérer la simulation de description
+        if (simulationData.description) {
+            // On doit attendre que les détails soient affichés pour simuler la description
+            // Donc on va ajouter un gestionnaire spécial pour les boutons de détails
+            const toggleButton = row.querySelector('.btn-toggle-details');
+            if (toggleButton) {
+                // Stocker les données de simulation dans l'élément lui-même pour y accéder plus tard
+                toggleButton.dataset.simulateDescription = 'true';
+                
+                // On remplace l'écouteur d'événement standard par notre version améliorée
+                toggleButton.removeEventListener('click', onToggleDetails);
+                toggleButton.addEventListener('click', onToggleDetailsWithSimulation);
+            }
+            
+            // Si la section de description est déjà visible, appliquer directement la simulation
+            if (descContainer) {
+                applyDescriptionSimulation(expenseId, descContainer, simulationData.description);
+            }
+        } else {
+            // Supprimer la simulation existante si présente
+            const simDescriptionElements = row.querySelectorAll('.simulated-description');
+            simDescriptionElements.forEach(el => el.remove());
+            
+            // Réinitialiser le bouton de détails
+            const toggleButton = row.querySelector('.btn-toggle-details');
+            if (toggleButton) {
+                toggleButton.dataset.simulateDescription = 'false';
+            }
+        }
+    });
+}
+
+/**
+ * Applique la simulation de description à un conteneur spécifique
+ */
+function applyDescriptionSimulation(expenseId, descContainer, descSimData) {
+    // Trouver l'élément de description originale
+    const descElement = descContainer.querySelector('.original-description');
+    if (!descElement) return;
+    
+    // Trouver l'élément simulé existant ou en créer un nouveau
+    let simulatedDescElement = descContainer.querySelector('.simulated-description');
+    
+    // Extraire la description originale du texte complet
+    const textContent = descElement.textContent || '';
+    const originalDesc = textContent.replace('Description originale:', '').trim();
+    
+    if (!originalDesc) return;
+    
+    try {
+        // Créer une expression régulière à partir du pattern
+        const descRegex = new RegExp(descSimData.pattern, 'g');
+        
+        // Appliquer le remplacement
+        const simulatedDesc = originalDesc.replace(descRegex, descSimData.replacement);
+        
+        // Vérifier si cela a changé quelque chose
+        if (simulatedDesc !== originalDesc) {
+            if (!simulatedDescElement) {
+                // Créer un nouvel élément
+                simulatedDescElement = document.createElement('div');
+                simulatedDescElement.className = 'simulated-description mt-2 small text-warning';
+                descContainer.appendChild(simulatedDescElement);
+            }
+            
+            simulatedDescElement.innerHTML = `
+                <i class="fas fa-magic me-1"></i>Sera modifié en: <strong>${simulatedDesc}</strong>
+            `;
+        } else if (simulatedDescElement) {
+            // Supprimer l'élément simulé s'il n'y a plus de changement
+            simulatedDescElement.remove();
+        }
+    } catch (e) {
+        console.error("Erreur lors de la simulation de modification de description:", e);
+    }
+}
+
+/**
+ * Gestionnaire d'événement pour les boutons de détails avec simulation
+ */
+function onToggleDetailsWithSimulation() {
+    // Comportement standard
+    const targetId = this.getAttribute('data-bs-target');
+    const isExpanded = this.getAttribute('aria-expanded') === 'true';
+    
+    // Mise à jour dynamique du texte et de l'icône
+    if (isExpanded) {
+        this.innerHTML = '<i class="fas fa-ellipsis-h"></i> Voir détails';
+    } else {
+        this.innerHTML = '<i class="fas fa-chevron-up"></i> Masquer détails';
+        
+        // Si la simulation est activée pour ce bouton et qu'on l'ouvre
+        if (this.dataset.simulateDescription === 'true') {
+            // Attendre que les détails soient affichés
+            setTimeout(() => {
+                // Récupérer les données de simulation
+                const simulationData = window.AutoCategorize.simulationData;
+                if (!simulationData || !simulationData.description) return;
+                
+                // Trouver le container de détails
+                const expenseId = this.closest('tr').dataset.expenseId;
+                const targetElement = document.querySelector(targetId);
+                if (!targetElement) return;
+                
+                const descContainer = targetElement.querySelector('.description-info');
+                if (descContainer) {
+                    applyDescriptionSimulation(expenseId, descContainer, simulationData.description);
+                }
+            }, 100);
         }
     }
-};
+}
 
-// Le module s'initialise au chargement de la page
-document.addEventListener('DOMContentLoaded', function() {
-    if (typeof AutoCategorize.initRename === 'function') {
-        AutoCategorize.initRename();
+/**
+ * Gestionnaire d'événement standard pour les boutons de détails
+ */
+function onToggleDetails() {
+    const targetId = this.getAttribute('data-bs-target');
+    const isExpanded = this.getAttribute('aria-expanded') === 'true';
+    
+    // Mise à jour dynamique du texte et de l'icône
+    if (isExpanded) {
+        this.innerHTML = '<i class="fas fa-ellipsis-h"></i> Voir détails';
+    } else {
+        this.innerHTML = '<i class="fas fa-chevron-up"></i> Masquer détails';
     }
-});
+}
+
+// Exposer les fonctions pour être appelées de l'extérieur
+window.AutoCategorize.applySimulation = function() {
+    // Reconstruire les données de simulation à chaque appel
+    updateRenamingSimulation();
+};

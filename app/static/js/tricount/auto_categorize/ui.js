@@ -221,6 +221,14 @@
                         Ces dépenses correspondent aux critères spécifiés. Elles seront catégorisées automatiquement si vous activez l'option "Appliquer immédiatement".
                     `;
                     container.appendChild(infoMessage);
+                    
+                    // IMPORTANT: Réappliquer la simulation après le rafraîchissement
+                    setTimeout(() => {
+                        if (window.AutoCategorize && typeof window.AutoCategorize.applySimulation === 'function') {
+                            console.log("Réapplication de la simulation après rafraîchissement");
+                            window.AutoCategorize.applySimulation();
+                        }
+                    }, 200);
                 } else {
                     // Aucune dépense trouvée
                     const warningMessage = document.createElement('div');
@@ -269,8 +277,8 @@
             }
         });
     };
-
-    /**
+    
+     /**
      * Crée une table HTML pour afficher les dépenses similaires
      * @param {Array} expenses - Liste des dépenses à afficher
      */
@@ -289,7 +297,7 @@
         thead.innerHTML = `
             <tr>
                 <th>Date</th>
-                <th>Marchand</th>
+                <th>Détails</th>
                 <th>Montant</th>
                 <th>Statut</th>
             </tr>
@@ -305,53 +313,76 @@
             
             // Cellule de date
             const dateCell = document.createElement('td');
+            dateCell.className = 'text-nowrap';
             dateCell.textContent = expense.date;
             row.appendChild(dateCell);
             
-            // Cellule du marchand avec le nouveau format amélioré
-            const merchantCell = document.createElement('td');
-            if (expense.renamed_merchant && expense.original_merchant) {
-                // Format amélioré pour afficher le marchand original et renommé
-                merchantCell.innerHTML = `
-                    <div class="original-merchant">${expense.original_merchant}</div>
-                    <div class="renamed-merchant"><small><em>Renommé en: ${expense.merchant}</em></small></div>
-                `;
-            } else {
-                merchantCell.textContent = expense.merchant;
+            // Cellule des détails (marchand + description)
+            const detailsCell = document.createElement('td');
+            
+            // Contenu structuré pour les détails
+            let detailsHTML = `
+                <div class="expense-details">
+                    <div class="merchant-info mb-1">
+                        <div class="original-merchant fw-bold">
+                            ${expense.merchant}
+                        </div>`;
+            
+            // Ajouter le marchand renommé s'il existe
+            if (expense.renamed_merchant) {
+                detailsHTML += `
+                        <div class="renamed-merchant small text-primary">
+                            <i class="fas fa-tag me-1"></i>Renommé en: ${expense.renamed_merchant}
+                        </div>`;
             }
-            row.appendChild(merchantCell);
+            
+            detailsHTML += `</div>
+                    
+                    <!-- Bouton pour afficher/masquer les détails de description -->
+                    <button class="btn btn-sm btn-outline-secondary btn-toggle-details py-0 px-1" type="button" 
+                            data-bs-toggle="collapse" data-bs-target="#details-${expense.id}" 
+                            aria-expanded="false" aria-controls="details-${expense.id}">
+                        <i class="fas fa-ellipsis-h"></i> Voir détails
+                    </button>
+                    
+                    <!-- Détails de description (collapsible) -->
+                    <div class="collapse mt-2" id="details-${expense.id}">
+                        <div class="card card-body py-2 px-3 bg-light">
+                            <!-- Description originale - toujours affichée -->
+                            <div class="description-info">
+                                <div class="original-description small">
+                                    <strong>Description originale:</strong> ${expense.description || '<em class="text-muted">Non disponible</em>'}
+                                </div>`;
+            
+            // Ajouter les notes si elles existent
+            if (expense.notes) {
+                detailsHTML += `
+                                <div class="notes-content small mt-2">
+                                    <strong><i class="fas fa-sticky-note me-1 text-primary"></i>Notes:</strong> 
+                                    <span class="text-success">${expense.notes}</span>
+                                </div>`;
+            }
+            
+            detailsHTML += `
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            
+            detailsCell.innerHTML = detailsHTML;
+            row.appendChild(detailsCell);
             
             // Cellule du montant
             const amountCell = document.createElement('td');
+            amountCell.className = `text-nowrap ${expense.is_debit ? 'text-danger' : 'text-success'}`;
             amountCell.textContent = `${expense.is_debit ? '-' : ''}${expense.amount.toFixed(2)} €`;
-            amountCell.className = expense.is_debit ? 'text-danger' : 'text-success';
             row.appendChild(amountCell);
             
-            // Cellule de statut
-            if (expense.conflict) {
-                // Badge avec croix rouge pour les conflits
-                const statusCell = document.createElement('td');
-                statusCell.className = 'text-center';
-                statusCell.innerHTML = `
-                    <span class="badge bg-danger conflict-badge" 
-                        data-bs-toggle="tooltip" 
-                        data-rule-id="${expense.conflict.rule_id}"
-                        data-tooltip="<strong>Conflit</strong><br>Cette dépense est déjà affectée par la règle:<br><strong>${expense.conflict.rule_name}</strong><br>Cliquez pour plus de détails">
-                        <i class="fas fa-times"></i>
-                    </span>
-                `;
-                row.appendChild(statusCell);
-            } else {
-                // Badge vert avec coche pour les dépenses sans conflit
-                const statusCell = document.createElement('td');
-                statusCell.className = 'text-center';
-                statusCell.innerHTML = `
-                    <span class="badge bg-success">
-                        <i class="fas fa-check"></i>
-                    </span>
-                `;
-                row.appendChild(statusCell);
-            }
+            // Créer la cellule de statut
+            const statusCellHTML = UI.createStatusCell(expense);
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = statusCellHTML;
+            row.appendChild(tempDiv.firstChild);
             
             tbody.appendChild(row);
         });
@@ -364,7 +395,80 @@
         
         // Initialiser les tooltips et badges de conflit
         setTimeout(() => {
+            // Initialiser les boutons de basculement
+            const toggleButtons = document.querySelectorAll('.btn-toggle-details');
+            toggleButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const targetId = this.getAttribute('data-bs-target');
+                    const isExpanded = this.getAttribute('aria-expanded') === 'true';
+                    
+                    // Mise à jour dynamique du texte et de l'icône
+                    if (isExpanded) {
+                        this.innerHTML = '<i class="fas fa-ellipsis-h"></i> Voir détails';
+                    } else {
+                        this.innerHTML = '<i class="fas fa-chevron-up"></i> Masquer détails';
+                    }
+                });
+            });
+            
+            // Initialiser les indicateurs de conflit
             UI.initConflictIndicators();
+            
+            // Appliquer la simulation de renommage si disponible
+            if (window.AutoCategorize && typeof window.AutoCategorize.applySimulation === 'function') {
+                window.AutoCategorize.applySimulation();
+            }
         }, 100);
+    };
+
+    /**
+     * Initialise l'interface utilisateur
+     */
+    UI.init = function() {
+        console.log("UI module initialized");
+        
+        // Initialiser le bouton de rafraîchissement
+        const refreshButton = document.getElementById('refresh-similar-expenses');
+        if (refreshButton) {
+            refreshButton.addEventListener('click', this.refreshSimilarExpenses);
+        }
+        
+        // Initialiser les badges de conflit
+        this.initConflictIndicators();
+
+        // Ajouter des écouteurs d'événement pour les champs qui déclenchent la simulation
+        const simulationTriggerFields = [
+            'rename-merchant-pattern', 
+            'rename-merchant-replacement',
+            'rename-description-pattern', 
+            'rename-description-replacement'
+        ];
+        
+        simulationTriggerFields.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                field.addEventListener('input', function() {
+                    // Attendre un peu avant d'appliquer la simulation
+                    setTimeout(() => {
+                        if (window.AutoCategorize && typeof window.AutoCategorize.applySimulation === 'function') {
+                            window.AutoCategorize.applySimulation();
+                        }
+                    }, 300);
+                });
+            }
+        });
+        
+        // Écouter également les changements de commutateurs de section
+        const sectionToggles = document.querySelectorAll('.section-toggle');
+        sectionToggles.forEach(toggle => {
+            toggle.addEventListener('change', function() {
+                // Attendre un peu avant d'appliquer la simulation
+                setTimeout(() => {
+                    if (window.AutoCategorize && typeof window.AutoCategorize.applySimulation === 'function') {
+                        window.AutoCategorize.applySimulation();
+                    }
+                }, 300);
+            });
+        });
     };
 })();

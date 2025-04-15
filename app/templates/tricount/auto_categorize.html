@@ -218,10 +218,10 @@
                         <div class="section-content">
                             <div class="mb-3">
                                 <label for="rename-merchant-pattern" class="form-label">Motif à rechercher</label>
-                                <input type="text" class="form-control rule-input" id="rename-merchant-pattern" name="rename_merchant_pattern" placeholder="{{ expense.merchant }}" data-required="true">
+                                <input type="text" class="form-control rule-input" id="rename-merchant-pattern" name="rename_merchant_pattern" value="{{ expense.merchant }}" data-required="true">
                                 <div id="rename-merchant-pattern-error" class="validation-error">Le motif de recherche est requis</div>
                                 <div class="form-text">Texte à rechercher dans le nom du marchand. Peut être une expression régulière.</div>
-                            </div>
+                            </div>  
                             
                             <div class="mb-3">
                                 <label for="rename-merchant-replacement" class="form-label">Texte de remplacement</label>
@@ -256,7 +256,7 @@
                         <div class="section-content">
                             <div class="mb-3">
                                 <label for="rename-description-pattern" class="form-label">Motif à rechercher</label>
-                                <input type="text" class="form-control rule-input" id="rename-description-pattern" name="rename_description_pattern" placeholder="{{ expense.description }}" data-required="true">
+                                <input type="text" class="form-control rule-input" id="rename-description-pattern" name="rename_description_pattern" value="{{ expense.description }}" data-required="true">
                                 <div id="rename-description-pattern-error" class="validation-error">Le motif de recherche est requis</div>
                                 <div class="form-text">Texte à rechercher dans la description. Peut être une expression régulière.</div>
                             </div>
