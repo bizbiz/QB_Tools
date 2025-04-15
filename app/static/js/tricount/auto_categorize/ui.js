@@ -308,10 +308,10 @@
             dateCell.textContent = expense.date;
             row.appendChild(dateCell);
             
-            // Cellule du marchand
+            // Cellule du marchand avec le nouveau format amélioré
             const merchantCell = document.createElement('td');
-            if (expense.renamed_by_rule && expense.original_merchant) {
-                // Afficher le texte original en grand et le texte renommé comme indication
+            if (expense.renamed_merchant && expense.original_merchant) {
+                // Format amélioré pour afficher le marchand original et renommé
                 merchantCell.innerHTML = `
                     <div class="original-merchant">${expense.original_merchant}</div>
                     <div class="renamed-merchant"><small><em>Renommé en: ${expense.merchant}</em></small></div>
@@ -327,12 +327,30 @@
             amountCell.className = expense.is_debit ? 'text-danger' : 'text-success';
             row.appendChild(amountCell);
             
-            // Créer la cellule de statut en utilisant la méthode dédiée
-            const statusCellHtml = UI.createStatusCell(expense);
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = statusCellHtml;
-            while (tempDiv.firstChild) {
-                row.appendChild(tempDiv.firstChild);
+            // Cellule de statut
+            if (expense.conflict) {
+                // Badge avec croix rouge pour les conflits
+                const statusCell = document.createElement('td');
+                statusCell.className = 'text-center';
+                statusCell.innerHTML = `
+                    <span class="badge bg-danger conflict-badge" 
+                        data-bs-toggle="tooltip" 
+                        data-rule-id="${expense.conflict.rule_id}"
+                        data-tooltip="<strong>Conflit</strong><br>Cette dépense est déjà affectée par la règle:<br><strong>${expense.conflict.rule_name}</strong><br>Cliquez pour plus de détails">
+                        <i class="fas fa-times"></i>
+                    </span>
+                `;
+                row.appendChild(statusCell);
+            } else {
+                // Badge vert avec coche pour les dépenses sans conflit
+                const statusCell = document.createElement('td');
+                statusCell.className = 'text-center';
+                statusCell.innerHTML = `
+                    <span class="badge bg-success">
+                        <i class="fas fa-check"></i>
+                    </span>
+                `;
+                row.appendChild(statusCell);
             }
             
             tbody.appendChild(row);
