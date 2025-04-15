@@ -173,3 +173,6 @@ Afficher le montant original + devise pour les transactions étrangères
 Amélioration de la détection des doublons
 
 Utiliser l'IBAN comme critère supplémentaire pour identifier les transactions similaires
+
+
+.Dans auto categorize on a une regle de renommage de marchant mais pas de description, il faut l'implémenter

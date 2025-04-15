@@ -223,10 +223,11 @@
             Validation.hideError(merchantContains);
         }
         
-        // Vérifier les sections conditionnelles (type, catégorie, renommage)
+        // Vérifier les sections conditionnelles (type, catégorie, renommages)
         const applyCategory = document.getElementById('apply-category');
         const applyFlag = document.getElementById('apply-flag');
-        const applyRename = document.getElementById('apply-rename');
+        const applyRenameMerchant = document.getElementById('apply-rename-merchant');
+        const applyRenameDescription = document.getElementById('apply-rename-description');
         
         if (applyCategory && applyCategory.checked) {
             const categoryId = document.getElementById('category-id');
@@ -248,8 +249,18 @@
             }
         }
         
-        if (applyRename && applyRename.checked) {
-            const renamePattern = document.getElementById('rename-pattern');
+        if (applyRenameMerchant && applyRenameMerchant.checked) {
+            const renamePattern = document.getElementById('rename-merchant-pattern');
+            if (!renamePattern.value.trim()) {
+                Validation.showError(renamePattern, 'Le motif de recherche est requis');
+                isValid = false;
+            } else {
+                Validation.hideError(renamePattern);
+            }
+        }
+        
+        if (applyRenameDescription && applyRenameDescription.checked) {
+            const renamePattern = document.getElementById('rename-description-pattern');
             if (!renamePattern.value.trim()) {
                 Validation.showError(renamePattern, 'Le motif de recherche est requis');
                 isValid = false;
@@ -261,7 +272,8 @@
         // Vérifier qu'au moins une action est activée
         if ((!applyCategory || !applyCategory.checked) && 
             (!applyFlag || !applyFlag.checked) && 
-            (!applyRename || !applyRename.checked)) {
+            (!applyRenameMerchant || !applyRenameMerchant.checked) &&
+            (!applyRenameDescription || !applyRenameDescription.checked)) {
             
             // Afficher l'erreur actions
             const actionsError = document.getElementById('actions-error');
@@ -272,7 +284,7 @@
                 const errorMsg = document.createElement('div');
                 errorMsg.id = 'actions-error';
                 errorMsg.className = 'alert alert-danger mb-3';
-                errorMsg.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>Veuillez activer au moins une action (catégorie, type ou renommage).';
+                errorMsg.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>Veuillez activer au moins une action (catégorie, type, renommage de marchand ou modification de description).';
                 
                 // Trouver l'endroit où insérer l'alerte
                 const actionsSection = document.querySelector('.card-header h3.card-title');

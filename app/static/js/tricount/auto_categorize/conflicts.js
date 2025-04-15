@@ -217,12 +217,30 @@ AutoCategorize.getRuleData = function() {
             // Convertir les montants en nombres si présents
             ruleData[key] = value ? parseFloat(value) : null;
         } else if (key === 'requires_confirmation' || key === 'apply_now' || 
-                   key === 'apply_category' || key === 'apply_flag' || key === 'apply_rename') {
+                   key === 'apply_category' || key === 'apply_flag' || 
+                   key === 'apply_rename_merchant' || key === 'apply_rename_description') {
             // Convertir les cases à cocher en booléens
             ruleData[key] = (value === 'true');
         } else {
             ruleData[key] = value;
         }
+    }
+    
+    // Définir les sources de modification
+    if (ruleData.apply_category) {
+        ruleData.category_modified_by = window.modificationSources.AUTO_RULE;
+    }
+    
+    if (ruleData.apply_flag) {
+        ruleData.flag_modified_by = window.modificationSources.AUTO_RULE;
+    }
+    
+    if (ruleData.apply_rename_merchant) {
+        ruleData.merchant_modified_by = window.modificationSources.AUTO_RULE;
+    }
+    
+    if (ruleData.apply_rename_description) {
+        ruleData.notes_modified_by = window.modificationSources.AUTO_RULE;
     }
     
     return ruleData;

@@ -17,7 +17,6 @@ class ReimbursementType(enum.Enum):
         """Convertit l'énumération en chaîne de caractères"""
         return self.value
 
-# Mise à jour de la classe Flag dans app/models/tricount.py
 class ModificationSource(enum.Enum):
     """
     Énumération des différentes sources de modification possibles
@@ -211,9 +210,19 @@ class AutoCategorizationRule(db.Model):
     # Options d'action
     apply_category = db.Column(db.Boolean, default=True)
     apply_flag = db.Column(db.Boolean, default=True)
-    apply_rename = db.Column(db.Boolean, default=False)
     
-    # Configuration de renommage
+    # Configuration de renommage du marchand
+    apply_rename_merchant = db.Column(db.Boolean, default=False)
+    rename_merchant_pattern = db.Column(db.String(200))
+    rename_merchant_replacement = db.Column(db.String(200))
+    
+    # Configuration de modification de description
+    apply_rename_description = db.Column(db.Boolean, default=False)
+    rename_description_pattern = db.Column(db.String(200))
+    rename_description_replacement = db.Column(db.String(200))
+    
+    # Champs de compatibilité avec l'ancien système (à retirer dans une future version)
+    apply_rename = db.Column(db.Boolean, default=False)
     rename_pattern = db.Column(db.String(200))
     rename_replacement = db.Column(db.String(200))
     
@@ -237,7 +246,6 @@ class AutoCategorizationRule(db.Model):
     def matches_expense(self, expense):
         """Vérifie si la règle correspond à une dépense"""
         # Vérifier correspondance avec le nom du marchand
-        # Rechercher uniquement dans merchant (nom original)
         if self.merchant_contains and self.merchant_contains.lower() not in expense.merchant.lower():
             return False
         
@@ -254,6 +262,68 @@ class AutoCategorizationRule(db.Model):
             return False
         
         return True
+        
+    def apply_to_expense(self, expense, source=ModificationSource.AUTO_RULE.value):
+        """Applique les actions de la règle à une dépense"""
+        changes_made = False
+        
+        # Appliquer la catégorie si configuré
+        if self.apply_category and self.category_id:
+            if expense.category_id != self.category_id:
+                expense.category_id = self.category_id
+                expense.category_modified_by = source
+                changes_made = True
+        
+        # Appliquer le flag si configuré
+        if self.apply_flag and self.flag_id:
+            if expense.flag_id != self.flag_id:
+                expense.flag_id = self.flag_id
+                expense.flag_modified_by = source
+                changes_made = True
+        
+        # Appliquer le renommage du marchand si configuré
+        if self.apply_rename_merchant and self.rename_merchant_pattern:
+            try:
+                original_name = expense.renamed_merchant if expense.renamed_merchant else expense.merchant
+                pattern = re.compile(self.rename_merchant_pattern)
+                new_name = pattern.sub(self.rename_merchant_replacement or '', original_name)
+                
+                if new_name != original_name:
+                    expense.renamed_merchant = new_name
+                    expense.merchant_modified_by = source
+                    changes_made = True
+            except Exception as e:
+                print(f"Erreur lors du renommage du marchand: {str(e)}")
+        
+        # Appliquer la modification de description si configurée
+        if self.apply_rename_description and self.rename_description_pattern:
+            try:
+                original_desc = expense.notes if expense.notes else expense.description
+                pattern = re.compile(self.rename_description_pattern)
+                new_desc = pattern.sub(self.rename_description_replacement or '', original_desc)
+                
+                if new_desc != original_desc:
+                    expense.notes = new_desc
+                    expense.notes_modified_by = source
+                    changes_made = True
+            except Exception as e:
+                print(f"Erreur lors de la modification de description: {str(e)}")
+        
+        # Pour la compatibilité avec l'ancien système
+        if self.apply_rename and self.rename_pattern:
+            try:
+                original_name = expense.renamed_merchant if expense.renamed_merchant else expense.merchant
+                pattern = re.compile(self.rename_pattern)
+                new_name = pattern.sub(self.rename_replacement or '', original_name)
+                
+                if new_name != original_name:
+                    expense.renamed_merchant = new_name
+                    expense.merchant_modified_by = source
+                    changes_made = True
+            except Exception as e:
+                print(f"Erreur lors du renommage (ancien système): {str(e)}")
+        
+        return changes_made
 
 class PendingRuleApplication(db.Model):
     """Modèle pour stocker les applications de règles en attente de confirmation"""

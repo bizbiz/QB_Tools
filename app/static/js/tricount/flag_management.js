@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const editColorInput = document.getElementById('edit-color');
     const editIconifyIdInput = document.getElementById('edit-iconify-id');
     const editIsDefaultCheckbox = document.getElementById('edit-is-default');
+    const editReimbursementType = document.getElementById('edit-reimbursement-type');
     const saveFlagButton = document.getElementById('save-flag');
     
     // Éléments de prévisualisation
@@ -107,12 +108,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const flagColor = this.dataset.color;
             const flagIconifyId = this.dataset.iconifyId;
             const flagIsDefault = this.dataset.isDefault === 'true';
+            const flagReimbursementType = this.dataset.reimbursementType || 'not_reimbursable';
             
             console.log("Opening edit modal for flag:", {
                 id: flagId,
                 name: flagName,
                 color: flagColor,
-                iconifyId: flagIconifyId
+                iconifyId: flagIconifyId,
+                reimbursementType: flagReimbursementType
             });
             
             // Remplir le formulaire avec les données du flag
@@ -121,6 +124,11 @@ document.addEventListener('DOMContentLoaded', function() {
             editColorInput.value = flagColor;
             editIconifyIdInput.value = flagIconifyId;
             editIsDefaultCheckbox.checked = flagIsDefault;
+            
+            // Remplir le type de remboursement
+            if (editReimbursementType) {
+                editReimbursementType.value = flagReimbursementType;
+            }
             
             // Mettre à jour l'aperçu de l'icône si elle existe
             if (editIconifyIdInput.value) {

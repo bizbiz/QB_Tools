@@ -122,15 +122,20 @@ def create_auto_rule():
     # Options d'application
     apply_category = 'apply_category' in request.form
     apply_flag = 'apply_flag' in request.form
-    apply_rename = 'apply_rename' in request.form
+    apply_rename_merchant = 'apply_rename_merchant' in request.form  # Nouveau champ
+    apply_rename_description = 'apply_rename_description' in request.form  # Nouveau champ
     
     # Destination de catégorisation
     category_id = request.form.get('category_id', type=int) if apply_category else None
     flag_id = request.form.get('flag_id', type=int) if apply_flag else None
     
-    # Configuration de renommage
-    rename_pattern = request.form.get('rename_pattern') if apply_rename else None
-    rename_replacement = request.form.get('rename_replacement', '') if apply_rename else None
+    # Configuration de renommage du marchand
+    rename_merchant_pattern = request.form.get('rename_merchant_pattern') if apply_rename_merchant else None
+    rename_merchant_replacement = request.form.get('rename_merchant_replacement', '') if apply_rename_merchant else None
+    
+    # Configuration de modification de description
+    rename_description_pattern = request.form.get('rename_description_pattern') if apply_rename_description else None
+    rename_description_replacement = request.form.get('rename_description_replacement', '') if apply_rename_description else None
     
     # Autres options
     min_amount = request.form.get('min_amount', type=float)
@@ -155,8 +160,12 @@ def create_auto_rule():
         flash('Un type de dépense est requis si l\'option de flag est activée.', 'warning')
         return redirect(url_for('tricount.auto_categorize', expense_id=expense_id))
     
-    if apply_rename and not rename_pattern:
-        flash('Un motif de renommage est requis si l\'option de renommage est activée.', 'warning')
+    if apply_rename_merchant and not rename_merchant_pattern:
+        flash('Un motif de renommage du marchand est requis si l\'option de renommage est activée.', 'warning')
+        return redirect(url_for('tricount.auto_categorize', expense_id=expense_id))
+    
+    if apply_rename_description and not rename_description_pattern:
+        flash('Un motif de modification de description est requis si l\'option est activée.', 'warning')
         return redirect(url_for('tricount.auto_categorize', expense_id=expense_id))
     
     # Créer la règle
@@ -173,9 +182,14 @@ def create_auto_rule():
         # Paramètres d'action
         apply_category=apply_category,
         apply_flag=apply_flag,
-        apply_rename=apply_rename,
-        rename_pattern=rename_pattern,
-        rename_replacement=rename_replacement
+        # Renommage du marchand
+        apply_rename_merchant=apply_rename_merchant,
+        rename_merchant_pattern=rename_merchant_pattern,
+        rename_merchant_replacement=rename_merchant_replacement,
+        # Modification de description
+        apply_rename_description=apply_rename_description,
+        rename_description_pattern=rename_description_pattern,
+        rename_description_replacement=rename_description_replacement
     )
     
     db.session.add(rule)
@@ -183,11 +197,6 @@ def create_auto_rule():
     try:
         db.session.commit()
         flash(f'Règle "{rule_name}" créée avec succès.', 'success')
-        
-        # Récupérer les dépenses non catégorisées
-        uncategorized = Expense.query.filter_by(category_id=None).all()
-        count = 0
-        pending_count = 0
         
         # Appliquer immédiatement si demandé
         if apply_now:

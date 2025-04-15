@@ -87,13 +87,13 @@
                     <div class="mb-3">
                         <label for="reimbursement_type" class="form-label">Type de remboursement</label>
                         <select class="form-select" id="reimbursement_type" name="reimbursement_type">
-                            <option value="not_reimbursable" {% if flag.reimbursement_type == 'not_reimbursable' %}selected{% endif %}>
+                            <option value="not_reimbursable" selected>
                                 Non remboursable (personnel)
                             </option>
-                            <option value="partially_reimbursable" {% if flag.reimbursement_type == 'partially_reimbursable' %}selected{% endif %}>
+                            <option value="partially_reimbursable">
                                 Partiellement remboursable (partagé)
                             </option>
-                            <option value="fully_reimbursable" {% if flag.reimbursement_type == 'fully_reimbursable' %}selected{% endif %}>
+                            <option value="fully_reimbursable">
                                 Entièrement remboursable (professionnel)
                             </option>
                         </select>
@@ -172,6 +172,7 @@
                                             data-iconify-id="{{ flag.iconify_id or '' }}"
                                             data-is-default="{{ flag.is_default|lower }}"
                                             data-count="{{ flag.expenses|length }}"
+                                            data-reimbursement-type="{{ flag.reimbursement_type }}"
                                             data-bs-toggle="tooltip" 
                                             data-bs-placement="top" 
                                             title="Modifier">
@@ -286,15 +287,15 @@
                 </div>
 
                 <div class="mb-3">
-                    <label for="reimbursement_type" class="form-label">Type de remboursement</label>
-                    <select class="form-select" id="reimbursement_type" name="reimbursement_type">
-                        <option value="not_reimbursable" {% if flag.reimbursement_type == 'not_reimbursable' %}selected{% endif %}>
+                    <label for="edit-reimbursement-type" class="form-label">Type de remboursement</label>
+                    <select class="form-select" id="edit-reimbursement-type" name="reimbursement_type">
+                        <option value="not_reimbursable">
                             Non remboursable (personnel)
                         </option>
-                        <option value="partially_reimbursable" {% if flag.reimbursement_type == 'partially_reimbursable' %}selected{% endif %}>
+                        <option value="partially_reimbursable">
                             Partiellement remboursable (partagé)
                         </option>
-                        <option value="fully_reimbursable" {% if flag.reimbursement_type == 'fully_reimbursable' %}selected{% endif %}>
+                        <option value="fully_reimbursable">
                             Entièrement remboursable (professionnel)
                         </option>
                     </select>
