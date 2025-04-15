@@ -1,4 +1,4 @@
-// À ajouter/remplacer dans app/static/js/tricount/auto_categorize/rename.js
+// app/static/js/tricount/auto_categorize/rename.js
 
 /**
  * Met à jour la simulation de renommage sur les dépenses similaires
@@ -91,7 +91,7 @@ function applySimulationToExpenses() {
                     if (!simulatedMerchantElement) {
                         // Créer un nouvel élément
                         const simulatedElement = document.createElement('div');
-                        simulatedElement.className = 'simulated-merchant small text-warning';
+                        simulatedElement.className = 'simulated-merchant small text-secondary';
                         simulatedElement.innerHTML = `
                             <i class="fas fa-magic me-1"></i>Sera renommé en: <strong>${simulatedMerchant}</strong>
                         `;
@@ -181,7 +181,7 @@ function applyDescriptionSimulation(expenseId, descContainer, descSimData) {
             if (!simulatedDescElement) {
                 // Créer un nouvel élément
                 simulatedDescElement = document.createElement('div');
-                simulatedDescElement.className = 'simulated-description mt-2 small text-warning';
+                simulatedDescElement.className = 'simulated-description mt-2 small text-secondary';
                 descContainer.appendChild(simulatedDescElement);
             }
             

@@ -280,12 +280,7 @@
                                     <tr class="apply-expense-row" data-expense-id="{{ exp.id }}">
                                         <td>{{ exp.date.strftime('%d/%m/%Y') }}</td>
                                         <td>
-                                            {% if exp.renamed_merchant %}
-                                            <div class="original-merchant">{{ exp.merchant }}</div>
-                                            <div class="renamed-merchant"><small><em>Renommé en: {{ exp.renamed_merchant }}</em></small></div>
-                                            {% else %}
                                             {{ exp.merchant }}
-                                            {% endif %}
                                         </td>
                                         <td class="{% if exp.is_debit %}text-danger{% else %}text-success{% endif %}">
                                             {% if exp.is_debit %}-{% endif %}{{ "%.2f"|format(exp.amount) }} €

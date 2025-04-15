@@ -35,6 +35,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof AutoCategorize.initRename === 'function') {
         console.log("Initializing rename preview...");
         AutoCategorize.initRename();
+    } else if (typeof AutoCategorize.applySimulation === 'function') {
+        // S'assurer que la simulation de renommage est activée même si initRename n'existe pas
+        console.log("Applying rename simulation directly...");
+        setTimeout(() => {
+            AutoCategorize.applySimulation();
+        }, 500);
     }
     
     // 5. L'interface utilisateur et les rafraîchissements
@@ -71,5 +77,43 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         });
+    }
+    
+    // S'assurer que la simulation s'exécute après le chargement de la page et des données
+    if (typeof AutoCategorize.applySimulation === 'function') {
+        // Mettre en place des écouteurs d'événements pour les champs de motif et de remplacement
+        const renameFields = [
+            'rename-merchant-pattern',
+            'rename-merchant-replacement',
+            'rename-description-pattern',
+            'rename-description-replacement'
+        ];
+        
+        renameFields.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                field.addEventListener('input', function() {
+                    setTimeout(() => AutoCategorize.applySimulation(), 300);
+                });
+            }
+        });
+        
+        // Mettre en place des écouteurs pour les cases à cocher
+        const toggles = [
+            'apply-rename-merchant',
+            'apply-rename-description'
+        ];
+        
+        toggles.forEach(toggleId => {
+            const toggle = document.getElementById(toggleId);
+            if (toggle) {
+                toggle.addEventListener('change', function() {
+                    setTimeout(() => AutoCategorize.applySimulation(), 100);
+                });
+            }
+        });
+        
+        // Appliquer la simulation initiale après le chargement complet
+        setTimeout(() => AutoCategorize.applySimulation(), 800);
     }
 });
