@@ -57,6 +57,9 @@ function applySimulationToExpenses() {
     
     console.log("Application des simulations:", simulationData);
     
+    // Déterminer si nous sommes sur la page d'édition
+    const isEditPage = typeof window.virtualExpenseId !== 'undefined';
+    
     // Récupérer toutes les lignes de dépenses
     const expenseRows = document.querySelectorAll('tr.apply-expense-row');
     
@@ -70,12 +73,23 @@ function applySimulationToExpenses() {
         
         // Chercher les éléments de marchand et description
         const merchantElement = row.querySelector('.original-merchant');
+        const renamedMerchantElement = row.querySelector('.renamed-merchant'); // Élément déjà existant sur la page d'édition
         const simulatedMerchantElement = row.querySelector('.simulated-merchant');
         const detailsContainer = row.querySelector('.details-container');
         const descContainer = row.querySelector('.description-info');
         
         // Simuler le renommage du marchand
         if (simulationData.merchant && merchantElement) {
+            // Si nous sommes sur la page d'édition et qu'il y a déjà un élément renamed-merchant,
+            // nous ne voulons pas créer de doublon
+            if (isEditPage && renamedMerchantElement) {
+                // Supprimer l'élément simulé existant pour éviter les doublons
+                if (simulatedMerchantElement) {
+                    simulatedMerchantElement.remove();
+                }
+                return;
+            }
+            
             const originalMerchant = merchantElement.textContent.trim().replace(/Original$/, '').trim();
             
             try {
@@ -92,9 +106,17 @@ function applySimulationToExpenses() {
                         // Créer un nouvel élément
                         const simulatedElement = document.createElement('div');
                         simulatedElement.className = 'simulated-merchant small text-secondary';
-                        simulatedElement.innerHTML = `
-                            <i class="fas fa-magic me-1"></i>Sera renommé en: <strong>${simulatedMerchant}</strong>
-                        `;
+                        
+                        // Adapter le texte selon la page
+                        if (isEditPage) {
+                            simulatedElement.innerHTML = `
+                                <i class="fas fa-magic me-1"></i>Renommé en: <strong>${simulatedMerchant}</strong>
+                            `;
+                        } else {
+                            simulatedElement.innerHTML = `
+                                <i class="fas fa-magic me-1"></i>Sera renommé en: <strong>${simulatedMerchant}</strong>
+                            `;
+                        }
                         
                         // Insérer après le marchand original
                         if (merchantElement.nextSibling) {
@@ -104,9 +126,15 @@ function applySimulationToExpenses() {
                         }
                     } else {
                         // Mettre à jour l'élément existant
-                        simulatedMerchantElement.innerHTML = `
-                            <i class="fas fa-magic me-1"></i>Sera renommé en: <strong>${simulatedMerchant}</strong>
-                        `;
+                        if (isEditPage) {
+                            simulatedMerchantElement.innerHTML = `
+                                <i class="fas fa-magic me-1"></i>Renommé en: <strong>${simulatedMerchant}</strong>
+                            `;
+                        } else {
+                            simulatedMerchantElement.innerHTML = `
+                                <i class="fas fa-magic me-1"></i>Sera renommé en: <strong>${simulatedMerchant}</strong>
+                            `;
+                        }
                     }
                 } else if (simulatedMerchantElement) {
                     // Supprimer l'élément simulé s'il n'y a plus de changement
@@ -136,7 +164,7 @@ function applySimulationToExpenses() {
             
             // Si la section de description est déjà visible, appliquer directement la simulation
             if (descContainer) {
-                applyDescriptionSimulation(expenseId, descContainer, simulationData.description);
+                applyDescriptionSimulation(expenseId, descContainer, simulationData.description, isEditPage);
             }
         } else {
             // Supprimer la simulation existante si présente
@@ -155,10 +183,24 @@ function applySimulationToExpenses() {
 /**
  * Applique la simulation de description à un conteneur spécifique
  */
-function applyDescriptionSimulation(expenseId, descContainer, descSimData) {
+function applyDescriptionSimulation(expenseId, descContainer, descSimData, isEditPage) {
     // Trouver l'élément de description originale
     const descElement = descContainer.querySelector('.original-description');
     if (!descElement) return;
+    
+    // Vérifier s'il y a déjà une description modifiée dans la page d'édition
+    const modifiedDescElement = descContainer.querySelector('.modified-description');
+    
+    // Si nous sommes sur la page d'édition et qu'il y a déjà une description modifiée,
+    // nous ne voulons pas créer de doublon
+    if (isEditPage && modifiedDescElement) {
+        // Supprimer l'élément simulé existant
+        const simulatedDescElement = descContainer.querySelector('.simulated-description');
+        if (simulatedDescElement) {
+            simulatedDescElement.remove();
+        }
+        return;
+    }
     
     // Trouver l'élément simulé existant ou en créer un nouveau
     let simulatedDescElement = descContainer.querySelector('.simulated-description');
@@ -185,9 +227,15 @@ function applyDescriptionSimulation(expenseId, descContainer, descSimData) {
                 descContainer.appendChild(simulatedDescElement);
             }
             
-            simulatedDescElement.innerHTML = `
-                <i class="fas fa-magic me-1"></i>Sera modifié en: <strong>${simulatedDesc}</strong>
-            `;
+            if (isEditPage) {
+                simulatedDescElement.innerHTML = `
+                    <i class="fas fa-magic me-1"></i>Modifié en: <strong>${simulatedDesc}</strong>
+                `;
+            } else {
+                simulatedDescElement.innerHTML = `
+                    <i class="fas fa-magic me-1"></i>Sera modifié en: <strong>${simulatedDesc}</strong>
+                `;
+            }
         } else if (simulatedDescElement) {
             // Supprimer l'élément simulé s'il n'y a plus de changement
             simulatedDescElement.remove();
@@ -219,6 +267,9 @@ function onToggleDetailsWithSimulation() {
                 const simulationData = window.AutoCategorize.simulationData;
                 if (!simulationData || !simulationData.description) return;
                 
+                // Déterminer si nous sommes sur la page d'édition
+                const isEditPage = typeof window.virtualExpenseId !== 'undefined';
+                
                 // Trouver le container de détails
                 const expenseId = this.closest('tr').dataset.expenseId;
                 const targetElement = document.querySelector(targetId);
@@ -226,7 +277,7 @@ function onToggleDetailsWithSimulation() {
                 
                 const descContainer = targetElement.querySelector('.description-info');
                 if (descContainer) {
-                    applyDescriptionSimulation(expenseId, descContainer, simulationData.description);
+                    applyDescriptionSimulation(expenseId, descContainer, simulationData.description, isEditPage);
                 }
             }, 100);
         }
