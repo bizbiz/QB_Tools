@@ -128,3 +128,80 @@
     margin-top: 3px;
     font-style: italic;
 }
+
+/* Styles pour la liste des dépenses similaires */
+.expense-details {
+    position: relative;
+}
+
+.merchant-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.original-merchant {
+    display: flex;
+    align-items: center;
+}
+
+.renamed-merchant {
+    color: #0d6efd;
+    padding-left: 8px;
+    border-left: 2px solid #0d6efd;
+    margin-left: 2px;
+}
+
+.btn-toggle-details {
+    font-size: 0.75rem;
+    margin-top: 2px;
+    border-color: #dee2e6;
+}
+
+.btn-toggle-details:hover {
+    background-color: #f8f9fa;
+}
+
+.fs-8 {
+    font-size: 0.65rem;
+}
+
+/* Style pour la carte de détails */
+.description-info .card-body {
+    padding: 0.5rem;
+}
+
+.description-info {
+    font-size: 0.85rem;
+}
+
+.modified-description {
+    border-left: 2px solid #28a745;
+    padding-left: 6px;
+    margin-left: 1px;
+}
+
+/* Animation pour le collapse */
+.collapse {
+    transition: all 0.2s ease;
+}
+
+/* Style pour la table */
+#similar-expenses-table th {
+    position: sticky;
+    top: 0;
+    background-color: #fff;
+    z-index: 10;
+}
+
+/* Amélioration responsive */
+@media (max-width: 768px) {
+    .merchant-info {
+        max-width: 250px;
+    }
+    
+    .original-merchant, .renamed-merchant {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}

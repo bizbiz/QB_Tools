@@ -319,12 +319,13 @@
                 <div class="card-body">
                     <div id="similar-expenses-container">
                         {% if similar_expenses %}
+                        <!-- Code pour le tableau des dépenses similaires - à insérer dans les templates auto_categorize.html et edit_auto_rule.html -->
                         <div class="table-responsive">
                             <table class="table table-hover" id="similar-expenses-table">
                                 <thead>
                                     <tr>
                                         <th>Date</th>
-                                        <th>Marchand</th>
+                                        <th>Détails</th>
                                         <th>Montant</th>
                                         <th>Statut</th>
                                     </tr>
@@ -332,31 +333,74 @@
                                 <tbody id="similar-expenses-body">
                                     {% for exp in similar_expenses %}
                                     <tr class="apply-expense-row" data-expense-id="{{ exp.id }}">
-                                        <td>{{ exp.date.strftime('%d/%m/%Y') }}</td>
+                                        <td class="text-nowrap">{{ exp.date.strftime('%d/%m/%Y') }}</td>
                                         <td>
-                                            {% if exp.renamed_by_rule and exp.original_merchant %}
-                                            <div class="original-merchant">{{ exp.original_merchant }}</div>
-                                            <div class="renamed-merchant"><small><em>Renommé en: {{ exp.merchant }}</em></small></div>
-                                            {% else %}
-                                            {{ exp.merchant }}
-                                            {% endif %}
+                                            <!-- Marchand (original et renommé) -->
+                                            <div class="expense-details">
+                                                <div class="merchant-info mb-1">
+                                                    <div class="original-merchant fw-bold">
+                                                        {{ exp.merchant }}
+                                                        {% if not exp.renamed_merchant %}
+                                                            <span class="badge bg-secondary rounded-pill ms-1 fs-8">Original</span>
+                                                        {% endif %}
+                                                    </div>
+                                                    {% if exp.renamed_merchant %}
+                                                    <div class="renamed-merchant small text-primary">
+                                                        <i class="fas fa-tag me-1"></i>Renommé: {{ exp.renamed_merchant }}
+                                                    </div>
+                                                    {% endif %}
+                                                </div>
+                                                
+                                                <!-- Bouton pour afficher/masquer les détails de description -->
+                                                <button class="btn btn-sm btn-outline-secondary btn-toggle-details py-0 px-1" type="button" 
+                                                        data-bs-toggle="collapse" data-bs-target="#details-{{ exp.id }}" 
+                                                        aria-expanded="false" aria-controls="details-{{ exp.id }}">
+                                                    <i class="fas fa-ellipsis-h"></i> Voir description
+                                                </button>
+                                                
+                                                <!-- Détails de description (collapsible) -->
+                                                <div class="collapse mt-2" id="details-{{ exp.id }}">
+                                                    <div class="card card-body py-2 px-3 bg-light">
+                                                        <div class="description-info">
+                                                            <div class="original-description small">
+                                                                <span class="fw-bold">Description:</span> {{ exp.description|truncate(100) }}
+                                                            </div>
+                                                            {% if exp.notes %}
+                                                            <div class="modified-description small text-success mt-1">
+                                                                <span class="fw-bold"><i class="fas fa-edit me-1"></i>Notes:</span> {{ exp.notes|truncate(100) }}
+                                                            </div>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </td>
-                                        <td class="{% if exp.is_debit %}text-danger{% else %}text-success{% endif %}">
+                                        <td class="text-nowrap {% if exp.is_debit %}text-danger{% else %}text-success{% endif %}">
                                             {% if exp.is_debit %}-{% endif %}{{ "%.2f"|format(exp.amount) }} €
                                         </td>
                                         <td class="text-center">
                                             {% if exp.applied_rules.count() > 0 %}
-                                            {% set rule = exp.applied_rules.first() %}
-                                            <span class="badge bg-danger conflict-badge" 
-                                                  data-bs-toggle="tooltip" 
-                                                  data-rule-id="{{ rule.id }}"
-                                                  data-tooltip="<strong>Conflit</strong><br>Cette dépense est déjà affectée par la règle:<br><strong>{{ rule.name }}</strong><br>Cliquez pour plus de détails">
-                                                <i class="fas fa-times"></i>
-                                            </span>
+                                                {% set applied_rule = exp.applied_rules.first() %}
+                                                {% if applied_rule.id == rule.id|default(0) %}
+                                                <!-- Cette dépense est déjà associée à la règle en cours d'édition -->
+                                                <span class="badge bg-info" 
+                                                    data-bs-toggle="tooltip" 
+                                                    title="Cette dépense est déjà associée à cette règle">
+                                                    <i class="fas fa-check"></i>
+                                                </span>
+                                                {% else %}
+                                                <!-- Cette dépense est associée à une autre règle -->
+                                                <span class="badge bg-danger conflict-badge" 
+                                                    data-bs-toggle="tooltip" 
+                                                    data-rule-id="{{ applied_rule.id }}"
+                                                    data-tooltip="<strong>Conflit</strong><br>Cette dépense est déjà affectée par la règle:<br><strong>{{ applied_rule.name }}</strong><br>Cliquez pour plus de détails">
+                                                    <i class="fas fa-times"></i>
+                                                </span>
+                                                {% endif %}
                                             {% else %}
-                                            <span class="badge bg-success">
-                                                <i class="fas fa-check"></i>
-                                            </span>
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check"></i>
+                                                </span>
                                             {% endif %}
                                         </td>
                                     </tr>
