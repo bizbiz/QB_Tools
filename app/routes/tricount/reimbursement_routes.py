@@ -16,6 +16,14 @@ def reimbursements_list():
     end_date = request.args.get('end_date')
     search_query = request.args.get('search', '')
     
+    # DEBUG: Afficher les paramètres reçus
+    print("Paramètres reçus:")
+    print(f"flag_id: {flag_id}")
+    print(f"status_values: {status_values}")
+    print(f"start_date: {start_date}")
+    print(f"end_date: {end_date}")
+    print(f"search_query: {search_query}")
+    
     # Vérifier s'il s'agit d'une requête AJAX
     is_ajax = request.args.get('ajax') == 'true' or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     
@@ -31,22 +39,32 @@ def reimbursements_list():
         ])
     )
     
+    # DEBUG: Nombre de dépenses avant filtrage
+    total_before_filters = query.count()
+    print(f"Nombre de dépenses remboursables avant filtrage: {total_before_filters}")
+    
     # Filtre par flag spécifique
     if flag_id is not None and flag_id > 0:
         query = query.filter(Expense.flag_id == flag_id)
+        # DEBUG: Après filtre de flag
+        print(f"Après filtre flag_id={flag_id}, nombre de dépenses: {query.count()}")
     
     # Filtre par statut de déclaration (multiple)
     if status_values:
+        # Filtrer pour n'inclure que les dépenses dont le statut est dans la liste
         query = query.filter(Expense.declaration_status.in_(status_values))
-    else:
-        # Si aucun statut n'est sélectionné, on affiche rien
-        query = query.filter(False)
+        # DEBUG: Après filtre de statut
+        print(f"Après filtre statut={status_values}, nombre de dépenses: {query.count()}")
+    # Ne pas ajouter de filtre supplémentaire si aucun statut n'est sélectionné
+    # Cela permettra d'afficher toutes les dépenses remboursables
     
     # Filtre par date
     if start_date:
         try:
             start_date_obj = datetime.strptime(start_date, '%Y-%m-%d')
             query = query.filter(Expense.date >= start_date_obj)
+            # DEBUG: Après filtre de date de début
+            print(f"Après filtre start_date={start_date}, nombre de dépenses: {query.count()}")
         except ValueError:
             start_date = None
     
@@ -54,6 +72,8 @@ def reimbursements_list():
         try:
             end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
             query = query.filter(Expense.date <= end_date_obj)
+            # DEBUG: Après filtre de date de fin
+            print(f"Après filtre end_date={end_date}, nombre de dépenses: {query.count()}")
         except ValueError:
             end_date = None
     
@@ -69,6 +89,8 @@ def reimbursements_list():
                 Expense.declaration_reference.ilike(search_term)
             )
         )
+        # DEBUG: Après filtre de recherche
+        print(f"Après filtre search={search_query}, nombre de dépenses: {query.count()}")
     
     # Appliquer le tri
     if sort_by == 'date':
@@ -87,6 +109,9 @@ def reimbursements_list():
     page = request.args.get('page', 1, type=int)
     per_page = 20
     expenses = query.paginate(page=page, per_page=per_page, error_out=False)
+    
+    # DEBUG: Résultat final
+    print(f"Pagination: page={page}, par_page={per_page}, total={expenses.total}")
     
     # Si c'est une requête AJAX, renvoyer du JSON
     if is_ajax:

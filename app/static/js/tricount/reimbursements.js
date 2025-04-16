@@ -141,7 +141,7 @@ document.addEventListener('DOMContentLoaded', function() {
         submitFiltersAjax();
     }
     
-        /**
+    /**
      * Soumet le formulaire de filtrage via AJAX
      */
     function submitFiltersAjax() {
@@ -154,26 +154,39 @@ document.addEventListener('DOMContentLoaded', function() {
             loadingSpinner.style.display = 'block';
         }
         
-        // Récupérer les données du formulaire
-        const formData = new FormData(filterForm);
-        formData.append('ajax', 'true');
+        // Ne pas utiliser FormData qui conserve les paramètres d'origine
+        // Créer directement un URLSearchParams
+        const params = new URLSearchParams();
         
-        // S'assurer que les statuts sont correctement traités
-        // Supprimer d'abord tous les statuts du formData
-        for (const pair of [...formData.entries()]) {
-            if (pair[0] === 'status[]') {
-                formData.delete(pair[0]);
-            }
-        }
+        // Ajouter les paramètres de base (sauf status)
+        params.append('ajax', 'true');
         
-        // Puis ajouter uniquement les statuts sélectionnés
+        // Ajouter les valeurs des champs non-status
+        const flagIdSelect = document.getElementById('flag_id');
+        if (flagIdSelect) params.append('flag_id', flagIdSelect.value);
+        
+        const searchInput = document.getElementById('search');
+        if (searchInput) params.append('search', searchInput.value);
+        
+        const startDateInput = document.getElementById('start_date');
+        if (startDateInput) params.append('start_date', startDateInput.value);
+        
+        const endDateInput = document.getElementById('end_date');
+        if (endDateInput) params.append('end_date', endDateInput.value);
+        
+        // Ajouter tri et ordre
+        params.append('sort', 'date');
+        params.append('order', 'desc');
+        
+        // Ajouter uniquement les statuts sélectionnés
         const statusSwitches = document.querySelectorAll('.filter-status-switch:checked');
+        console.log("Statuts sélectionnés :", statusSwitches.length);
         statusSwitches.forEach(switchEl => {
-            formData.append('status', switchEl.value);
+            console.log("Ajout du statut :", switchEl.value);
+            params.append('status', switchEl.value);
         });
         
-        // Convertir les données en paramètres d'URL
-        const params = new URLSearchParams(formData);
+        console.log("Paramètres envoyés :", params.toString());
         
         // Envoyer la requête AJAX
         fetch(`${filterForm.action}?${params.toString()}`, {
@@ -181,35 +194,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 'X-Requested-With': 'XMLHttpRequest'
             }
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Mettre à jour le contenu du tableau
-                updateTableContent(data.expenses);
-                
-                // Mettre à jour les statistiques
-                updateSummary(data.summary);
-                
-                // Mettre à jour la pagination
-                updatePagination(data.pagination);
-                
-                // Mettre à jour l'URL sans recharger la page
-                window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
-            } else {
-                console.error('Erreur lors du chargement des dépenses:', data.error);
-                showErrorMessage('Erreur lors du chargement des dépenses. Veuillez réessayer.');
-            }
-        })
-        .catch(error => {
-            console.error('Erreur AJAX:', error);
-            showErrorMessage('Erreur de communication avec le serveur.');
-        })
-        .finally(() => {
-            // Masquer l'indicateur de chargement
-            if (loadingSpinner) {
-                loadingSpinner.style.display = 'none';
-            }
-        });
     }
     
     /**
@@ -580,9 +564,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const statusFilters = Array.from(document.querySelectorAll('.filter-status-switch:checked'))
             .map(checkbox => checkbox.value);
         
-        // Si aucun filtre actif, cacher toutes les lignes
+        // Si aucun filtre actif, conserver toutes les lignes visibles
         if (statusFilters.length === 0) {
-            hideRow(row);
             return;
         }
         
