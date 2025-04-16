@@ -132,16 +132,16 @@ document.addEventListener('DOMContentLoaded', function() {
         // Réinitialiser tous les champs à leurs valeurs par défaut
         filterForm.reset();
         
-        // Cocher uniquement le statut "Non déclarées" par défaut
+        // Cocher tous les statuts par défaut
         document.getElementById('status-not-declared').checked = true;
-        document.getElementById('status-declared').checked = false;
-        document.getElementById('status-reimbursed').checked = false;
+        document.getElementById('status-declared').checked = true;
+        document.getElementById('status-reimbursed').checked = true;
         
         // Soumettre le formulaire avec AJAX
         submitFiltersAjax();
     }
     
-    /**
+        /**
      * Soumet le formulaire de filtrage via AJAX
      */
     function submitFiltersAjax() {
@@ -157,6 +157,20 @@ document.addEventListener('DOMContentLoaded', function() {
         // Récupérer les données du formulaire
         const formData = new FormData(filterForm);
         formData.append('ajax', 'true');
+        
+        // S'assurer que les statuts sont correctement traités
+        // Supprimer d'abord tous les statuts du formData
+        for (const pair of [...formData.entries()]) {
+            if (pair[0] === 'status[]') {
+                formData.delete(pair[0]);
+            }
+        }
+        
+        // Puis ajouter uniquement les statuts sélectionnés
+        const statusSwitches = document.querySelectorAll('.filter-status-switch:checked');
+        statusSwitches.forEach(switchEl => {
+            formData.append('status', switchEl.value);
+        });
         
         // Convertir les données en paramètres d'URL
         const params = new URLSearchParams(formData);
@@ -566,8 +580,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const statusFilters = Array.from(document.querySelectorAll('.filter-status-switch:checked'))
             .map(checkbox => checkbox.value);
         
-        // Si aucun filtre actif, conserver la visibilité
-        if (statusFilters.length === 0) return;
+        // Si aucun filtre actif, cacher toutes les lignes
+        if (statusFilters.length === 0) {
+            hideRow(row);
+            return;
+        }
         
         // Déterminer le statut de la ligne
         let rowStatus;
@@ -583,45 +600,53 @@ document.addEventListener('DOMContentLoaded', function() {
         const visible = statusFilters.includes(rowStatus);
         
         if (!visible) {
-            // Animer la disparition et supprimer la ligne
-            row.style.transition = 'opacity 0.5s ease, height 0.5s ease';
-            row.style.opacity = '0';
-            row.style.height = '0';
-            row.style.overflow = 'hidden';
-            
-            setTimeout(() => {
-                row.remove();
-                
-                // Mettre à jour le compteur de résultats
-                const totalRows = document.querySelectorAll('#expenses-table-body tr').length;
-                document.getElementById('expenses-count').textContent = `${totalRows} dépenses`;
-                
-                // Afficher un message si plus aucune dépense
-                if (totalRows === 0) {
-                    const tableBody = document.getElementById('expenses-table-body');
-                    tableBody.innerHTML = `
-                        <tr>
-                            <td colspan="7" class="text-center py-4">
-                                <div class="alert alert-info mb-0">
-                                    <i class="fas fa-info-circle me-2"></i>
-                                    Aucune dépense remboursable trouvée avec les filtres appliqués. 
-                                    <a href="#" class="reset-filters-link">Réinitialiser les filtres</a>.
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-                    
-                    // Initialiser le lien de réinitialisation
-                    const resetLink = tableBody.querySelector('.reset-filters-link');
-                    if (resetLink) {
-                        resetLink.addEventListener('click', function(e) {
-                            e.preventDefault();
-                            resetFilters();
-                        });
-                    }
-                }
-            }, 500);
+            hideRow(row);
         }
+    }
+    
+    /**
+     * Cache une ligne avec une animation
+     * @param {HTMLElement} row - La ligne à cacher
+     */
+    function hideRow(row) {
+        // Animer la disparition et supprimer la ligne
+        row.style.transition = 'opacity 0.5s ease, height 0.5s ease';
+        row.style.opacity = '0';
+        row.style.height = '0';
+        row.style.overflow = 'hidden';
+        
+        setTimeout(() => {
+            row.remove();
+            
+            // Mettre à jour le compteur de résultats
+            const totalRows = document.querySelectorAll('#expenses-table-body tr:not([style*="height: 0"])').length;
+            document.getElementById('expenses-count').textContent = `${totalRows} dépenses`;
+            
+            // Afficher un message si plus aucune dépense
+            if (totalRows === 0) {
+                const tableBody = document.getElementById('expenses-table-body');
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-4">
+                            <div class="alert alert-info mb-0">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Aucune dépense remboursable trouvée avec les filtres appliqués. 
+                                <a href="#" class="reset-filters-link">Réinitialiser les filtres</a>.
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                
+                // Initialiser le lien de réinitialisation
+                const resetLink = tableBody.querySelector('.reset-filters-link');
+                if (resetLink) {
+                    resetLink.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        resetFilters();
+                    });
+                }
+            }
+        }, 500);
     }
     
     /**

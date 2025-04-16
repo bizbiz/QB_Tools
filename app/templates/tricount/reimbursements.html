@@ -1,3 +1,4 @@
+<!-- app/templates/tricount/reimbursements.html -->
 {% extends "base.html" %}
 
 {% block title %}QB Tools - Suivi des remboursements{% endblock %}
@@ -128,15 +129,15 @@
                                 </label>
                                 <div class="d-flex flex-wrap gap-3">
                                     <div class="form-check form-switch">
-                                        <input class="form-check-input filter-status-switch" type="checkbox" id="status-not-declared" name="status" value="not_declared" {% if not selected_status or selected_status == 'all' or selected_status == 'not_declared' %}checked{% endif %}>
+                                        <input class="form-check-input filter-status-switch" type="checkbox" id="status-not-declared" name="status[]" value="not_declared" checked>
                                         <label class="form-check-label" for="status-not-declared">Non déclarées</label>
                                     </div>
                                     <div class="form-check form-switch">
-                                        <input class="form-check-input filter-status-switch" type="checkbox" id="status-declared" name="status" value="declared" {% if selected_status == 'all' or selected_status == 'declared' %}checked{% endif %}>
+                                        <input class="form-check-input filter-status-switch" type="checkbox" id="status-declared" name="status[]" value="declared" checked>
                                         <label class="form-check-label" for="status-declared">Déclarées</label>
                                     </div>
                                     <div class="form-check form-switch">
-                                        <input class="form-check-input filter-status-switch" type="checkbox" id="status-reimbursed" name="status" value="reimbursed" {% if selected_status == 'all' or selected_status == 'reimbursed' %}checked{% endif %}>
+                                        <input class="form-check-input filter-status-switch" type="checkbox" id="status-reimbursed" name="status[]" value="reimbursed" checked>
                                         <label class="form-check-label" for="status-reimbursed">Remboursées</label>
                                     </div>
                                 </div>

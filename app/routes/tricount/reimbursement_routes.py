@@ -38,6 +38,9 @@ def reimbursements_list():
     # Filtre par statut de déclaration (multiple)
     if status_values:
         query = query.filter(Expense.declaration_status.in_(status_values))
+    else:
+        # Si aucun statut n'est sélectionné, on affiche rien
+        query = query.filter(False)
     
     # Filtre par date
     if start_date:
