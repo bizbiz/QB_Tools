@@ -13,6 +13,7 @@
 {% from "macros/tricount/flag_macros.html" import flag_badge %}
 {% from "macros/tricount/category_select.html" import category_badge %}
 {% from "macros/tricount/expense_macros.html" import display_expense_name, display_expense_description %}
+{% from "macros/ui_components.html" import loading_spinner %}
 
 {% block content %}
 <div class="container py-4">
@@ -52,7 +53,7 @@
                             <div class="card bg-light h-100">
                                 <div class="card-body text-center">
                                     <h5 class="card-title">Total remboursable</h5>
-                                    <p class="display-4 mb-0">{{ "%.2f"|format(summary.total_amount) }} €</p>
+                                    <p class="display-4 mb-0" id="total-amount">{{ "%.2f"|format(summary.total_amount) }} €</p>
                                 </div>
                             </div>
                         </div>
@@ -61,7 +62,7 @@
                             <div class="card bg-light h-100">
                                 <div class="card-body text-center">
                                     <h5 class="card-title">Déclaré</h5>
-                                    <p class="display-4 mb-0 text-primary">{{ "%.2f"|format(summary.total_declared) }} €</p>
+                                    <p class="display-4 mb-0 text-primary" id="total-declared">{{ "%.2f"|format(summary.total_declared) }} €</p>
                                 </div>
                             </div>
                         </div>
@@ -70,7 +71,7 @@
                             <div class="card bg-light h-100">
                                 <div class="card-body text-center">
                                     <h5 class="card-title">Remboursé</h5>
-                                    <p class="display-4 mb-0 text-success">{{ "%.2f"|format(summary.total_reimbursed) }} €</p>
+                                    <p class="display-4 mb-0 text-success" id="total-reimbursed">{{ "%.2f"|format(summary.total_reimbursed) }} €</p>
                                 </div>
                             </div>
                         </div>
@@ -81,9 +82,9 @@
                                     <h5 class="card-title">Progression</h5>
                                     <div class="progress-circle">
                                         <div class="progress-circle-inner">
-                                            <div class="progress-value">{{ "%.0f"|format(summary.percentage_declared) }}%</div>
+                                            <div class="progress-value" id="percentage-declared">{{ "%.0f"|format(summary.percentage_declared) }}%</div>
                                         </div>
-                                        <div class="progress-circle-background" style="background: conic-gradient(#0d6efd {{ summary.percentage_declared }}%, #e9ecef 0)"></div>
+                                        <div class="progress-circle-background" id="progress-circle-bg" style="background: conic-gradient(#0d6efd {{ summary.percentage_declared }}%, #e9ecef 0)"></div>
                                     </div>
                                 </div>
                             </div>
@@ -101,7 +102,7 @@
                     <h3 class="card-title">Filtres</h3>
                 </div>
                 <div class="card-body">
-                    <form id="filter-form" method="GET" action="{{ url_for('tricount.reimbursements_list') }}">
+                    <form id="filter-form" method="GET" action="{{ url_for('tricount.reimbursements_list') }}" data-ajax-filter="true">
                         <div class="row mb-3">
                             <div class="col-md-3 mb-3">
                                 <label for="flag_id" class="form-label">
@@ -118,19 +119,27 @@
                                 </select>
                             </div>
                             
-                            <div class="col-md-3 mb-3">
-                                <label for="status" class="form-label">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">
                                     Statut
                                     <span class="badge bg-primary ms-1" title="Filtrage en temps réel">
                                         <i class="fas fa-bolt small"></i>
                                     </span>
                                 </label>
-                                <select class="form-select" id="status" name="status">
-                                    <option value="all" {% if selected_status == 'all' %}selected{% endif %}>Tous les statuts</option>
-                                    <option value="{{ declaration_statuses.NOT_DECLARED.value }}" {% if selected_status == declaration_statuses.NOT_DECLARED.value %}selected{% endif %}>Non déclarées</option>
-                                    <option value="{{ declaration_statuses.DECLARED.value }}" {% if selected_status == declaration_statuses.DECLARED.value %}selected{% endif %}>Déclarées</option>
-                                    <option value="{{ declaration_statuses.REIMBURSED.value }}" {% if selected_status == declaration_statuses.REIMBURSED.value %}selected{% endif %}>Remboursées</option>
-                                </select>
+                                <div class="d-flex flex-wrap gap-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input filter-status-switch" type="checkbox" id="status-not-declared" name="status" value="not_declared" {% if not selected_status or selected_status == 'all' or selected_status == 'not_declared' %}checked{% endif %}>
+                                        <label class="form-check-label" for="status-not-declared">Non déclarées</label>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input filter-status-switch" type="checkbox" id="status-declared" name="status" value="declared" {% if selected_status == 'all' or selected_status == 'declared' %}checked{% endif %}>
+                                        <label class="form-check-label" for="status-declared">Déclarées</label>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input filter-status-switch" type="checkbox" id="status-reimbursed" name="status" value="reimbursed" {% if selected_status == 'all' or selected_status == 'reimbursed' %}checked{% endif %}>
+                                        <label class="form-check-label" for="status-reimbursed">Remboursées</label>
+                                    </div>
+                                </div>
                             </div>
                             
                             <div class="col-md-3 mb-3">
@@ -144,12 +153,6 @@
                                        placeholder="Rechercher dans les dépenses..." 
                                        autocomplete="off">
                                 <div class="form-text">Recherche dans marchand, description et notes</div>
-                            </div>
-                            
-                            <div class="col-md-3 mb-3 d-flex align-items-end">
-                                <button type="submit" class="btn btn-primary w-100">
-                                    <i class="fas fa-search me-2"></i>Rechercher
-                                </button>
                             </div>
                         </div>
                         
@@ -178,7 +181,7 @@
                                 <input type="hidden" name="sort" value="{{ sort_by }}">
                                 <input type="hidden" name="order" value="{{ order }}">
                                 
-                                <a href="{{ url_for('tricount.reimbursements_list') }}" class="btn btn-outline-secondary">
+                                <a href="{{ url_for('tricount.reimbursements_list') }}" class="btn btn-outline-secondary" id="reset-filters-btn">
                                     <i class="fas fa-undo me-2"></i>Réinitialiser les filtres
                                 </a>
                             </div>
@@ -195,12 +198,16 @@
                 <div class="card-header">
                     <div class="d-flex justify-content-between align-items-center">
                         <h3 class="card-title">Dépenses remboursables</h3>
-                        <span class="badge bg-primary">{{ expenses.total }} dépenses</span>
+                        <span class="badge bg-primary" id="expenses-count">{{ expenses.total }} dépenses</span>
                     </div>
                 </div>
+                
+                <!-- Loading spinner for AJAX requests -->
+                {{ loading_spinner(id='table-loading-spinner', text='Chargement des dépenses...') }}
+                
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover table-striped mb-0 sortable-table">
+                        <table class="table table-hover table-striped mb-0 sortable-table" id="expenses-table">
                             <thead>
                                 <tr>
                                     <th class="no-sort select-all-column">
@@ -212,15 +219,15 @@
                                     <th data-type="text">Description</th>
                                     <th data-type="number">Montant</th>
                                     <th data-type="text">Type</th>
-                                    <th data-type="text">Statut</th>
-                                    <th data-type="text">Référence</th>
-                                    <th class="no-sort">Actions</th>
+                                    <th data-type="text">Déclarée</th>
+                                    <th data-type="text">Remboursée</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="expenses-table-body">
                                 {% if expenses.items %}
                                     {% for expense in expenses.items %}
-                                    <tr data-expense-id="{{ expense.id }}">
+                                    <tr data-expense-id="{{ expense.id }}" 
+                                        class="{% if expense.declaration_status == 'declared' %}expense-declared{% endif %} {% if expense.declaration_status == 'reimbursed' %}expense-reimbursed{% endif %}">
                                         <td>
                                             <div class="form-check">
                                                 <input class="form-check-input expense-checkbox" type="checkbox" value="{{ expense.id }}">
@@ -242,38 +249,34 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            {% if expense.declaration_status == declaration_statuses.NOT_DECLARED.value %}
-                                            <span class="badge bg-secondary declaration-status-badge">Non déclarée</span>
-                                            {% elif expense.declaration_status == declaration_statuses.DECLARED.value %}
-                                            <span class="badge bg-primary declaration-status-badge">Déclarée</span>
-                                            {% elif expense.declaration_status == declaration_statuses.REIMBURSED.value %}
-                                            <span class="badge bg-success declaration-status-badge">Remboursée</span>
-                                            {% endif %}
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input status-switch declared-switch" 
+                                                       type="checkbox" 
+                                                       data-expense-id="{{ expense.id }}" 
+                                                       data-status="declared" 
+                                                       {% if expense.declaration_status in ['declared', 'reimbursed'] %}checked{% endif %}>
+                                                <label class="form-check-label">Déclarée</label>
+                                            </div>
                                         </td>
                                         <td>
-                                            {% if expense.declaration_reference %}
-                                            <span class="reference-number">{{ expense.declaration_reference }}</span>
-                                            {% else %}
-                                            <span class="text-muted">-</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-primary edit-status-btn" 
-                                                    data-bs-toggle="tooltip" 
-                                                    data-bs-placement="top" 
-                                                    title="Modifier le statut">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input status-switch reimbursed-switch" 
+                                                       type="checkbox" 
+                                                       data-expense-id="{{ expense.id }}" 
+                                                       data-status="reimbursed" 
+                                                       {% if expense.declaration_status == 'reimbursed' %}checked{% endif %}>
+                                                <label class="form-check-label">Remboursée</label>
+                                            </div>
                                         </td>
                                     </tr>
                                     {% endfor %}
                                 {% else %}
-                                    <tr>
-                                        <td colspan="8" class="text-center py-4">
+                                    <tr id="no-expenses-row">
+                                        <td colspan="7" class="text-center py-4">
                                             <div class="alert alert-info mb-0">
                                                 <i class="fas fa-info-circle me-2"></i>
                                                 Aucune dépense remboursable trouvée avec les filtres appliqués. 
-                                                <a href="{{ url_for('tricount.reimbursements_list') }}">Réinitialiser les filtres</a>.
+                                                <a href="{{ url_for('tricount.reimbursements_list') }}" id="reset-filters-link">Réinitialiser les filtres</a>.
                                             </div>
                                         </td>
                                     </tr>
@@ -283,15 +286,15 @@
                     </div>
                 </div>
 
-                <div class="card-footer">
+                <div class="card-footer" id="pagination-container">
                     {% if expenses.total > 0 %}
                         <nav aria-label="Pagination des dépenses">
-                            <ul class="pagination justify-content-center mb-0">
+                            <ul class="pagination justify-content-center mb-0" id="pagination">
                                 {% if expenses.has_prev %}
                                 <li class="page-item">
                                     {% set args = request.args.copy() %}
                                     {% set _ = args.pop('page', None) %}
-                                    <a class="page-link" href="{{ url_for('tricount.reimbursements_list', page=expenses.prev_num, **args) }}">
+                                    <a class="page-link" href="{{ url_for('tricount.reimbursements_list', page=expenses.prev_num, **args) }}" data-page="{{ expenses.prev_num }}">
                                         <i class="fas fa-chevron-left"></i> Précédent
                                     </a>
                                 </li>
@@ -310,7 +313,7 @@
                                 <li class="page-item {% if page_num == expenses.page %}active{% endif %}">
                                     {% set args = request.args.copy() %}
                                     {% set _ = args.pop('page', None) %}
-                                    <a class="page-link" href="{{ url_for('tricount.reimbursements_list', page=page_num, **args) }}">
+                                    <a class="page-link" href="{{ url_for('tricount.reimbursements_list', page=page_num, **args) }}" data-page="{{ page_num }}">
                                         {{ page_num }}
                                     </a>
                                 </li>
@@ -320,7 +323,7 @@
                                 <li class="page-item">
                                     {% set args = request.args.copy() %}
                                     {% set _ = args.pop('page', None) %}
-                                    <a class="page-link" href="{{ url_for('tricount.reimbursements_list', page=expenses.next_num, **args) }}">
+                                    <a class="page-link" href="{{ url_for('tricount.reimbursements_list', page=expenses.next_num, **args) }}" data-page="{{ expenses.next_num }}">
                                         Suivant <i class="fas fa-chevron-right"></i>
                                     </a>
                                 </li>
@@ -335,52 +338,10 @@
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle me-2"></i>
                             Aucune dépense remboursable trouvée avec les filtres appliqués. 
-                            <a href="{{ url_for('tricount.reimbursements_list') }}">Réinitialiser les filtres</a>.
+                            <a href="{{ url_for('tricount.reimbursements_list') }}" class="reset-filters-link">Réinitialiser les filtres</a>.
                         </div>
                     {% endif %}
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal de modification du statut -->
-<div class="modal fade" id="editStatusModal" tabindex="-1" aria-labelledby="editStatusModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editStatusModalLabel">Modifier le statut de remboursement</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="edit-status-form" method="POST">
-                    <input type="hidden" id="edit-expense-id" name="expense_id">
-                    
-                    <div class="mb-3">
-                        <label for="edit-status" class="form-label">Statut de déclaration</label>
-                        <select class="form-select" id="edit-status" name="status">
-                            <option value="{{ declaration_statuses.NOT_DECLARED.value }}">Non déclarée</option>
-                            <option value="{{ declaration_statuses.DECLARED.value }}">Déclarée</option>
-                            <option value="{{ declaration_statuses.REIMBURSED.value }}">Remboursée</option>
-                        </select>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="edit-reference" class="form-label">Référence externe</label>
-                        <input type="text" class="form-control" id="edit-reference" name="reference" placeholder="Ex: NDF-2025-0042">
-                        <div class="form-text">Numéro de note de frais, identifiant sur l'application externe, etc.</div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="edit-notes" class="form-label">Notes</label>
-                        <textarea class="form-control" id="edit-notes" name="notes" rows="3"></textarea>
-                        <div class="form-text">Notes supplémentaires sur le remboursement</div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-primary" id="save-status-btn">Enregistrer</button>
             </div>
         </div>
     </div>
@@ -397,18 +358,17 @@
             <div class="modal-body">
                 <form id="bulk-declare-form">
                     <div class="mb-3">
-                        <label for="bulk-status" class="form-label">Statut de déclaration</label>
-                        <select class="form-select" id="bulk-status" name="status">
-                            <option value="{{ declaration_statuses.DECLARED.value }}">Déclarée</option>
-                            <option value="{{ declaration_statuses.REIMBURSED.value }}">Remboursée</option>
-                            <option value="{{ declaration_statuses.NOT_DECLARED.value }}">Non déclarée</option>
-                        </select>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="bulk-reference" class="form-label">Référence externe commune</label>
-                        <input type="text" class="form-control" id="bulk-reference" name="reference" placeholder="Ex: NDF-2025-0042">
-                        <div class="form-text">Optionnel. Sera appliqué à toutes les dépenses sélectionnées.</div>
+                        <label class="form-label">Statut de déclaration</label>
+                        <div class="d-flex flex-column gap-2">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input bulk-status-switch" type="checkbox" id="bulk-declared" name="declared" checked>
+                                <label class="form-check-label" for="bulk-declared">Déclarée</label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input bulk-status-switch" type="checkbox" id="bulk-reimbursed" name="reimbursed">
+                                <label class="form-check-label" for="bulk-reimbursed">Remboursée</label>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="alert alert-info">

@@ -11,10 +11,13 @@ def reimbursements_list():
     """Page de gestion des remboursements"""
     # Filtres
     flag_id = request.args.get('flag_id', type=int)
-    status = request.args.get('status', 'all')
+    status_values = request.args.getlist('status')  # Plusieurs statuts possibles
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
     search_query = request.args.get('search', '')
+    
+    # Vérifier s'il s'agit d'une requête AJAX
+    is_ajax = request.args.get('ajax') == 'true' or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     
     # Paramètres de tri
     sort_by = request.args.get('sort', 'date')
@@ -32,9 +35,9 @@ def reimbursements_list():
     if flag_id is not None and flag_id > 0:
         query = query.filter(Expense.flag_id == flag_id)
     
-    # Filtre par statut de déclaration
-    if status != 'all':
-        query = query.filter(Expense.declaration_status == status)
+    # Filtre par statut de déclaration (multiple)
+    if status_values:
+        query = query.filter(Expense.declaration_status.in_(status_values))
     
     # Filtre par date
     if start_date:
@@ -74,10 +77,62 @@ def reimbursements_list():
     else:
         query = query.order_by(Expense.date.desc())  # Tri par défaut
     
+    # Calculer les totaux pour le résumé
+    summary = calculate_summary(query.all())
+    
     # Pagination
     page = request.args.get('page', 1, type=int)
     per_page = 20
     expenses = query.paginate(page=page, per_page=per_page, error_out=False)
+    
+    # Si c'est une requête AJAX, renvoyer du JSON
+    if is_ajax:
+        # Préparer les données des dépenses pour le JSON
+        expenses_data = []
+        for expense in expenses.items:
+            # Générer le HTML pour le badge du flag
+            flag_html = None
+            if expense.flag:
+                from flask import render_template_string
+                flag_html = render_template_string(
+                    "{% from 'macros/tricount/flag_macros.html' import flag_badge %}{{ flag_badge(flag) }}",
+                    flag=expense.flag
+                )
+            
+            # Ajouter les données de la dépense
+            expense_data = {
+                'id': expense.id,
+                'date': expense.date.strftime('%d/%m/%Y'),
+                'merchant': expense.renamed_merchant if expense.renamed_merchant else expense.merchant,
+                'description': expense.description,
+                'amount': float(expense.amount),
+                'is_debit': expense.is_debit,
+                'flag_id': expense.flag_id,
+                'flag_html': flag_html,
+                'is_declared': expense.declaration_status in [DeclarationStatus.DECLARED.value, DeclarationStatus.REIMBURSED.value],
+                'is_reimbursed': expense.declaration_status == DeclarationStatus.REIMBURSED.value,
+                'declaration_status': expense.declaration_status
+            }
+            expenses_data.append(expense_data)
+        
+        # Préparer les données de pagination
+        pagination_data = {
+            'page': expenses.page,
+            'pages': expenses.pages,
+            'total': expenses.total,
+            'has_prev': expenses.has_prev,
+            'has_next': expenses.has_next,
+            'prev_num': expenses.prev_num,
+            'next_num': expenses.next_num
+        }
+        
+        # Retourner les données JSON
+        return jsonify({
+            'success': True,
+            'expenses': expenses_data,
+            'summary': summary,
+            'pagination': pagination_data
+        })
     
     # Récupérer les flags remboursables pour le filtrage
     reimbursable_flags = Flag.query.filter(
@@ -87,11 +142,35 @@ def reimbursements_list():
         ])
     ).all()
     
-    # Calculer les totaux
+    # Rendu du template normal
+    return render_template('tricount/reimbursements.html',
+                          expenses=expenses,
+                          flags=reimbursable_flags,
+                          selected_flag_id=flag_id,
+                          selected_status=status_values[0] if status_values else 'all',
+                          start_date=start_date,
+                          end_date=end_date,
+                          search_query=search_query,
+                          sort_by=sort_by,
+                          order=order,
+                          summary=summary,
+                          declaration_statuses=DeclarationStatus)
+
+def calculate_summary(expenses):
+    """
+    Calcule les statistiques des dépenses remboursables
+    
+    Args:
+        expenses (list): Liste des dépenses remboursables
+    
+    Returns:
+        dict: Dictionnaire contenant les statistiques
+    """
     total_amount = 0
     total_declared = 0
     total_reimbursed = 0
-    for expense in query.all():
+    
+    for expense in expenses:
         if expense.is_debit:
             total_amount += float(expense.amount)
             if expense.declaration_status == DeclarationStatus.DECLARED.value:
@@ -104,25 +183,12 @@ def reimbursements_list():
     if total_amount > 0:
         percentage_declared = (total_declared + total_reimbursed) / total_amount * 100
     
-    summary = {
+    return {
         'total_amount': total_amount,
         'total_declared': total_declared,
         'total_reimbursed': total_reimbursed,
         'percentage_declared': percentage_declared
     }
-    
-    return render_template('tricount/reimbursements.html',
-                          expenses=expenses,
-                          flags=reimbursable_flags,
-                          selected_flag_id=flag_id,
-                          selected_status=status,
-                          start_date=start_date,
-                          end_date=end_date,
-                          search_query=search_query,
-                          sort_by=sort_by,
-                          order=order,
-                          summary=summary,
-                          declaration_statuses=DeclarationStatus)
 
 @tricount_bp.route('/reimbursements/update/<int:expense_id>', methods=['POST'])
 def update_reimbursement_status(expense_id):
@@ -151,14 +217,21 @@ def update_reimbursement_status(expense_id):
     
     # Mettre à jour le statut et autres informations
     expense.declaration_status = status
-    expense.declaration_reference = reference
-    expense.declaration_notes = notes
+    
+    # Ne mettre à jour la référence et les notes que si elles sont fournies
+    if reference:
+        expense.declaration_reference = reference
+    if notes:
+        expense.declaration_notes = notes
     
     # Mettre à jour les dates selon le statut
     if status == DeclarationStatus.DECLARED.value and not expense.declaration_date:
         expense.declaration_date = datetime.utcnow()
     elif status == DeclarationStatus.REIMBURSED.value and not expense.reimbursement_date:
         expense.reimbursement_date = datetime.utcnow()
+        # Si la dépense est remboursée, elle est forcément déclarée
+        if not expense.declaration_date:
+            expense.declaration_date = datetime.utcnow()
     elif status == DeclarationStatus.NOT_DECLARED.value:
         expense.declaration_date = None
         expense.reimbursement_date = None
@@ -170,6 +243,8 @@ def update_reimbursement_status(expense_id):
             'expense': {
                 'id': expense.id,
                 'status': expense.declaration_status,
+                'is_declared': expense.declaration_status in [DeclarationStatus.DECLARED.value, DeclarationStatus.REIMBURSED.value],
+                'is_reimbursed': expense.declaration_status == DeclarationStatus.REIMBURSED.value,
                 'declaration_date': expense.declaration_date.strftime('%d/%m/%Y') if expense.declaration_date else None,
                 'reimbursement_date': expense.reimbursement_date.strftime('%d/%m/%Y') if expense.reimbursement_date else None
             }
@@ -184,9 +259,14 @@ def update_reimbursement_status(expense_id):
 @tricount_bp.route('/reimbursements/bulk-update', methods=['POST'])
 def bulk_update_reimbursement():
     """API pour mettre à jour le statut de plusieurs dépenses en une seule fois"""
-    expense_ids = request.json.get('expense_ids', [])
-    status = request.json.get('status')
-    reference = request.json.get('reference', '')
+    # Vérifier si les données sont envoyées en JSON ou en form-data
+    if request.is_json:
+        data = request.json
+        expense_ids = data.get('expense_ids', [])
+        status = data.get('status')
+    else:
+        expense_ids = request.form.getlist('expense_ids[]')
+        status = request.form.get('status')
     
     # Validation du statut
     valid_statuses = [status.value for status in DeclarationStatus]
@@ -210,15 +290,17 @@ def bulk_update_reimbursement():
         for expense_id in expense_ids:
             expense = Expense.query.get(expense_id)
             if expense and expense.is_reimbursable:
+                # Mettre à jour le statut
                 expense.declaration_status = status
-                if reference:
-                    expense.declaration_reference = reference
                 
                 # Mettre à jour les dates selon le statut
                 if status == DeclarationStatus.DECLARED.value and not expense.declaration_date:
                     expense.declaration_date = datetime.utcnow()
                 elif status == DeclarationStatus.REIMBURSED.value and not expense.reimbursement_date:
                     expense.reimbursement_date = datetime.utcnow()
+                    # Si la dépense est remboursée, elle est forcément déclarée
+                    if not expense.declaration_date:
+                        expense.declaration_date = datetime.utcnow()
                 elif status == DeclarationStatus.NOT_DECLARED.value:
                     expense.declaration_date = None
                     expense.reimbursement_date = None
@@ -239,6 +321,25 @@ def bulk_update_reimbursement():
             'success': False,
             'error': str(e)
         }), 500
+
+@tricount_bp.route('/reimbursements/summary', methods=['GET'])
+def get_reimbursement_summary():
+    """API pour récupérer les statistiques des remboursements"""
+    # Récupérer les dépenses remboursables
+    expenses = Expense.query.join(Flag).filter(
+        Flag.reimbursement_type.in_([
+            ReimbursementType.PARTIALLY_REIMBURSABLE.value,
+            ReimbursementType.FULLY_REIMBURSABLE.value
+        ])
+    ).all()
+    
+    # Calculer les statistiques
+    summary = calculate_summary(expenses)
+    
+    return jsonify({
+        'success': True,
+        'summary': summary
+    })
 
 @tricount_bp.route('/reimbursements/export', methods=['GET'])
 def export_reimbursements():

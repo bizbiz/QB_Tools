@@ -13,16 +13,6 @@
     text-align: center;
 }
 
-/* Styles pour les références */
-.reference-number {
-    font-family: 'Courier New', monospace;
-    font-size: 0.9rem;
-    padding: 0.2rem 0.4rem;
-    background-color: #f8f9fa;
-    border-radius: 4px;
-    color: #0d6efd;
-}
-
 /* Style pour le cercle de progression */
 .progress-circle {
     position: relative;
@@ -124,4 +114,149 @@ tr.selected {
 
 .expense-checkbox:checked {
     animation: checkbox-pop 0.3s ease-in-out;
+}
+
+/* Nouvelles styles pour les switches */
+.form-check-input.status-switch {
+    width: 2.5rem;
+    height: 1.25rem;
+    transition: all 0.3s ease;
+}
+
+.form-check-input.status-switch:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.reimbursed-switch:checked {
+    background-color: #198754 !important;
+    border-color: #198754 !important;
+}
+
+/* Style pour les filtres de statut */
+.filter-status-switch {
+    width: 2.5rem;
+    height: 1.25rem;
+}
+
+#status-not-declared:checked {
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+
+#status-declared:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+#status-reimbursed:checked {
+    background-color: #198754;
+    border-color: #198754;
+}
+
+/* Animation de changement d'état de statut */
+.status-updating {
+    position: relative;
+}
+
+.status-updating::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.7);
+    z-index: 10;
+}
+
+.status-updating::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    z-index: 11;
+}
+
+@keyframes spin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Transitions pour l'apparition/disparition des lignes */
+#expenses-table-body tr {
+    transition: opacity 0.5s ease, height 0.5s ease, background-color 0.5s ease;
+}
+
+/* Styles pour améliorer l'apparence des sélecteurs de statut */
+.form-check-label {
+    font-weight: 500;
+    cursor: pointer;
+}
+
+/* Style pour le spinner de chargement */
+#table-loading-spinner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    display: none;
+}
+
+/* Style pour le bouton de remise à zéro des filtres */
+#reset-filters-btn {
+    transition: all 0.3s ease;
+}
+
+#reset-filters-btn:hover {
+    background-color: #6c757d;
+    color: white;
+}
+
+/* Amélioration pour la modal de déclaration en masse */
+.bulk-status-switch {
+    width: 3rem !important;
+    height: 1.5rem !important;
+}
+
+/* Transition pour la pagination */
+.pagination .page-link {
+    transition: all 0.3s ease;
+}
+
+.pagination .page-link:hover {
+    background-color: #e9ecef;
+    transform: translateY(-2px);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .progress-circle {
+        height: 100px;
+        width: 100px;
+    }
+    
+    .progress-value {
+        font-size: 1.5rem;
+    }
+    
+    .form-check-label {
+        font-size: 0.9rem;
+    }
+    
+    .table th, .table td {
+        padding: 0.5rem;
+    }
 }
