@@ -1,8 +1,8 @@
 {# app/templates/tricount/categorize.html #}
-
 {% extends "base.html" %}
 {% from "macros/tricount/category_select.html" import category_select_with_js %}
 {% from "macros/tricount/flag_macros.html" import flag_badge, flag_select %}
+{% from "macros/tricount/expense_macros.html" import display_expense_name, display_expense_description %}
 
 {% block title %}QB Tools - Catégoriser les dépenses{% endblock %}
 
@@ -10,34 +10,10 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/main.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/category_select.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/select_styles.css') }}">
-<style>
-    .expense-pagination {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 15px;
-    }
-    
-    .expense-pagination .page-info {
-        font-size: 0.95rem;
-        color: #6c757d;
-        margin: 0;
-    }
-    
-    .pagination-buttons {
-        display: flex;
-        gap: 10px;
-    }
-    
-    .expense-card-container.hide-card {
-        display: none;
-    }
-    
-    .loading-spinner {
-        text-align: center;
-        padding: 20px;
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/expense_name.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/modification_source.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tricount/categorize.css') }}">
+
 {% endblock %}
 
 {% block content %}
@@ -73,15 +49,16 @@
                     <h3 class="card-title">Instructions</h3>
                 </div>
                 <div class="card-body">
-                    <p>Sur cette page, vous pouvez catégoriser rapidement les dépenses qui n'ont pas encore été associées à une catégorie. Pour chaque dépense :</p>
+                    <p>Sur cette page, vous pouvez catégoriser rapidement les dépenses qui ne sont pas encore complètement catégorisées. Pour chaque dépense :</p>
                     <ol>
-                        <li>Sélectionnez d'abord un <strong>type de dépense</strong> dans le premier menu déroulant</li>
-                        <li>Puis choisissez une <strong>catégorie</strong> compatible avec ce type</li>
+                        <li>Sélectionnez un <strong>type de dépense</strong> dans le premier menu déroulant</li>
+                        <li>Choisissez une <strong>catégorie</strong> compatible avec ce type</li>
                         <li>Cliquez sur "Enregistrer" pour appliquer les modifications</li>
                     </ol>
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
-                        Les dépenses sont automatiquement masquées après leur catégorisation et remplacées par de nouvelles dépenses.
+                        Les dépenses partiellement catégorisées (avec une catégorie mais pas de type, ou avec un type mais pas de catégorie) 
+                        sont placées en fin de liste mais restent accessibles pour être complétées.
                     </div>
                 </div>
             </div>
@@ -97,29 +74,43 @@
                             Dépenses à catégoriser 
                             <span class="badge bg-primary ms-2" id="expenses-count">{{ expenses|length }}</span>
                         </h3>
-                        <div>
-                            <button type="button" class="btn btn-sm btn-outline-success" id="quick-filter-food">
-                                <i class="fas fa-utensils me-1"></i>Alimentaire
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-success" id="quick-filter-transport">
-                                <i class="fas fa-train me-1"></i>Transport
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-success" id="quick-filter-leisure">
-                                <i class="fas fa-film me-1"></i>Loisirs
-                            </button>
-                        </div>
                     </div>
                 </div>
                 
                 {% if expenses %}
                 <div class="card-body">
+                    <!-- Contrôles de tri plus compacts sur une ligne -->
+                    <div class="sort-controls">
+                        <div class="sort-group">
+                            <label for="sort-by">Trier par:</label>
+                            <select id="sort-by" class="form-select form-select-sm">
+                                <option value="updated" {% if sort_by == 'updated' %}selected{% endif %}>Date de modification</option>
+                                <option value="incomplete" {% if sort_by == 'incomplete' %}selected{% endif %}>Niveau de complétion</option>
+                                <option value="date" {% if sort_by == 'date' %}selected{% endif %}>Date de la dépense</option>
+                                <option value="amount" {% if sort_by == 'amount' %}selected{% endif %}>Montant</option>
+                            </select>
+                        </div>
+                        
+                        <div class="sort-group">
+                            <label for="sort-order">Ordre:</label>
+                            <select id="sort-order" class="form-select form-select-sm">
+                                <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>Décroissant</option>
+                                <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>Croissant</option>
+                            </select>
+                        </div>
+                        
+                        <button id="apply-sort" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-sort me-1"></i>Appliquer
+                        </button>
+                    </div>
+                    
                     <div class="expense-pagination">
-                        <p class="page-info">Affichage de 9 dépenses sur <span id="total-count">{{ expenses|length }}</span></p>
+                        <p class="page-info">Affichage de <span id="display-range">1-9</span> sur <span id="total-count">{{ expenses|length }}</span></p>
                         <div class="pagination-buttons">
                             <button id="prev-expenses" class="btn btn-sm btn-outline-secondary" disabled>
                                 <i class="fas fa-arrow-left me-1"></i>Précédent
                             </button>
-                            <button id="next-expenses" class="btn btn-sm btn-outline-primary">
+                            <button id="next-expenses" class="btn btn-sm btn-outline-primary" {% if expenses|length <= 9 %}disabled{% endif %}>
                                 <i class="fas fa-arrow-right me-1"></i>Suivant
                             </button>
                         </div>
@@ -128,7 +119,10 @@
                     <div class="row" id="expenses-container">
                         {% for expense in expenses %}
                         <div class="col-md-6 col-lg-4 mb-3 expense-card-container {% if loop.index > 9 %}hide-card{% endif %}" 
-                             id="expense-container-{{ expense.id }}" data-expense-id="{{ expense.id }}">
+                             id="expense-container-{{ expense.id }}" 
+                             data-expense-id="{{ expense.id }}"
+                             data-has-category="{{ 'true' if expense.category_id else 'false' }}"
+                             data-has-flag="{{ 'true' if expense.flag_id else 'false' }}">
                             <div class="card h-100 expense-card">
                                 <div class="card-header bg-light">
                                     <div class="d-flex justify-content-between align-items-center">
@@ -139,44 +133,92 @@
                                     </div>
                                 </div>
                                 <div class="card-body">
-                                    <h5 class="card-title">{{ expense.merchant }}</h5>
-                                    <p class="card-text text-muted small">{{ expense.description }}</p>
+                                    {# Titre avec le nom du commerçant - affiché pour référence #}
+                                    <h5 class="card-title mb-1">
+                                        {{ display_expense_name(expense, false, '', true, 100) }}
+                                    </h5>
+                                    
+                                    {# Description originale - affichée pour référence #}
+                                    <p class="card-text text-muted small mb-3">
+                                        {{ display_expense_description(expense, false, '', true, 150) }}
+                                    </p>
                                     
                                     <form id="categorize-form-{{ expense.id }}" class="categorize-form">
                                         <input type="hidden" name="expense_id" value="{{ expense.id }}">
                                         
-                                        {# Type de dépense d'abord pour meilleure UX #}
-                                        <div class="mb-3">
-                                            <label for="flag-{{ expense.id }}" class="form-label">Type de dépense</label>
-                                            {{ flag_select(
-                                                name="flag_id",
-                                                id="flag-" ~ expense.id,
-                                                selected_flag=None,
-                                                all_flags=flags,
-                                                data_attribute_expense_id=expense.id,
-                                                show_preview=true
-                                            ) }}
+                                        <div class="row g-2 mb-3">
+                                            {# Type de dépense - colonne de gauche #}
+                                            <div class="col-md-6">
+                                                <label for="flag-{{ expense.id }}" class="form-label">Type de dépense</label>
+                                                {{ flag_select(
+                                                    name="flag_id",
+                                                    id="flag-" ~ expense.id,
+                                                    selected_flag=expense.flag_id,
+                                                    all_flags=flags,
+                                                    placeholder='Type de dépense',
+                                                    data_attribute_expense_id=expense.id,
+                                                    show_preview=false
+                                                ) }}
+                                            </div>
+                                            
+                                            {# Catégorie - colonne de droite #}
+                                            <div class="col-md-6">
+                                                <label for="category-{{ expense.id }}" class="form-label">Catégorie</label>
+                                                {{ category_select_with_js(
+                                                    name="category_id", 
+                                                    id="category-" ~ expense.id, 
+                                                    selected_category=expense.category_id,
+                                                    classes="category-select",
+                                                    required=false,
+                                                    placeholder="Catégorie",
+                                                    all_categories=categories,
+                                                    show_icons=true,
+                                                    flag_select_id="flag-" ~ expense.id
+                                                ) }}
+                                            </div>
                                         </div>
                                         
-                                        <div class="mb-3">
-                                            <label for="category-{{ expense.id }}" class="form-label">Catégorie</label>
-                                            {{ category_select_with_js(
-                                                name="category_id", 
-                                                id="category-" ~ expense.id, 
-                                                selected_category=None,
-                                                classes="category-select",
-                                                required=false,
-                                                placeholder="Choisir une catégorie",
-                                                all_categories=categories,
-                                                show_icons=true,
-                                                flag_select_id="flag-" ~ expense.id
-                                            ) }}
-                                        </div>
-                                        
-                                        {# Champ de notes utilisateur #}
-                                        <div class="mb-3">
-                                            <label for="notes-{{ expense.id }}" class="form-label">Description</label>
-                                            <textarea name="notes" id="notes-{{ expense.id }}" class="form-control" rows="2" placeholder="Ajouter des détails ou explications sur cette dépense...">{{ expense.notes or '' }}</textarea>
+                                        <div class="renaming-section mb-3">
+                                            <div class="accordion" id="renamingAccordion-{{ expense.id }}">
+                                                <div class="accordion-item">
+                                                    <h2 class="accordion-header" id="headingRenaming-{{ expense.id }}">
+                                                        <button class="accordion-button collapsed p-2" type="button" 
+                                                                data-bs-toggle="collapse" 
+                                                                data-bs-target="#collapseRenaming-{{ expense.id }}" 
+                                                                aria-expanded="false" 
+                                                                aria-controls="collapseRenaming-{{ expense.id }}">
+                                                            <small>Renommer le commerçant ou la description</small>
+                                                        </button>
+                                                    </h2>
+                                                    <div id="collapseRenaming-{{ expense.id }}" 
+                                                         class="accordion-collapse collapse" 
+                                                         aria-labelledby="headingRenaming-{{ expense.id }}"
+                                                         data-bs-parent="#renamingAccordion-{{ expense.id }}">
+                                                        <div class="accordion-body p-2">
+                                                            {# Champ pour renommer le commerçant #}
+                                                            <div class="mb-2">
+                                                                <label for="renamed-merchant-{{ expense.id }}" class="form-label small">Commerçant personnalisé</label>
+                                                                <input type="text" 
+                                                                       name="renamed_merchant" 
+                                                                       id="renamed-merchant-{{ expense.id }}" 
+                                                                       class="form-control form-control-sm" 
+                                                                       placeholder="Renommer le commerçant..." 
+                                                                       value="{{ expense.renamed_merchant or '' }}">
+                                                            </div>
+                                                            
+                                                            {# Champ pour la description personnalisée #}
+                                                            <div>
+                                                                <label for="notes-{{ expense.id }}" class="form-label small">Description personnalisée</label>
+                                                                <textarea name="notes" 
+                                                                          id="notes-{{ expense.id }}" 
+                                                                          class="form-control form-control-sm" 
+                                                                          rows="2" 
+                                                                          placeholder="Description personnalisée...">{{ expense.notes or '' }}</textarea>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                         
                                         <div class="d-flex gap-2">
@@ -188,6 +230,17 @@
                                             </a>
                                         </div>
                                     </form>
+                                    
+                                    <!-- Indicateurs de complétion -->
+                                    <div class="card-info-bar">
+                                        <div class="completion-indicator">
+                                            <span>Catégorie: </span>
+                                            <span class="indicator {% if expense.category_id %}complete{% else %}incomplete{% endif %}"></span>
+                                            <span class="ms-2">Type: </span>
+                                            <span class="indicator {% if expense.flag_id %}complete{% else %}incomplete{% endif %}"></span>
+                                        </div>
+                                        <span class="text-muted">ID: {{ expense.id }}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -198,7 +251,7 @@
                 <div class="card-body">
                     <div class="alert alert-success">
                         <i class="fas fa-check-circle me-2"></i>
-                        Toutes les dépenses ont été catégorisées. Vous pouvez <a href="{{ url_for('tricount.import_expenses') }}">importer de nouvelles dépenses</a> ou consulter la <a href="{{ url_for('tricount.expenses_list') }}">liste complète des dépenses</a>.
+                        Toutes les dépenses ont été complètement catégorisées. Vous pouvez <a href="{{ url_for('tricount.import_expenses') }}">importer de nouvelles dépenses</a> ou consulter la <a href="{{ url_for('tricount.expenses_list') }}">liste complète des dépenses</a>.
                     </div>
                 </div>
                 {% endif %}
@@ -240,11 +293,16 @@
     // Stockage des dépenses (toutes les dépenses rendues par le serveur)
     window.allExpenses = {{ expenses|map(attribute='id')|list|tojson }};
     
-    // Configuration de la pagination
+    // Configuration de la pagination et du tri
     window.expensePagination = {
         itemsPerPage: 9,
         currentPage: 0,
         totalPages: Math.ceil(window.allExpenses.length / 9)
+    };
+    
+    window.sortOptions = {
+        sortBy: "{{ sort_by }}",
+        sortOrder: "{{ sort_order }}"
     };
 </script>
 {% endblock %}

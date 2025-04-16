@@ -108,6 +108,21 @@
                 escapeMarkup: function(markup) { return markup; }
             });
         });
+        
+        // Actualiser les icônes après initialisation de Select2
+        refreshIconify();
+    }
+    
+    /**
+     * Actualise les icônes Iconify dans le DOM
+     */
+    function refreshIconify() {
+        console.log("Refreshing Iconify icons...");
+        setTimeout(function() {
+            if (window.Iconify) {
+                window.Iconify.scan();
+            }
+        }, 200);
     }
     
     /**
@@ -185,10 +200,15 @@
             return category.text; // Skip placeholder
         }
         
-        // Utiliser directement les données de la catégorie depuis window.categoryData
+        // Utiliser directement les données d'attribut de l'option si disponibles
+        const $category = $(category.element);
+        const dataColor = $category.data('color');
+        const dataIconifyId = $category.data('iconify-id');
+        
+        // Sinon, utiliser les données de window.categoryData
         const categoryData = window.categoryData && window.categoryData[category.id] ? window.categoryData[category.id] : {};
-        const color = categoryData.color || '#e9ecef';
-        const iconifyId = categoryData.iconify_id;
+        const color = dataColor || categoryData.color || '#e9ecef';
+        const iconifyId = dataIconifyId || categoryData.iconify_id;
         
         let iconHtml = '';
         if (iconifyId) {
@@ -216,10 +236,15 @@
             return category.text; // Skip placeholder
         }
         
-        // Utiliser directement les données de la catégorie depuis window.categoryData
+        // Utiliser directement les données d'attribut de l'option si disponibles
+        const $category = $(category.element);
+        const dataColor = $category.data('color');
+        const dataIconifyId = $category.data('iconify-id');
+        
+        // Sinon, utiliser les données de window.categoryData
         const categoryData = window.categoryData && window.categoryData[category.id] ? window.categoryData[category.id] : {};
-        const color = categoryData.color || '#e9ecef';
-        const iconifyId = categoryData.iconify_id;
+        const color = dataColor || categoryData.color || '#e9ecef';
+        const iconifyId = dataIconifyId || categoryData.iconify_id;
         
         let iconHtml = '';
         if (iconifyId) {
@@ -234,11 +259,26 @@
                     <span>${category.text}</span>
                 </div>`;
     }
+    
+    // Exposer les fonctions pour une utilisation externe
+    window.EnhancedSelects = {
+        init: initSelect2,
+        refresh: refreshIconify
+    };
 })();
 
 // Actualiser les icônes quand le dropdown s'ouvre
 $(document).on('select2:open', function() {
     // Attendre un court instant pour que le DOM soit prêt
+    setTimeout(function() {
+        if (window.Iconify) {
+            window.Iconify.scan();
+        }
+    }, 100);
+});
+
+// Actualiser les icônes après que le dropdown est fermé (pour les sélections)
+$(document).on('select2:close', function() {
     setTimeout(function() {
         if (window.Iconify) {
             window.Iconify.scan();

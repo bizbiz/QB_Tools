@@ -1,0 +1,160 @@
+.expense-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.expense-pagination .page-info {
+    font-size: 0.95rem;
+    color: #6c757d;
+    margin: 0;
+}
+
+.pagination-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.expense-card-container.hide-card {
+    display: none;
+}
+
+.loading-spinner {
+    text-align: center;
+    padding: 20px;
+}
+
+.sort-controls {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.sort-controls label {
+    margin-bottom: 0;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.sort-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sort-controls select {
+    min-width: 180px;
+}
+
+.completion-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-top: 4px;
+}
+
+.completion-indicator .indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.completion-indicator .indicator.complete {
+    background-color: #198754;
+}
+
+.completion-indicator .indicator.incomplete {
+    background-color: #dc3545;
+}
+
+.card-info-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #e9ecef;
+    font-size: 0.85rem;
+}
+
+/* Animation quand une dépense est mise à jour */
+@keyframes card-updated-flash {
+    0% { background-color: rgba(13, 110, 253, 0.2); }
+    100% { background-color: transparent; }
+}
+
+.card-updated {
+    animation: card-updated-flash 1.5s ease-out;
+}
+
+/* Styles pour l'accordéon de renommage */
+.accordion-button.collapsed {
+    background-color: #f8f9fa;
+    color: #6c757d;
+    font-size: 0.875rem;
+}
+
+.accordion-button:not(.collapsed) {
+    background-color: #e7f1ff;
+    color: #0d6efd;
+    font-size: 0.875rem;
+    box-shadow: none;
+}
+
+.accordion-button:focus {
+    box-shadow: none;
+    border-color: rgba(0,0,0,.125);
+}
+
+.renaming-section .accordion-item {
+    border: 1px dashed #dee2e6;
+    border-radius: 0.375rem;
+}
+
+.renaming-section .accordion-button::after {
+    width: 0.8rem;
+    height: 0.8rem;
+    background-size: 0.8rem;
+}
+
+/* Pour indiquer que les champs de renommage ont été modifiés */
+.form-control.modified {
+    border-color: #0d6efd;
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+/* Animation lors de l'expansion de l'accordéon */
+.accordion-collapse {
+    transition: all 0.35s ease;
+}
+
+/* Réduction de la taille de la section de renommage pour économiser de l'espace */
+.renaming-section {
+    margin-bottom: 0.75rem !important;
+}
+
+/* Mise en évidence des champs renommés */
+.renamed-indicator {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.75rem;
+    color: #0d6efd;
+    margin-left: 8px;
+}
+
+.renamed-indicator i {
+    margin-right: 3px;
+}
+
+/* Optimisation pour écrans mobiles */
+@media (max-width: 767.98px) {
+    .renaming-section .accordion-button {
+        padding: 0.375rem 0.75rem;
+    }
+}
