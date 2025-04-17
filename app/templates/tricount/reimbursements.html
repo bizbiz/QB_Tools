@@ -565,7 +565,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/tricount/expense_search.js') }}"></script>
-<script src="{{ url_for('static', filename='js/tricount/search_highlight.js') }}"></script>
-<script src="{{ url_for('static', filename='js/tricount/reimbursements.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/tricount/reimbursements/index.js') }}"></script>
 {% endblock %}
