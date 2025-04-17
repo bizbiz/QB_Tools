@@ -63,6 +63,9 @@ export function initFilters() {
     
     // Initialiser la pagination AJAX
     initAjaxPagination();
+    
+    // Exposer la fonction resetFilters globalement pour pouvoir l'appeler depuis ailleurs
+    window.resetFilters = resetFilters;
 }
 
 /**
@@ -75,7 +78,10 @@ export function triggerFilter() {
     }
     
     // Montrer l'indicateur de chargement
-    document.getElementById('table-loading-spinner').style.display = 'block';
+    const loadingSpinner = document.getElementById('table-loading-spinner');
+    if (loadingSpinner) {
+        loadingSpinner.style.display = 'block';
+    }
     
     // Définir un nouveau timeout pour éviter trop de requêtes
     filterTimeout = setTimeout(() => {
@@ -87,6 +93,7 @@ export function triggerFilter() {
  * Réinitialise tous les filtres et soumet le formulaire
  */
 export function resetFilters() {
+    console.log("Réinitialisation des filtres");
     const filterForm = document.getElementById('filter-form');
     
     // Réinitialiser tous les champs à leurs valeurs par défaut

@@ -4,6 +4,7 @@
  */
 
 import { submitFiltersAjax } from './filters.js';
+import { populateExpenseEditForm } from '../common/expense_editor.js';
 
 /**
  * Initialise les fonctionnalités de gestion des dépenses
@@ -25,6 +26,14 @@ function initExpenseEdit() {
     if (!editModal) return;
     
     const modal = new bootstrap.Modal(editModal);
+    
+    // Réinitialiser les sélecteurs à l'ouverture du modal
+    editModal.addEventListener('show.bs.modal', function() {
+        // Réinitialiser les sélecteurs améliorés si besoin
+        setTimeout(() => {
+            reinitializeSelectors();
+        }, 100);
+    });
     
     // Gérer les dépendances entre déclaré et remboursé
     const editDeclaredSwitch = document.getElementById('edit-declared');
@@ -48,11 +57,23 @@ function initExpenseEdit() {
     editButtons.forEach(button => {
         button.addEventListener('click', function() {
             const expenseId = this.dataset.expenseId;
+            console.log("Édition dépense ID:", expenseId);
             
             // Charger les données de la dépense
             fetchExpenseData(expenseId, function(data) {
-                populateEditModal(data);
+                // Réinitialiser le formulaire avant de le remplir
+                document.getElementById('edit-expense-form').reset();
+                
+                // Utiliser le module commun pour remplir le formulaire
+                populateExpenseEditForm(data);
+                
+                // Afficher le modal
                 modal.show();
+                
+                // Réinitialiser les sélecteurs après un court délai
+                setTimeout(() => {
+                    updateSelectorsWithData(data);
+                }, 200);
             });
         });
     });
@@ -62,15 +83,29 @@ function initExpenseEdit() {
     if (editFromViewBtn) {
         editFromViewBtn.addEventListener('click', function() {
             // Fermer le modal de consultation
-            bootstrap.Modal.getInstance(document.getElementById('viewExpenseModal')).hide();
+            const viewModal = document.getElementById('viewExpenseModal');
+            if (viewModal) {
+                bootstrap.Modal.getInstance(viewModal).hide();
+            }
             
             // Récupérer l'ID de la dépense depuis le formulaire d'édition
             const expenseId = document.getElementById('view-expense-id')?.value;
             if (expenseId) {
                 // Charger les données et ouvrir le modal d'édition
                 fetchExpenseData(expenseId, function(data) {
-                    populateEditModal(data);
+                    // Réinitialiser le formulaire avant de le remplir
+                    document.getElementById('edit-expense-form').reset();
+                    
+                    // Utiliser le module commun pour remplir le formulaire
+                    populateExpenseEditForm(data);
+                    
+                    // Afficher le modal
                     modal.show();
+                    
+                    // Réinitialiser les sélecteurs après un court délai
+                    setTimeout(() => {
+                        updateSelectorsWithData(data);
+                    }, 200);
                 });
             }
         });
@@ -124,11 +159,93 @@ function initExpenseEdit() {
 }
 
 /**
+ * Met à jour manuellement les sélecteurs avec les données spécifiées
+ * @param {Object} data - Données de la dépense
+ */
+function updateSelectorsWithData(data) {
+    console.log("Mise à jour des sélecteurs avec les données:", data);
+    
+    // Mettre à jour les sélecteurs Select2
+    const categorySelect = document.getElementById('edit-category');
+    const flagSelect = document.getElementById('edit-flag');
+    
+    if (!categorySelect || !flagSelect) {
+        console.warn("Sélecteurs de catégorie ou de flag non trouvés");
+        return;
+    }
+    
+    // Mettre à jour les valeurs
+    if (data.category_id) {
+        categorySelect.value = data.category_id;
+        console.log("Catégorie définie à:", data.category_id);
+    } else {
+        categorySelect.value = "";
+        console.log("Aucune catégorie définie");
+    }
+    
+    if (data.flag_id) {
+        flagSelect.value = data.flag_id;
+        console.log("Flag défini à:", data.flag_id);
+    } else {
+        flagSelect.value = "";
+        console.log("Aucun flag défini");
+    }
+    
+    // Déclencher les mises à jour de Select2 si disponible
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        try {
+            $(categorySelect).trigger('change');
+            $(flagSelect).trigger('change');
+            console.log("Événements Select2 déclenchés");
+        } catch (e) {
+            console.error("Erreur lors de la mise à jour des sélecteurs Select2:", e);
+        }
+    }
+    
+    // Déclencher l'événement change natif pour la compatibilité avec CategorySelect
+    try {
+        const eventChange = new Event('change');
+        flagSelect.dispatchEvent(eventChange);
+        categorySelect.dispatchEvent(eventChange);
+        console.log("Événements change natifs déclenchés");
+    } catch (e) {
+        console.error("Erreur lors du déclenchement des événements change:", e);
+    }
+}
+
+/**
+ * Réinitialise les sélecteurs de catégorie et type
+ */
+function reinitializeSelectors() {
+    console.log("Réinitialisation des sélecteurs");
+    
+    // Réinitialiser les sélecteurs améliorés
+    if (typeof window.EnhancedSelects !== 'undefined' && typeof window.EnhancedSelects.init === 'function') {
+        console.log("Réinitialisation des sélecteurs améliorés");
+        window.EnhancedSelects.init();
+    }
+    
+    // Réinitialiser la relation catégorie-flag
+    if (typeof window.CategorySelect !== 'undefined' && typeof window.CategorySelect.init === 'function') {
+        console.log("Réinitialisation des relations catégorie-flag");
+        window.CategorySelect.init();
+    }
+    
+    // Actualiser les icônes Iconify
+    if (window.Iconify) {
+        console.log("Actualisation des icônes Iconify");
+        window.Iconify.scan();
+    }
+}
+
+/**
  * Récupère les données d'une dépense
  * @param {number} expenseId - ID de la dépense
  * @param {Function} callback - Fonction à appeler avec les données
  */
 function fetchExpenseData(expenseId, callback) {
+    console.log("Fetching expense data for ID:", expenseId);
+    
     fetch(`/tricount/reimbursements/expense/${expenseId}`, {
         headers: {
             'X-Requested-With': 'XMLHttpRequest'
@@ -137,6 +254,7 @@ function fetchExpenseData(expenseId, callback) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            console.log("Données reçues:", data.expense);
             callback(data.expense);
         } else {
             alert('Erreur lors du chargement des données: ' + (data.error || 'Erreur inconnue'));
@@ -146,63 +264,6 @@ function fetchExpenseData(expenseId, callback) {
         console.error('Error:', error);
         alert('Erreur de communication avec le serveur.');
     });
-}
-
-/**
- * Remplit le modal d'édition avec les données de la dépense
- * @param {Object} expense - Données de la dépense
- */
-function populateEditModal(expense) {
-    // Champs cachés
-    const expenseIdField = document.getElementById('edit-expense-id');
-    if (expenseIdField) expenseIdField.value = expense.id;
-    
-    // Champs en lecture seule
-    const dateField = document.getElementById('edit-date');
-    if (dateField) dateField.value = expense.date;
-    
-    const amountField = document.getElementById('edit-amount');
-    if (amountField) amountField.value = `${parseFloat(expense.amount).toFixed(2)} €`;
-    
-    const merchantField = document.getElementById('edit-merchant');
-    if (merchantField) merchantField.value = expense.display_name;
-    
-    const descriptionField = document.getElementById('edit-description');
-    if (descriptionField) descriptionField.value = expense.description;
-    
-    // Champs éditables
-    const categoryField = document.getElementById('edit-category');
-    if (categoryField) {
-        categoryField.value = expense.category_id || '';
-        
-        // Si nous utilisons select2, mettre à jour visuellement
-        if (typeof $ !== 'undefined' && $.fn.select2) {
-            $(categoryField).trigger('change');
-        }
-    }
-    
-    const flagField = document.getElementById('edit-flag');
-    if (flagField) {
-        flagField.value = expense.flag_id || '';
-        
-        // Si nous utilisons select2, mettre à jour visuellement
-        if (typeof $ !== 'undefined' && $.fn.select2) {
-            $(flagField).trigger('change');
-        }
-    }
-    
-    const notesField = document.getElementById('edit-notes');
-    if (notesField) notesField.value = expense.notes || '';
-    
-    const declRefField = document.getElementById('edit-declaration-ref');
-    if (declRefField) declRefField.value = expense.declaration_reference || '';
-    
-    // Statuts
-    const declaredSwitch = document.getElementById('edit-declared');
-    if (declaredSwitch) declaredSwitch.checked = expense.is_declared;
-    
-    const reimbursedSwitch = document.getElementById('edit-reimbursed');
-    if (reimbursedSwitch) reimbursedSwitch.checked = expense.is_reimbursed;
 }
 
 /**
@@ -219,6 +280,7 @@ function initExpenseView() {
     viewButtons.forEach(button => {
         button.addEventListener('click', function() {
             const expenseId = this.dataset.expenseId;
+            console.log("Affichage dépense ID:", expenseId);
             
             // Récupérer les données et afficher le modal
             fetchExpenseData(expenseId, function(expense) {
@@ -251,10 +313,32 @@ function populateViewModal(expense) {
     
     // Informations principales
     const merchantElement = document.getElementById('view-merchant');
-    if (merchantElement) merchantElement.textContent = expense.display_name;
+    if (merchantElement) {
+        // Afficher le marchand renommé s'il existe, sinon le marchand original
+        merchantElement.textContent = expense.renamed_merchant || expense.merchant;
+        
+        // Si le marchand a été renommé, ajouter une indication
+        if (expense.renamed_merchant) {
+            const originalInfo = document.createElement('small');
+            originalInfo.className = 'text-muted d-block';
+            originalInfo.innerHTML = `<i class="fas fa-tag me-1"></i>Nom original: ${expense.merchant}`;
+            merchantElement.appendChild(originalInfo);
+        }
+    }
     
     const descriptionElement = document.getElementById('view-description');
-    if (descriptionElement) descriptionElement.textContent = expense.description || 'Aucune description';
+    if (descriptionElement) {
+        // Afficher les notes si elles existent, sinon la description originale
+        descriptionElement.textContent = expense.notes || expense.description || 'Aucune description';
+        
+        // Si des notes ont été ajoutées, ajouter une indication
+        if (expense.notes && expense.description) {
+            const originalInfo = document.createElement('small');
+            originalInfo.className = 'text-muted d-block mt-2';
+            originalInfo.innerHTML = `<i class="fas fa-align-left me-1"></i>Description originale: ${expense.description}`;
+            descriptionElement.appendChild(originalInfo);
+        }
+    }
     
     // Montant et date
     const amountElement = document.getElementById('view-amount');

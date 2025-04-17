@@ -7,6 +7,7 @@ import { initTooltips } from './core.js';
 import { initStatusSwitches } from './status.js';
 import { initBulkSelection } from './bulk.js';
 import { initAjaxPagination } from './filters.js';
+import { initExpenseManagement } from './expenses.js';  // Importer la fonction d'initialisation des boutons
 
 /**
  * Initialise les fonctionnalités d'interface
@@ -130,6 +131,7 @@ export function updateTableContent(expenses) {
     initStatusSwitches();
     initBulkSelection();
     initTooltips();
+    initExpenseManagement();  // CORRECTIF: Réinitialiser les gestionnaires d'événements pour les boutons
     
     // Réinitialiser le tri des tableaux
     if (window.TableSorter) {

@@ -117,6 +117,7 @@ def update_expense():
     # Récupérer les données du formulaire
     category_id = request.form.get('category_id')
     flag_id = request.form.get('flag_id')
+    renamed_merchant = request.form.get('renamed_merchant', '')
     notes = request.form.get('notes', '')
     declaration_reference = request.form.get('declaration_reference', '')
     is_declared = request.form.get('is_declared') == 'true'
@@ -125,13 +126,29 @@ def update_expense():
     # Mettre à jour les champs
     if category_id:
         expense.category_id = int(category_id)
+        expense.category_modified_by = ModificationSource.MANUAL.value
     else:
         expense.category_id = None
     
     if flag_id:
         expense.flag_id = int(flag_id)
+        expense.flag_modified_by = ModificationSource.MANUAL.value
     
-    expense.notes = notes
+    # Gérer le renommage du marchand (si fourni)
+    if renamed_merchant and renamed_merchant.strip() != expense.merchant:
+        expense.renamed_merchant = renamed_merchant.strip()
+        expense.merchant_modified_by = ModificationSource.MANUAL.value
+    elif renamed_merchant.strip() == '':
+        # Si le champ est vide, réinitialiser le renommage
+        expense.renamed_merchant = None
+        expense.merchant_modified_by = ModificationSource.MANUAL.value
+    
+    # Gérer les notes sur la description
+    if notes != expense.notes:
+        expense.notes = notes
+        expense.notes_modified_by = ModificationSource.MANUAL.value
+    
+    # Mettre à jour la référence de déclaration
     expense.declaration_reference = declaration_reference
     
     # Déterminer le statut de déclaration
