@@ -248,12 +248,12 @@
                                     {% for expense in expenses.items %}
                                     <tr data-expense-id="{{ expense.id }}" 
                                         class="{% if expense.declaration_status == 'declared' %}expense-declared{% endif %} 
-                                              {% if expense.declaration_status == 'reimbursed' %}expense-reimbursed{% endif %}
-                                              {% if not expense.is_reimbursable %}expense-not-reimbursable{% endif %}">
+                                           {% if expense.declaration_status == 'reimbursed' %}expense-reimbursed{% endif %}
+                                           {% if not reimbursable_status[expense.id] %}expense-not-reimbursable{% endif %}">
                                         <td>
                                             <div class="form-check">
                                                 <input class="form-check-input expense-checkbox" type="checkbox" value="{{ expense.id }}"
-                                                      {% if not expense.is_reimbursable %}disabled{% endif %}>
+                                                      {% if not reimbursable_status[expense.id] %}disabled{% endif %}>
                                             </div>
                                         </td>
                                         <td>{{ expense.date.strftime('%d/%m/%Y') }}</td>
@@ -278,7 +278,7 @@
                                                        data-expense-id="{{ expense.id }}" 
                                                        data-status="declared" 
                                                        {% if expense.declaration_status in ['declared', 'reimbursed'] %}checked{% endif %}
-                                                       {% if not expense.is_reimbursable %}disabled{% endif %}>
+                                                       {% if not reimbursable_status[expense.id] %}disabled{% endif %}>
                                                 <label class="form-check-label">Déclarée</label>
                                                 {% if not expense.is_reimbursable %}
                                                 <i class="fas fa-info-circle text-muted ms-1" 
@@ -294,7 +294,23 @@
                                                        data-expense-id="{{ expense.id }}" 
                                                        data-status="reimbursed" 
                                                        {% if expense.declaration_status == 'reimbursed' %}checked{% endif %}
-                                                       {% if not expense.is_reimbursable %}disabled{% endif %}>
+                                                       {% if not reimbursable_status[expense.id] %}disabled{% endif %}>
+                                                <label class="form-check-label">Remboursée</label>
+                                                {% if not expense.is_reimbursable %}
+                                                <i class="fas fa-info-circle text-muted ms-1" 
+                                                   data-bs-toggle="tooltip" 
+                                                   title="Cette dépense n'est pas remboursable (type: {{ expense.flag.name }})"></i>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input status-switch reimbursed-switch" 
+                                                       type="checkbox" 
+                                                       data-expense-id="{{ expense.id }}" 
+                                                       data-status="reimbursed" 
+                                                       {% if expense.declaration_status == 'reimbursed' %}checked{% endif %}
+                                                       {% if not reimbursable_status[expense.id] %}disabled{% endif %}>
                                                 <label class="form-check-label">Remboursée</label>
                                                 {% if not expense.is_reimbursable %}
                                                 <i class="fas fa-info-circle text-muted ms-1" 

@@ -7,7 +7,7 @@ import { initTooltips } from './core.js';
 import { initStatusSwitches } from './status.js';
 import { initBulkSelection } from './bulk.js';
 import { initAjaxPagination } from './filters.js';
-import { initExpenseManagement } from './expenses.js';  // Importer la fonction d'initialisation des boutons
+import { initExpenseManagement } from './expenses.js';
 
 /**
  * Initialise les fonctionnalités d'interface
@@ -70,14 +70,20 @@ export function updateTableContent(expenses) {
         if (expense.is_declared) row.classList.add('expense-declared');
         if (expense.is_reimbursed) row.classList.add('expense-reimbursed');
         
-        // Nouvelle classe pour les dépenses non remboursables
-        if (!expense.is_reimbursable) row.classList.add('expense-not-reimbursable');
+        // Classe pour les dépenses non remboursables
+        // Vérifier si la dépense a explicitement la propriété is_reimbursable à false
+        // ou si le flag associé est de type non remboursable
+        const isNotReimbursable = expense.is_reimbursable === false;
+        if (isNotReimbursable) {
+            row.classList.add('expense-not-reimbursable');
+        }
         
         // Afficher le montant en rouge pour les dépenses (débit)
         const amountClass = expense.is_debit ? 'text-danger' : 'text-success';
         const amountPrefix = expense.is_debit ? '' : '+';
         
-        // Générer le HTML différent pour les dépenses non remboursables
+        // Générer le HTML pour les switches de statut
+        // Désactiver uniquement si la dépense est explicitement marquée comme non remboursable
         let declaredSwitchHTML = `
             <div class="form-check form-switch">
                 <input class="form-check-input status-switch declared-switch" 
@@ -85,9 +91,9 @@ export function updateTableContent(expenses) {
                        data-expense-id="${expense.id}" 
                        data-status="declared" 
                        ${expense.is_declared ? 'checked' : ''}
-                       ${!expense.is_reimbursable ? 'disabled' : ''}>
+                       ${isNotReimbursable ? 'disabled' : ''}>
                 <label class="form-check-label">Déclarée</label>
-                ${!expense.is_reimbursable ? 
+                ${isNotReimbursable ? 
                   `<i class="fas fa-info-circle text-muted ms-1" 
                       data-bs-toggle="tooltip" 
                       title="Cette dépense n'est pas remboursable">
@@ -102,9 +108,9 @@ export function updateTableContent(expenses) {
                        data-expense-id="${expense.id}" 
                        data-status="reimbursed" 
                        ${expense.is_reimbursed ? 'checked' : ''}
-                       ${!expense.is_reimbursable ? 'disabled' : ''}>
+                       ${isNotReimbursable ? 'disabled' : ''}>
                 <label class="form-check-label">Remboursée</label>
-                ${!expense.is_reimbursable ? 
+                ${isNotReimbursable ? 
                   `<i class="fas fa-info-circle text-muted ms-1" 
                       data-bs-toggle="tooltip" 
                       title="Cette dépense n'est pas remboursable">
@@ -116,7 +122,7 @@ export function updateTableContent(expenses) {
             <td>
                 <div class="form-check">
                     <input class="form-check-input expense-checkbox" type="checkbox" value="${expense.id}"
-                           ${!expense.is_reimbursable ? 'disabled' : ''}>
+                           ${isNotReimbursable ? 'disabled' : ''}>
                 </div>
             </td>
             <td>${expense.date}</td>
@@ -153,7 +159,7 @@ export function updateTableContent(expenses) {
     initStatusSwitches();
     initBulkSelection();
     initTooltips();
-    initExpenseManagement();  // CORRECTIF: Réinitialiser les gestionnaires d'événements pour les boutons
+    initExpenseManagement();
     
     // Réinitialiser le tri des tableaux
     if (window.TableSorter) {

@@ -1,4 +1,3 @@
-
 # app/routes/tricount/reimbursement_routes.py
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from app.routes.tricount import tricount_bp
@@ -36,6 +35,17 @@ def prepare_category_data(categories, flags):
         }
     
     return category_data
+
+# Fonction utilitaire pour déterminer si une dépense est remboursable
+def is_expense_reimbursable(expense):
+    """Determine si une dépense est remboursable en fonction de son type (flag)"""
+    if not expense.flag:
+        return False
+        
+    return expense.flag.reimbursement_type in [
+        ReimbursementType.PARTIALLY_REIMBURSABLE.value,
+        ReimbursementType.FULLY_REIMBURSABLE.value
+    ]
 
 @tricount_bp.route('/reimbursements', methods=['GET', 'POST'])
 def reimbursements_list():
@@ -133,7 +143,8 @@ def reimbursements_list():
             'name': flag.name,
             'color': flag.color,
             'iconify_id': flag.iconify_id if hasattr(flag, 'iconify_id') else None,
-            'legacy_icon': flag.legacy_icon if hasattr(flag, 'legacy_icon') else None
+            'legacy_icon': flag.legacy_icon if hasattr(flag, 'legacy_icon') else None,
+            'reimbursement_type': flag.reimbursement_type if hasattr(flag, 'reimbursement_type') else None
         }
     
     # Calculer les totaux pour le résumé
@@ -159,6 +170,9 @@ def reimbursements_list():
                     flag=expense.flag
                 )
             
+            # Déterminer explicitement si la dépense est remboursable
+            is_reimbursable = is_expense_reimbursable(expense)
+            
             # Ajouter les données de la dépense
             expense_data = {
                 'id': expense.id,
@@ -171,7 +185,8 @@ def reimbursements_list():
                 'flag_html': flag_html,
                 'is_declared': expense.declaration_status in [DeclarationStatus.DECLARED.value, DeclarationStatus.REIMBURSED.value],
                 'is_reimbursed': expense.declaration_status == DeclarationStatus.REIMBURSED.value,
-                'declaration_status': expense.declaration_status
+                'declaration_status': expense.declaration_status,
+                'is_reimbursable': is_reimbursable  # Cruciale pour l'interface
             }
             expenses_data.append(expense_data)
         
@@ -193,6 +208,12 @@ def reimbursements_list():
             'summary': summary,
             'pagination': pagination_data
         })
+    
+    # Pour chaque dépense, ajouter explicitement la propriété is_reimbursable
+    reimbursable_status = {}
+    for expense in expenses.items:
+        # Utiliser la même fonction que pour la version AJAX
+        reimbursable_status[expense.id] = is_expense_reimbursable(expense)
     
     # Récupérer les flags remboursables pour le filtrage
     reimbursable_flags = Flag.query.filter(
@@ -217,6 +238,7 @@ def reimbursements_list():
                           summary=summary,
                           declaration_statuses=DeclarationStatus,
                           show_all=show_all,
+                          reimbursable_status=reimbursable_status,
                           category_data_json=json.dumps(category_data),  # Données JSON pour JavaScript
                           flag_data_json=json.dumps(flag_data))
 
