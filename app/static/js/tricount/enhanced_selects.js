@@ -6,6 +6,7 @@
 (function() {
     // Variable pour éviter les boucles infinies
     let flagSelectionInProgress = false;
+    let categorySelectionInProgress = false;
     
     // Initialiser au chargement du document
     document.addEventListener('DOMContentLoaded', function() {
@@ -49,46 +50,63 @@
                 const flagId = $(this).val();
                 console.log(`Flag changed to ${flagId} for expense ${expenseId}`);
                 
-                // Récupérer le select de catégorie correspondant
-                const categorySelect = $(`#category-${expenseId}`);
-                
-                if (categorySelect.length) {
-                    // 1. Déclencher d'abord l'événement natif pour la logique existante
-                    const nativeSelect = document.getElementById(`category-${expenseId}`);
-                    if (nativeSelect) {
-                        nativeSelect.flagSelect = document.getElementById(flagSelectId);
-                        const event = new Event('change');
-                        nativeSelect.flagSelect.dispatchEvent(event);
+                try {
+                    // Récupérer le select de catégorie correspondant
+                    let categorySelectId;
+                    
+                    // Dans le contexte de l'édition d'une dépense
+                    if (flagSelectId === 'edit-flag') {
+                        categorySelectId = 'edit-category';
+                    } 
+                    // Dans le contexte de la liste des dépenses
+                    else if (expenseId) {
+                        categorySelectId = `category-${expenseId}`;
+                    }
+                    // Sinon, chercher par data-attribute
+                    else {
+                        categorySelectId = $(this).data('category-select');
                     }
                     
-                    // 2. Détruire et recréer Select2 pour que les changements prennent effet
-                    setTimeout(function() {
-                        try {
-                            categorySelect.select2('destroy');
-                            categorySelect.select2({
-                                theme: 'bootstrap-5',
-                                width: '100%',
-                                placeholder: categorySelect.data('placeholder') || 'Choisir une catégorie',
-                                allowClear: true,
-                                minimumResultsForSearch: 10,
-                                templateResult: formatCategoryOption,
-                                templateSelection: formatCategorySelection,
-                                escapeMarkup: function(markup) { return markup; }
-                            });
-                            
-                            // Actualiser les icônes Iconify
-                            if (window.Iconify) {
-                                window.Iconify.scan();
-                            }
-                        } catch (e) {
-                            console.error("Erreur lors de la reconstruction du select2:", e);
-                        } finally {
-                            // Réinitialiser le flag de protection
-                            flagSelectionInProgress = false;
+                    const categorySelect = $(`#${categorySelectId}`);
+                    
+                    if (categorySelect.length) {
+                        // 1. Déclencher d'abord l'événement natif pour la logique existante
+                        const nativeSelect = document.getElementById(categorySelectId);
+                        const nativeFlagSelect = document.getElementById(flagSelectId);
+                        
+                        if (nativeSelect && nativeFlagSelect) {
+                            nativeSelect.flagSelect = nativeFlagSelect;
+                            const event = new Event('change');
+                            nativeFlagSelect.dispatchEvent(event);
                         }
-                    }, 100);
-                } else {
-                    flagSelectionInProgress = false;
+                        
+                        // 2. Détruire et recréer Select2 pour que les changements prennent effet
+                        setTimeout(function() {
+                            try {
+                                categorySelect.select2('destroy');
+                                categorySelect.select2({
+                                    theme: 'bootstrap-5',
+                                    width: '100%',
+                                    placeholder: categorySelect.data('placeholder') || 'Choisir une catégorie',
+                                    allowClear: true,
+                                    minimumResultsForSearch: 10,
+                                    templateResult: formatCategoryOption,
+                                    templateSelection: formatCategorySelection,
+                                    escapeMarkup: function(markup) { return markup; }
+                                });
+                                
+                                // Actualiser les icônes Iconify
+                                refreshIconify();
+                            } catch (e) {
+                                console.error("Erreur lors de la reconstruction du select2:", e);
+                            }
+                        }, 100);
+                    }
+                } finally {
+                    // Réinitialiser le flag de protection après un délai
+                    setTimeout(() => {
+                        flagSelectionInProgress = false;
+                    }, 200);
                 }
             });
         });
@@ -106,6 +124,21 @@
                 templateResult: formatCategoryOption,
                 templateSelection: formatCategorySelection,
                 escapeMarkup: function(markup) { return markup; }
+            });
+            
+            // Écouter les changements de catégorie
+            categorySelect.on('change', function() {
+                if (categorySelectionInProgress) return;
+                categorySelectionInProgress = true;
+                
+                try {
+                    // Logique additionnelle si nécessaire
+                    console.log("Catégorie changée:", $(this).val());
+                } finally {
+                    setTimeout(() => {
+                        categorySelectionInProgress = false;
+                    }, 100);
+                }
             });
         });
         
@@ -263,7 +296,9 @@
     // Exposer les fonctions pour une utilisation externe
     window.EnhancedSelects = {
         init: initSelect2,
-        refresh: refreshIconify
+        refresh: refreshIconify,
+        formatFlagOption: formatFlagOption,
+        formatCategoryOption: formatCategoryOption
     };
 })();
 

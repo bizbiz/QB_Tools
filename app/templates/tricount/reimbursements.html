@@ -510,15 +510,15 @@
                     
                     <!-- Catégorie et Type (Flag) avec les macros avancées -->
                     <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="edit-flag" class="form-label">Type de dépense</label>
-                            {{ flag_select(name='flag_id', id='edit-flag', all_flags=flags, placeholder='Sélectionner un type', show_preview=true) }}
+                            <div class="col-md-6">
+                                <label for="edit-flag" class="form-label">Type de dépense</label>
+                                {{ flag_select(name='flag_id', id='edit-flag', all_flags=flags, placeholder='Sélectionner un type', show_preview=true) }}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="edit-category" class="form-label">Catégorie</label>
+                                {{ category_select_with_js(name='category_id', id='edit-category', all_categories=categories, flag_select_id='edit-flag', placeholder='Sélectionner une catégorie') }}
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <label for="edit-category" class="form-label">Catégorie</label>
-                            {{ category_select_with_js(name='category_id', id='edit-category', all_categories=categories, flag_select_id='edit-flag', placeholder='Sélectionner une catégorie') }}
-                        </div>
-                    </div>
                     
                     <!-- Référence de déclaration -->
                     <div class="row mb-3">

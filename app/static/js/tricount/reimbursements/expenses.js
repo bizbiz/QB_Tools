@@ -4,7 +4,6 @@
  */
 
 import { submitFiltersAjax } from './filters.js';
-import { populateExpenseEditForm } from '../common/expense_editor.js';
 
 /**
  * Initialise les fonctionnalités de gestion des dépenses
@@ -27,9 +26,11 @@ function initExpenseEdit() {
     
     const modal = new bootstrap.Modal(editModal);
     
-    // Réinitialiser les sélecteurs à l'ouverture du modal
+    // Réinitialiser le formulaire à l'ouverture du modal
     editModal.addEventListener('show.bs.modal', function() {
-        // Réinitialiser les sélecteurs améliorés si besoin
+        document.getElementById('edit-expense-form').reset();
+        
+        // Réinitialiser les sélecteurs améliorés après un court délai
         setTimeout(() => {
             reinitializeSelectors();
         }, 100);
@@ -55,28 +56,23 @@ function initExpenseEdit() {
     
     // Initialiser les boutons d'édition
     editButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const expenseId = this.dataset.expenseId;
-            console.log("Édition dépense ID:", expenseId);
-            
-            // Charger les données de la dépense
-            fetchExpenseData(expenseId, function(data) {
-                // Réinitialiser le formulaire avant de le remplir
-                document.getElementById('edit-expense-form').reset();
-                
-                // Utiliser le module commun pour remplir le formulaire
-                populateExpenseEditForm(data);
-                
-                // Afficher le modal
-                modal.show();
-                
-                // Réinitialiser les sélecteurs après un court délai
-                setTimeout(() => {
-                    updateSelectorsWithData(data);
-                }, 200);
-            });
-        });
+        // Supprimer les gestionnaires d'événements existants pour éviter les doublons
+        button.removeEventListener('click', handleEditButtonClick);
+        // Ajouter le nouveau gestionnaire
+        button.addEventListener('click', handleEditButtonClick);
     });
+    
+    // Fonction pour gérer le clic sur un bouton d'édition
+    function handleEditButtonClick() {
+        const expenseId = this.dataset.expenseId;
+        console.log("Édition dépense ID:", expenseId);
+        
+        // Charger les données de la dépense
+        fetchExpenseData(expenseId, function(data) {
+            populateEditForm(data);
+            modal.show();
+        });
+    }
     
     // Lien dans le modal de consultation pour passer en mode édition
     const editFromViewBtn = document.querySelector('.edit-from-view-btn');
@@ -88,24 +84,13 @@ function initExpenseEdit() {
                 bootstrap.Modal.getInstance(viewModal).hide();
             }
             
-            // Récupérer l'ID de la dépense depuis le formulaire d'édition
+            // Récupérer l'ID de la dépense depuis le formulaire caché
             const expenseId = document.getElementById('view-expense-id')?.value;
             if (expenseId) {
                 // Charger les données et ouvrir le modal d'édition
                 fetchExpenseData(expenseId, function(data) {
-                    // Réinitialiser le formulaire avant de le remplir
-                    document.getElementById('edit-expense-form').reset();
-                    
-                    // Utiliser le module commun pour remplir le formulaire
-                    populateExpenseEditForm(data);
-                    
-                    // Afficher le modal
+                    populateEditForm(data);
                     modal.show();
-                    
-                    // Réinitialiser les sélecteurs après un court délai
-                    setTimeout(() => {
-                        updateSelectorsWithData(data);
-                    }, 200);
                 });
             }
         });
@@ -159,75 +144,128 @@ function initExpenseEdit() {
 }
 
 /**
- * Met à jour manuellement les sélecteurs avec les données spécifiées
- * @param {Object} data - Données de la dépense
+ * Remplit le formulaire d'édition avec les données de la dépense
+ * @param {Object} expense - Données de la dépense
  */
-function updateSelectorsWithData(data) {
-    console.log("Mise à jour des sélecteurs avec les données:", data);
+function populateEditForm(expense) {
+    // Champs textuels simples
+    setFieldValue('edit-expense-id', expense.id);
+    setFieldValue('edit-date', expense.date);
+    setFieldValue('edit-amount', `${parseFloat(expense.amount).toFixed(2)} €`);
+    setFieldValue('edit-original-merchant', expense.merchant);
+    setFieldValue('edit-renamed-merchant', expense.renamed_merchant || '');
+    setFieldValue('edit-original-description', expense.description || '');
+    setFieldValue('edit-notes', expense.notes || '');
+    setFieldValue('edit-declaration-reference', expense.declaration_reference || '');
+    setFieldValue('edit-declared', expense.is_declared);
+    setFieldValue('edit-reimbursed', expense.is_reimbursed);
     
-    // Mettre à jour les sélecteurs Select2
-    const categorySelect = document.getElementById('edit-category');
+    // Afficher un avertissement si la dépense n'est pas remboursable
+    const warningElement = document.getElementById('non-reimbursable-warning');
+    if (warningElement) {
+        if (expense.flag && expense.flag.reimbursement_type === 'not_reimbursable') {
+            warningElement.classList.remove('d-none');
+        } else {
+            warningElement.classList.add('d-none');
+        }
+    }
+    
+    // Remplir les champs plus complexes avec un délai pour s'assurer 
+    // que les sélecteurs sont correctement initialisés
+    setTimeout(() => {
+        updateFlagAndCategorySelectors(expense);
+    }, 300);
+}
+
+/**
+ * Met à jour les sélecteurs de flag et de catégorie de manière coordonnée
+ * @param {Object} expense - Données de la dépense
+ */
+function updateFlagAndCategorySelectors(expense) {
     const flagSelect = document.getElementById('edit-flag');
+    const categorySelect = document.getElementById('edit-category');
     
-    if (!categorySelect || !flagSelect) {
-        console.warn("Sélecteurs de catégorie ou de flag non trouvés");
+    if (!flagSelect || !categorySelect) {
+        console.warn("Sélecteurs manquants:", { flagSelect, categorySelect });
         return;
     }
     
-    // IMPORTANT: Ordre de mise à jour modifié pour d'abord définir le flag
-    // puis la catégorie, afin que le filtrage fonctionne correctement
-    
-    // 1. D'abord définir le flag
-    if (data.flag_id) {
-        flagSelect.value = data.flag_id;
-        console.log("Flag défini à:", data.flag_id);
-    } else {
-        flagSelect.value = "";
-        console.log("Aucun flag défini");
-    }
-    
-    // 2. Déclencher l'événement change sur le flag pour activer le filtrage des catégories
-    try {
-        // Déclencher l'événement change natif
-        const eventChange = new Event('change');
-        flagSelect.dispatchEvent(eventChange);
-        console.log("Événement change natif déclenché sur le flag");
+    // IMPORTANT: Définir d'abord le flag, PUIS la catégorie
+    // Étape 1: Définir la valeur du flag
+    if (expense.flag_id) {
+        // Définir d'abord la valeur native
+        flagSelect.value = expense.flag_id;
         
-        // Déclencher aussi l'événement pour Select2 si disponible
+        // Déclencher les événements
+        // 1. Événement natif
+        const nativeChangeEvent = new Event('change', { bubbles: true });
+        flagSelect.dispatchEvent(nativeChangeEvent);
+        
+        // 2. Événement jQuery Select2 (si disponible)
         if (typeof $ !== 'undefined' && $.fn.select2) {
-            $(flagSelect).trigger('change');
-            console.log("Événement Select2 déclenché sur le flag");
+            $(flagSelect).trigger('change.select2');
         }
-    } catch (e) {
-        console.error("Erreur lors du déclenchement des événements sur le flag:", e);
+        
+        console.log(`Flag défini à: ${expense.flag_id}`);
     }
     
-    // 3. Puis définir la catégorie (après que les options ont été filtrées)
-    // Attendre un court délai pour que le filtrage soit appliqué
+    // Étape 2: Attendre que le filtrage des catégories soit terminé 
+    // avant de définir la catégorie
     setTimeout(() => {
-        if (data.category_id) {
-            categorySelect.value = data.category_id;
-            console.log("Catégorie définie à:", data.category_id);
-            
-            // Déclencher l'événement change pour Select2 sur la catégorie
-            if (typeof $ !== 'undefined' && $.fn.select2) {
-                $(categorySelect).trigger('change');
-            }
-            
+        if (expense.category_id) {
             // Vérifier si la catégorie est disponible après filtrage
-            const optionExists = Array.from(categorySelect.options).some(opt => opt.value == data.category_id);
-            if (!optionExists) {
-                console.warn(`La catégorie ID=${data.category_id} n'est pas disponible avec le flag ID=${data.flag_id}`);
+            const optionExists = Array.from(categorySelect.options).some(opt => 
+                parseInt(opt.value) === expense.category_id
+            );
+            
+            if (optionExists) {
+                // Définir la valeur native
+                categorySelect.value = expense.category_id;
+                
+                // Déclencher les événements
+                // 1. Événement natif
+                const nativeChangeEvent = new Event('change', { bubbles: true });
+                categorySelect.dispatchEvent(nativeChangeEvent);
+                
+                // 2. Événement jQuery Select2 (si disponible)
+                if (typeof $ !== 'undefined' && $.fn.select2) {
+                    $(categorySelect).trigger('change.select2');
+                }
+                
+                console.log(`Catégorie définie à: ${expense.category_id}`);
+            } else {
+                console.warn(`La catégorie ID=${expense.category_id} n'est pas disponible avec le flag ID=${expense.flag_id}`);
+                
+                // Réinitialiser à vide
+                categorySelect.value = "";
+                if (typeof $ !== 'undefined' && $.fn.select2) {
+                    $(categorySelect).trigger('change.select2');
+                }
             }
         } else {
+            // Pas de catégorie à définir
             categorySelect.value = "";
-            console.log("Aucune catégorie définie");
-            
             if (typeof $ !== 'undefined' && $.fn.select2) {
-                $(categorySelect).trigger('change');
+                $(categorySelect).trigger('change.select2');
             }
         }
-    }, 100);
+    }, 500); // Délai plus long pour s'assurer que le filtrage est terminé
+}
+
+/**
+ * Définit la valeur d'un champ en fonction de son type
+ * @param {string} id - ID du champ
+ * @param {any} value - Valeur à définir
+ */
+function setFieldValue(id, value) {
+    const field = document.getElementById(id);
+    if (!field) return;
+    
+    if (field.type === 'checkbox') {
+        field.checked = !!value;
+    } else {
+        field.value = value !== undefined && value !== null ? value : '';
+    }
 }
 
 /**
@@ -295,17 +333,22 @@ function initExpenseView() {
     const modal = new bootstrap.Modal(viewModal);
     
     viewButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const expenseId = this.dataset.expenseId;
-            console.log("Affichage dépense ID:", expenseId);
-            
-            // Récupérer les données et afficher le modal
-            fetchExpenseData(expenseId, function(expense) {
-                populateViewModal(expense);
-                modal.show();
-            });
-        });
+        // Supprimer les gestionnaires d'événements existants pour éviter les doublons
+        button.removeEventListener('click', handleViewButtonClick);
+        // Ajouter le nouveau gestionnaire
+        button.addEventListener('click', handleViewButtonClick);
     });
+    
+    function handleViewButtonClick() {
+        const expenseId = this.dataset.expenseId;
+        console.log("Affichage dépense ID:", expenseId);
+        
+        // Récupérer les données et afficher le modal
+        fetchExpenseData(expenseId, function(expense) {
+            populateViewModal(expense);
+            modal.show();
+        });
+    }
 }
 
 /**
@@ -383,9 +426,22 @@ function populateViewModal(expense) {
     const flagElement = document.getElementById('view-flag');
     if (flagElement) {
         if (expense.flag) {
-            flagElement.innerHTML = expense.flag_html;
+            flagElement.innerHTML = expense.flag_html || 
+                `<span class="badge" style="background-color: ${expense.flag.color}">${expense.flag.name}</span>`;
         } else {
             flagElement.innerHTML = '<span class="badge bg-secondary">Non défini</span>';
+        }
+    }
+    
+    // Afficher le statut de remboursement
+    const reimbursableElement = document.getElementById('view-reimbursable-status');
+    if (reimbursableElement && expense.flag) {
+        if (expense.flag.reimbursement_type === 'not_reimbursable') {
+            reimbursableElement.innerHTML = '<span class="badge bg-secondary"><i class="fas fa-ban me-1"></i>Non remboursable</span>';
+        } else if (expense.flag.reimbursement_type === 'partially_reimbursable') {
+            reimbursableElement.innerHTML = '<span class="badge bg-info"><i class="fas fa-percent me-1"></i>Partiellement remboursable</span>';
+        } else if (expense.flag.reimbursement_type === 'fully_reimbursable') {
+            reimbursableElement.innerHTML = '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Entièrement remboursable</span>';
         }
     }
     
