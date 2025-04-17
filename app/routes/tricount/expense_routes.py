@@ -105,42 +105,58 @@ def expenses_list():
                           exceeds_limit=exceeds_limit,
                           max_per_page=max_per_page)
 
-@tricount_bp.route('/expenses/update', methods=['POST'])
+@tricount_bp.route('/update_expense', methods=['POST'])
 def update_expense():
-    """API pour mettre à jour une dépense"""
+    """Met à jour une dépense à partir du formulaire d'édition"""
     expense_id = request.form.get('expense_id', type=int)
-    category_id = request.form.get('category_id')
-    flag_id = request.form.get('flag_id', type=int)
-    notes = request.form.get('notes', '')  # Récupérer les notes utilisateur
-    
     if not expense_id:
         return jsonify({'success': False, 'error': 'ID de dépense non fourni'}), 400
     
     expense = Expense.query.get_or_404(expense_id)
     
-    # Mettre à jour la catégorie (None si category_id est vide)
+    # Récupérer les données du formulaire
+    category_id = request.form.get('category_id')
+    flag_id = request.form.get('flag_id')
+    notes = request.form.get('notes', '')
+    declaration_reference = request.form.get('declaration_reference', '')
+    is_declared = request.form.get('is_declared') == 'true'
+    is_reimbursed = request.form.get('is_reimbursed') == 'true'
+    
+    # Mettre à jour les champs
     if category_id:
         expense.category_id = int(category_id)
-        expense.category_modified_by = ModificationSource.MANUAL.value
     else:
         expense.category_id = None
-        expense.category_modified_by = ModificationSource.MANUAL.value
     
-    # Mettre à jour le flag
     if flag_id:
-        expense.flag_id = flag_id
-        expense.flag_modified_by = ModificationSource.MANUAL.value
-    else:
-        # Si aucun flag n'est fourni, utiliser le flag par défaut
-        default_flag = Flag.query.filter_by(is_default=True).first()
-        if default_flag:
-            expense.flag_id = default_flag.id
-            expense.flag_modified_by = ModificationSource.MANUAL.value
+        expense.flag_id = int(flag_id)
     
-    # Mettre à jour les notes utilisateur
-    if expense.notes != notes:
-        expense.notes = notes
-        expense.notes_modified_by = ModificationSource.MANUAL.value
+    expense.notes = notes
+    expense.declaration_reference = declaration_reference
+    
+    # Déterminer le statut de déclaration
+    if is_reimbursed:
+        status = DeclarationStatus.REIMBURSED.value
+    elif is_declared:
+        status = DeclarationStatus.DECLARED.value
+    else:
+        status = DeclarationStatus.NOT_DECLARED.value
+    
+    # Mettre à jour le statut
+    expense.declaration_status = status
+    
+    # Mettre à jour les dates selon le statut
+    if status == DeclarationStatus.DECLARED.value and not expense.declaration_date:
+        expense.declaration_date = datetime.utcnow()
+    elif status == DeclarationStatus.REIMBURSED.value:
+        if not expense.reimbursement_date:
+            expense.reimbursement_date = datetime.utcnow()
+        # Si la dépense est remboursée, elle est forcément déclarée
+        if not expense.declaration_date:
+            expense.declaration_date = datetime.utcnow()
+    elif status == DeclarationStatus.NOT_DECLARED.value:
+        expense.declaration_date = None
+        expense.reimbursement_date = None
     
     try:
         db.session.commit()
