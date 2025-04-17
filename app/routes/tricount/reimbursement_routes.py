@@ -1,3 +1,4 @@
+
 # app/routes/tricount/reimbursement_routes.py
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from app.routes.tricount import tricount_bp
@@ -5,6 +6,36 @@ from app.extensions import db
 from app.models.tricount import Expense, Flag, Category, DeclarationStatus, ReimbursementType
 from datetime import datetime
 from sqlalchemy import or_
+import json
+
+# Fonction utilitaire pour préparer les données JavaScript des catégories
+def prepare_category_data(categories, flags):
+    # Créer un dictionnaire des flags par ID pour un accès rapide
+    flags_by_id = {flag.id: flag for flag in flags}
+    
+    # Préparer les données de catégorie pour JavaScript
+    category_data = {}
+    for category in categories:
+        # Récupérer les IDs des flags associés à cette catégorie
+        flag_ids = [flag.id for flag in category.flags]
+        
+        # Préparer les données d'icône
+        icon_data = {}
+        if hasattr(category, 'iconify_id') and category.iconify_id:
+            icon_data['iconify_id'] = category.iconify_id
+        elif hasattr(category, 'legacy_icon') and category.legacy_icon:
+            icon_data['icon_class'] = category.legacy_icon
+        
+        # Ajouter les données de cette catégorie
+        category_data[category.id] = {
+            'id': category.id,
+            'name': category.name,
+            'color': category.color if hasattr(category, 'color') else '#e9ecef',
+            'flagIds': flag_ids,
+            **icon_data
+        }
+    
+    return category_data
 
 @tricount_bp.route('/reimbursements', methods=['GET', 'POST'])
 def reimbursements_list():
@@ -21,7 +52,7 @@ def reimbursements_list():
     search_query = request.values.get('search', '')
     show_all = request.values.get('show_all', '0') == '1'  # Nouveau paramètre
     
-    # Paramètres de tri - Ces lignes manquaient
+    # Paramètres de tri
     sort_by = request.values.get('sort', 'date')
     order = request.values.get('order', 'desc')
     
@@ -87,12 +118,26 @@ def reimbursements_list():
     else:
         query = query.order_by(Expense.date.desc())  # Tri par défaut
     
-    # Récupérer tous les flags, pas seulement les remboursables
+    # Récupérer tous les flags et les catégories
     flags = Flag.query.all()
+    categories = Category.query.all()
+    
+    # Préparer les données JavaScript pour les catégories et les flags
+    category_data = prepare_category_data(categories, flags)
+    
+    # Préparer les données JavaScript pour les flags
+    flag_data = {}
+    for flag in flags:
+        flag_data[flag.id] = {
+            'id': flag.id,
+            'name': flag.name,
+            'color': flag.color,
+            'iconify_id': flag.iconify_id if hasattr(flag, 'iconify_id') else None,
+            'legacy_icon': flag.legacy_icon if hasattr(flag, 'legacy_icon') else None
+        }
     
     # Calculer les totaux pour le résumé
-    # Pour les requêtes AJAX, calculer le résumé après le filtrage
-    all_expenses = query.all()  # On récupère toutes les dépenses pour calculer le résumé
+    all_expenses = query.all()
     summary = calculate_summary(all_expenses)
     
     # Pagination
@@ -161,6 +206,7 @@ def reimbursements_list():
     return render_template('tricount/reimbursements.html',
                           expenses=expenses,
                           flags=flags,
+                          categories=categories,
                           selected_flag_id=flag_id,
                           selected_status=status_values,
                           start_date=start_date,
@@ -170,7 +216,9 @@ def reimbursements_list():
                           order=order,
                           summary=summary,
                           declaration_statuses=DeclarationStatus,
-                          show_all=show_all)
+                          show_all=show_all,
+                          category_data_json=json.dumps(category_data),  # Données JSON pour JavaScript
+                          flag_data_json=json.dumps(flag_data))
 
 def calculate_summary(expenses):
     """

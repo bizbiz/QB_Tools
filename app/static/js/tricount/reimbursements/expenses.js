@@ -174,15 +174,10 @@ function updateSelectorsWithData(data) {
         return;
     }
     
-    // Mettre à jour les valeurs
-    if (data.category_id) {
-        categorySelect.value = data.category_id;
-        console.log("Catégorie définie à:", data.category_id);
-    } else {
-        categorySelect.value = "";
-        console.log("Aucune catégorie définie");
-    }
+    // IMPORTANT: Ordre de mise à jour modifié pour d'abord définir le flag
+    // puis la catégorie, afin que le filtrage fonctionne correctement
     
+    // 1. D'abord définir le flag
     if (data.flag_id) {
         flagSelect.value = data.flag_id;
         console.log("Flag défini à:", data.flag_id);
@@ -191,26 +186,48 @@ function updateSelectorsWithData(data) {
         console.log("Aucun flag défini");
     }
     
-    // Déclencher les mises à jour de Select2 si disponible
-    if (typeof $ !== 'undefined' && $.fn.select2) {
-        try {
-            $(categorySelect).trigger('change');
-            $(flagSelect).trigger('change');
-            console.log("Événements Select2 déclenchés");
-        } catch (e) {
-            console.error("Erreur lors de la mise à jour des sélecteurs Select2:", e);
-        }
-    }
-    
-    // Déclencher l'événement change natif pour la compatibilité avec CategorySelect
+    // 2. Déclencher l'événement change sur le flag pour activer le filtrage des catégories
     try {
+        // Déclencher l'événement change natif
         const eventChange = new Event('change');
         flagSelect.dispatchEvent(eventChange);
-        categorySelect.dispatchEvent(eventChange);
-        console.log("Événements change natifs déclenchés");
+        console.log("Événement change natif déclenché sur le flag");
+        
+        // Déclencher aussi l'événement pour Select2 si disponible
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            $(flagSelect).trigger('change');
+            console.log("Événement Select2 déclenché sur le flag");
+        }
     } catch (e) {
-        console.error("Erreur lors du déclenchement des événements change:", e);
+        console.error("Erreur lors du déclenchement des événements sur le flag:", e);
     }
+    
+    // 3. Puis définir la catégorie (après que les options ont été filtrées)
+    // Attendre un court délai pour que le filtrage soit appliqué
+    setTimeout(() => {
+        if (data.category_id) {
+            categorySelect.value = data.category_id;
+            console.log("Catégorie définie à:", data.category_id);
+            
+            // Déclencher l'événement change pour Select2 sur la catégorie
+            if (typeof $ !== 'undefined' && $.fn.select2) {
+                $(categorySelect).trigger('change');
+            }
+            
+            // Vérifier si la catégorie est disponible après filtrage
+            const optionExists = Array.from(categorySelect.options).some(opt => opt.value == data.category_id);
+            if (!optionExists) {
+                console.warn(`La catégorie ID=${data.category_id} n'est pas disponible avec le flag ID=${data.flag_id}`);
+            }
+        } else {
+            categorySelect.value = "";
+            console.log("Aucune catégorie définie");
+            
+            if (typeof $ !== 'undefined' && $.fn.select2) {
+                $(categorySelect).trigger('change');
+            }
+        }
+    }, 100);
 }
 
 /**
