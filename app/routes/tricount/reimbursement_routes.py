@@ -211,9 +211,28 @@ def reimbursements_list():
     
     # Pour chaque dépense, ajouter explicitement la propriété is_reimbursable
     reimbursable_status = {}
+    flag_reimbursement_types = {}  # Dictionnaire pour stocker les types de remboursement des flags
+
     for expense in expenses.items:
-        # Utiliser la même fonction que pour la version AJAX
-        reimbursable_status[expense.id] = is_expense_reimbursable(expense)
+        flag_id = expense.flag_id
+        
+        # Si on n'a pas encore mis en cache le type de remboursement pour ce flag
+        if flag_id and flag_id not in flag_reimbursement_types:
+            flag = Flag.query.get(flag_id)
+            if flag and hasattr(flag, 'reimbursement_type'):
+                flag_reimbursement_types[flag_id] = flag.reimbursement_type
+            else:
+                flag_reimbursement_types[flag_id] = None
+        
+        # Déterminer si la dépense est remboursable
+        is_reimbursable = False
+        if flag_id and flag_id in flag_reimbursement_types:
+            is_reimbursable = flag_reimbursement_types[flag_id] in [
+                ReimbursementType.PARTIALLY_REIMBURSABLE.value,
+                ReimbursementType.FULLY_REIMBURSABLE.value
+            ]
+        
+        reimbursable_status[expense.id] = is_reimbursable
     
     # Récupérer les flags remboursables pour le filtrage
     reimbursable_flags = Flag.query.filter(
