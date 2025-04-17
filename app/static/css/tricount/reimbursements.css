@@ -190,9 +190,10 @@ tr.selected {
     100% { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
-/* Transitions pour l'apparition/disparition des lignes */
+/* Amélioration de l'animation des lignes qui disparaissent */
 #expenses-table-body tr {
-    transition: opacity 0.5s ease, height 0.5s ease, background-color 0.5s ease;
+    transition: opacity 0.3s ease, height 0.5s ease, padding 0.5s ease;
+    transform-origin: top;
 }
 
 /* Styles pour améliorer l'apparence des sélecteurs de statut */
@@ -239,6 +240,19 @@ tr.selected {
 .pagination .page-link:hover {
     background-color: #e9ecef;
     transform: translateY(-2px);
+}
+
+/* Amélioration pour le tableau */
+.table {
+    position: relative;
+}
+
+.table th, .table td {
+    vertical-align: middle;
+}
+
+.description-cell {
+    max-width: 350px;
 }
 
 /* Responsive adjustments */
