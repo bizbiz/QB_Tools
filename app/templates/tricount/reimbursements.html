@@ -122,6 +122,19 @@
                                 </select>
                             </div>
                             
+                            <div class="col-md-3 mb-3">
+                                <label for="show_all" class="form-label">
+                                    Type d'affichage
+                                    <span class="badge bg-primary ms-1" title="Filtrage en temps réel">
+                                        <i class="fas fa-bolt small"></i>
+                                    </span>
+                                </label>
+                                <select class="form-select" id="show_all" name="show_all">
+                                    <option value="0" {% if not show_all %}selected{% endif %}>Remboursables uniquement</option>
+                                    <option value="1" {% if show_all %}selected{% endif %}>Toutes les dépenses</option>
+                                </select>
+                            </div>
+                            
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">
                                     Statut
@@ -203,7 +216,7 @@
             <div class="card shadow-sm">
                 <div class="card-header">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h3 class="card-title">Dépenses remboursables</h3>
+                        <h3 class="card-title">Dépenses</h3>
                         <span class="badge bg-primary" id="expenses-count">{{ expenses.total }} dépenses</span>
                     </div>
                 </div>
@@ -234,10 +247,13 @@
                                 {% if expenses.items %}
                                     {% for expense in expenses.items %}
                                     <tr data-expense-id="{{ expense.id }}" 
-                                        class="{% if expense.declaration_status == 'declared' %}expense-declared{% endif %} {% if expense.declaration_status == 'reimbursed' %}expense-reimbursed{% endif %}">
+                                        class="{% if expense.declaration_status == 'declared' %}expense-declared{% endif %} 
+                                              {% if expense.declaration_status == 'reimbursed' %}expense-reimbursed{% endif %}
+                                              {% if not expense.is_reimbursable %}expense-not-reimbursable{% endif %}">
                                         <td>
                                             <div class="form-check">
-                                                <input class="form-check-input expense-checkbox" type="checkbox" value="{{ expense.id }}">
+                                                <input class="form-check-input expense-checkbox" type="checkbox" value="{{ expense.id }}"
+                                                      {% if not expense.is_reimbursable %}disabled{% endif %}>
                                             </div>
                                         </td>
                                         <td>{{ expense.date.strftime('%d/%m/%Y') }}</td>
@@ -261,8 +277,14 @@
                                                        type="checkbox" 
                                                        data-expense-id="{{ expense.id }}" 
                                                        data-status="declared" 
-                                                       {% if expense.declaration_status in ['declared', 'reimbursed'] %}checked{% endif %}>
+                                                       {% if expense.declaration_status in ['declared', 'reimbursed'] %}checked{% endif %}
+                                                       {% if not expense.is_reimbursable %}disabled{% endif %}>
                                                 <label class="form-check-label">Déclarée</label>
+                                                {% if not expense.is_reimbursable %}
+                                                <i class="fas fa-info-circle text-muted ms-1" 
+                                                   data-bs-toggle="tooltip" 
+                                                   title="Cette dépense n'est pas remboursable (type: {{ expense.flag.name }})"></i>
+                                                {% endif %}
                                             </div>
                                         </td>
                                         <td>
@@ -271,8 +293,14 @@
                                                        type="checkbox" 
                                                        data-expense-id="{{ expense.id }}" 
                                                        data-status="reimbursed" 
-                                                       {% if expense.declaration_status == 'reimbursed' %}checked{% endif %}>
+                                                       {% if expense.declaration_status == 'reimbursed' %}checked{% endif %}
+                                                       {% if not expense.is_reimbursable %}disabled{% endif %}>
                                                 <label class="form-check-label">Remboursée</label>
+                                                {% if not expense.is_reimbursable %}
+                                                <i class="fas fa-info-circle text-muted ms-1" 
+                                                   data-bs-toggle="tooltip" 
+                                                   title="Cette dépense n'est pas remboursable (type: {{ expense.flag.name }})"></i>
+                                                {% endif %}
                                             </div>
                                         </td>
                                         <td class="text-center">
@@ -296,7 +324,7 @@
                                         <td colspan="8" class="text-center py-4">
                                             <div class="alert alert-info mb-0">
                                                 <i class="fas fa-info-circle me-2"></i>
-                                                Aucune dépense remboursable trouvée avec les filtres appliqués. 
+                                                Aucune dépense trouvée avec les filtres appliqués. 
                                                 <a href="#" id="reset-filters-link">Réinitialiser les filtres</a>.
                                             </div>
                                         </td>
@@ -352,7 +380,7 @@
                     {% else %}
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle me-2"></i>
-                            Aucune dépense remboursable trouvée avec les filtres appliqués. 
+                            Aucune dépense trouvée avec les filtres appliqués. 
                             <a href="#" class="reset-filters-link">Réinitialiser les filtres</a>.
                         </div>
                     {% endif %}
@@ -517,6 +545,15 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Message d'information pour les dépenses non remboursables -->
+                    <div id="non-reimbursable-warning" class="alert alert-warning d-none">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Attention :</strong> Cette dépense n'est pas remboursable selon son type actuel.
+                        <div class="mt-2">
+                            Pour la rendre remboursable, vous pouvez changer son type pour un type remboursable.
+                        </div>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -559,6 +596,7 @@
                         <div class="mb-3">
                             <label class="form-label fw-bold">Type de dépense</label>
                             <div id="view-flag"></div>
+                            <div id="view-reimbursable-status" class="mt-2"></div>
                         </div>
                     </div>
                     <div class="col-md-6">

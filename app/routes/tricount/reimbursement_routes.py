@@ -19,20 +19,27 @@ def reimbursements_list():
     start_date = request.values.get('start_date')
     end_date = request.values.get('end_date')
     search_query = request.values.get('search', '')
+    show_all = request.values.get('show_all', '0') == '1'  # Nouveau paramètre
     
-    # Paramètres de tri
+    # Paramètres de tri - Ces lignes manquaient
     sort_by = request.values.get('sort', 'date')
     order = request.values.get('order', 'desc')
-    page = request.values.get('page', 1, type=int)
     
-    # Construire la requête de base pour les dépenses remboursables
-    query = Expense.query.join(Flag).filter(
-        Flag.reimbursement_type.in_([
-            ReimbursementType.PARTIALLY_REIMBURSABLE.value,
-            ReimbursementType.FULLY_REIMBURSABLE.value
-        ])
-    )
+    # Construire la requête de base
+    query = Expense.query
     
+    # Ne filtrer par type remboursable que si show_all est False
+    if not show_all:
+        query = query.join(Flag).filter(
+            Flag.reimbursement_type.in_([
+                ReimbursementType.PARTIALLY_REIMBURSABLE.value,
+                ReimbursementType.FULLY_REIMBURSABLE.value
+            ])
+        )
+    else:
+        # Sinon, juste joindre Flag sans filtrer
+        query = query.join(Flag, isouter=True)  # isouter=True pour inclure les dépenses sans flag
+        
     # Filtre par flag spécifique
     if flag_id is not None and flag_id > 0:
         query = query.filter(Expense.flag_id == flag_id)
@@ -80,6 +87,9 @@ def reimbursements_list():
     else:
         query = query.order_by(Expense.date.desc())  # Tri par défaut
     
+    # Récupérer tous les flags, pas seulement les remboursables
+    flags = Flag.query.all()
+    
     # Calculer les totaux pour le résumé
     # Pour les requêtes AJAX, calculer le résumé après le filtrage
     all_expenses = query.all()  # On récupère toutes les dépenses pour calculer le résumé
@@ -87,6 +97,7 @@ def reimbursements_list():
     
     # Pagination
     per_page = 20
+    page = request.values.get('page', 1, type=int)
     expenses = query.paginate(page=page, per_page=per_page, error_out=False)
     
     # Si c'est une requête AJAX, renvoyer du JSON
@@ -149,7 +160,7 @@ def reimbursements_list():
     # Rendu du template normal
     return render_template('tricount/reimbursements.html',
                           expenses=expenses,
-                          flags=reimbursable_flags,
+                          flags=flags,
                           selected_flag_id=flag_id,
                           selected_status=status_values,
                           start_date=start_date,
@@ -158,7 +169,8 @@ def reimbursements_list():
                           sort_by=sort_by,
                           order=order,
                           summary=summary,
-                          declaration_statuses=DeclarationStatus)
+                          declaration_statuses=DeclarationStatus,
+                          show_all=show_all)
 
 def calculate_summary(expenses):
     """

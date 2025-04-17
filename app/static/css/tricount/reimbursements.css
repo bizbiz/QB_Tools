@@ -274,3 +274,18 @@ tr.selected {
         padding: 0.5rem;
     }
 }
+
+tr.expense-not-reimbursable {
+    background-color: rgba(108, 117, 125, 0.05) !important;
+}
+
+/* Style pour les switches désactivés */
+.expense-not-reimbursable .form-check-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Icône d'info */
+.form-check-input:disabled + .form-check-label + .fas.fa-info-circle {
+    cursor: help;
+}
