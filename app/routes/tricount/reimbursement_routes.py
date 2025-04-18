@@ -2,7 +2,7 @@
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from app.routes.tricount import tricount_bp
 from app.extensions import db
-from app.models.tricount import Expense, Flag, Category, DeclarationStatus, ReimbursementType
+from app.models.tricount import Expense, Flag, Category, DeclarationStatus, ReimbursementType, AutoCategorizationRule
 from datetime import datetime
 from sqlalchemy import or_
 import json
@@ -561,6 +561,9 @@ def get_expense_details(expense_id):
     """Récupère les détails d'une dépense pour le formulaire d'édition"""
     expense = Expense.query.get_or_404(expense_id)
     
+    # Vérifier si une règle a été créée à partir de cette dépense
+    rule = AutoCategorizationRule.query.filter_by(created_by_expense_id=expense_id).first()
+    
     expense_data = {
         'id': expense.id,
         'date': expense.date.strftime('%d/%m/%Y'),
@@ -578,7 +581,10 @@ def get_expense_details(expense_id):
         'declaration_reference': expense.declaration_reference,
         'declaration_date': expense.declaration_date.strftime('%d/%m/%Y') if expense.declaration_date else None,
         'reimbursement_date': expense.reimbursement_date.strftime('%d/%m/%Y') if expense.reimbursement_date else None,
-        'original_text': expense.original_text
+        'original_text': expense.original_text,
+        # Ajouter les informations de règle
+        'rule_id': rule.id if rule else None,
+        'has_rule': rule is not None
     }
     
     # Ajouter des données de relations pour l'affichage

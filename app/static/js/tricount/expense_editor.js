@@ -18,6 +18,8 @@ class ExpenseEditor {
             saveButtonId: 'save-expense-btn',
             updateUrl: '/tricount/update_expense',
             expenseEndpointUrl: '/tricount/reimbursements/expense',
+            autoRuleCreateUrl: '/tricount/auto-rules/create-from-expense',
+            autoRuleEditUrl: '/tricount/auto-rules/edit',
             afterSaveCallback: null,
             ...options
         };
@@ -46,6 +48,12 @@ class ExpenseEditor {
         
         // Initialiser le bouton de sauvegarde
         this.initSaveButton();
+        
+        // Initialiser les tooltips
+        this.initTooltips();
+        
+        // Initialiser les boutons de règles automatiques
+        this.initRuleButtons();
         
         // Créer le conteneur de notification s'il n'existe pas
         this.createNotificationContainer();
@@ -82,6 +90,87 @@ class ExpenseEditor {
         
         // Initialiser le comportement de renommage
         this.initRenamingBehaviors();
+    }
+    
+    /**
+     * Initialise les tooltips dans le modal
+     */
+    initTooltips() {
+        // Bootstrap tooltips
+        if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+            const tooltipTriggerList = [].slice.call(this.modal.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.forEach(el => new bootstrap.Tooltip(el));
+        }
+    }
+    
+    /**
+     * Initialise les boutons pour créer/éditer les règles
+     */
+    initRuleButtons() {
+        const createRuleBtn = this.modal.querySelector('.create-rule-link');
+        const editRuleBtn = this.modal.querySelector('.edit-rule-link');
+        
+        if (createRuleBtn) {
+            createRuleBtn.addEventListener('click', (e) => {
+                e.preventDefault();  // Empêcher le comportement par défaut du lien
+                
+                // Récupérer l'URL de destination
+                const url = createRuleBtn.getAttribute('href');
+                if (!url || url === '#') {
+                    console.error('URL de création de règle non définie');
+                    return;
+                }
+                
+                // Fermer le modal avant la redirection
+                const modalInstance = bootstrap.Modal.getInstance(this.modal);
+                if (modalInstance) {
+                    modalInstance.hide();
+                    // Attendre que le modal soit fermé avant de rediriger
+                    this.modal.addEventListener('hidden.bs.modal', function handler() {
+                        window.location.href = url;  // Redirection explicite
+                        this.removeEventListener('hidden.bs.modal', handler);
+                    });
+                } else {
+                    // Si pas de modal, rediriger directement
+                    window.location.href = url;
+                }
+            });
+        }
+        
+        if (editRuleBtn) {
+            editRuleBtn.addEventListener('click', (e) => {
+                e.preventDefault();  // Empêcher le comportement par défaut du lien
+                
+                // Récupérer l'URL de destination
+                const url = editRuleBtn.getAttribute('href');
+                if (!url || url === '#') {
+                    console.error('URL d\'édition de règle non définie');
+                    return;
+                }
+                
+                // Fermer le modal avant la redirection
+                const modalInstance = bootstrap.Modal.getInstance(this.modal);
+                if (modalInstance) {
+                    modalInstance.hide();
+                    // Attendre que le modal soit fermé avant de rediriger
+                    this.modal.addEventListener('hidden.bs.modal', function handler() {
+                        window.location.href = url;  // Redirection explicite
+                        this.removeEventListener('hidden.bs.modal', handler);
+                    });
+                } else {
+                    // Si pas de modal, rediriger directement
+                    window.location.href = url;
+                }
+            });
+        }
+        
+        // Imprimer les URLs pour débogage
+        if (createRuleBtn) {
+            console.log('URL de création de règle:', createRuleBtn.getAttribute('href'));
+        }
+        if (editRuleBtn) {
+            console.log('URL d\'édition de règle:', editRuleBtn.getAttribute('href'));
+        }
     }
     
     /**
@@ -278,6 +367,9 @@ class ExpenseEditor {
                 // Ouvrir le modal
                 const bsModal = new bootstrap.Modal(this.modal);
                 bsModal.show();
+                
+                // Réinitialiser les tooltips après l'ouverture du modal
+                setTimeout(() => this.initTooltips(), 300);
             } else {
                 this.showToast('Erreur lors du chargement des données: ' + (data.error || 'Erreur inconnue'), 'danger');
             }
@@ -350,6 +442,9 @@ class ExpenseEditor {
             }
         }
         
+        // Mise à jour des liens de règles automatiques
+        this._updateAutoRuleLinks(expense);
+        
         // Ouvrir les accordéons si des valeurs existent
         this._toggleAccordionsByValues(expense);
         
@@ -358,6 +453,39 @@ class ExpenseEditor {
         setTimeout(() => {
             this._updateSelectors(expense);
         }, 300);
+    }
+    
+    /**
+     * Met à jour les liens pour les règles automatiques
+     * @private
+     * @param {Object} expense - Données de la dépense
+     */
+    _updateAutoRuleLinks(expense) {
+        const createRuleLink = this.modal.querySelector('.create-rule-link');
+        const editRuleLink = this.modal.querySelector('.edit-rule-link');
+        
+        if (!createRuleLink || !editRuleLink) return;
+        
+        // Vérifier si une règle existe pour cette dépense
+        if (expense.rule_id) {
+            // Masquer le lien de création et afficher celui d'édition
+            createRuleLink.classList.add('d-none');
+            editRuleLink.classList.remove('d-none');
+            
+            // Mettre à jour l'URL d'édition
+            const editUrl = `${this.config.autoRuleEditUrl}/${expense.rule_id}`;
+            editRuleLink.setAttribute('href', editUrl);
+            console.log('URL d\'édition de règle définie:', editUrl);
+        } else {
+            // Masquer le lien d'édition et afficher celui de création
+            editRuleLink.classList.add('d-none');
+            createRuleLink.classList.remove('d-none');
+            
+            // Mettre à jour l'URL de création
+            const createUrl = `${this.config.autoRuleCreateUrl}/${expense.id}`;
+            createRuleLink.setAttribute('href', createUrl);
+            console.log('URL de création de règle définie:', createUrl);
+        }
     }
     
     /**
