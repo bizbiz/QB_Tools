@@ -19,7 +19,7 @@ export function initTables(tableSelector = '.table') {
         table.dataset.initialized = 'true';
         
         // Ajouter les fonctionnalités selon les attributs de données
-        if (table.classList.contains('table-sortable')) {
+        if (table.classList.contains('table-sortable') || table.classList.contains('sortable-table')) {
             initSortableTable(table);
         }
         
@@ -38,21 +38,32 @@ export function initTables(tableSelector = '.table') {
  * @param {HTMLElement} table - Tableau à rendre triable
  */
 function initSortableTable(table) {
+    console.log("Initialisation du tableau triable:", table.id || "table sans ID");
+    
     // Ajouter des en-têtes triables
     table.querySelectorAll('th:not(.no-sort)').forEach((th, index) => {
         // Ajouter des attributs de données
         th.dataset.sortIndex = index;
-        th.dataset.sortDir = ''; // '', 'asc', ou 'desc'
+        
+        // Ne pas écraser la direction de tri si elle existe déjà
+        if (!th.hasAttribute('data-sort-dir')) {
+            th.dataset.sortDir = ''; // '', 'asc', ou 'desc'
+        }
         
         // Ajouter la classe pour le style
         th.classList.add('sortable');
         
-        // Ajouter l'indicateur visuel
-        const icon = document.createElement('span');
-        icon.className = 'sort-icon';
-        th.appendChild(icon);
+        // Ajouter l'indicateur visuel s'il n'existe pas déjà
+        if (!th.querySelector('.sort-icon')) {
+            const icon = document.createElement('span');
+            icon.className = 'sort-icon';
+            th.appendChild(icon);
+        }
         
-        // Ajouter l'écouteur d'événement
+        // Supprimer les anciens écouteurs pour éviter les duplications
+        th.removeEventListener('click', handleHeaderClick);
+        
+        // Ajouter le nouvel écouteur d'événement
         th.addEventListener('click', handleHeaderClick);
     });
 }
@@ -62,6 +73,8 @@ function initSortableTable(table) {
  * @param {Event} e - Événement de clic
  */
 function handleHeaderClick(e) {
+    e.preventDefault();
+    
     const th = e.currentTarget;
     const table = th.closest('table');
     const index = parseInt(th.dataset.sortIndex);
@@ -72,15 +85,23 @@ function handleHeaderClick(e) {
     else if (dir === 'asc') dir = 'desc';
     else dir = 'asc';
     
+    console.log(`Tri de la colonne ${index} en direction ${dir}`);
+    
     // Réinitialiser tous les autres en-têtes
     table.querySelectorAll('th.sortable').forEach(header => {
         header.dataset.sortDir = '';
-        header.querySelector('.sort-icon').className = 'sort-icon';
+        const sortIcon = header.querySelector('.sort-icon');
+        if (sortIcon) {
+            sortIcon.className = 'sort-icon';
+        }
     });
     
     // Mettre à jour la direction actuelle
     th.dataset.sortDir = dir;
-    th.querySelector('.sort-icon').className = `sort-icon ${dir}`;
+    const currentSortIcon = th.querySelector('.sort-icon');
+    if (currentSortIcon) {
+        currentSortIcon.className = `sort-icon ${dir}`;
+    }
     
     // Réaliser le tri
     sortTableByColumn(table, index, dir);
@@ -96,21 +117,18 @@ function sortTableByColumn(table, colIndex, direction) {
     // Récupérer le type de données de la colonne
     const headerRow = table.querySelector('thead tr');
     const header = headerRow.cells[colIndex];
+    
+    // Priorité à l'attribut data-type défini explicitement
     const dataType = header.dataset.type || guessDataType(table, colIndex);
+    
+    console.log(`Type de données détecté pour la colonne ${colIndex}: ${dataType}`);
     
     // Récupérer les lignes et les trier
     const tbody = table.querySelector('tbody');
     const rows = Array.from(tbody.rows);
     
-    // Ajouter un data-sort-value aux cellules pour le tri des caractères accentués
-    rows.forEach(row => {
-        const cell = row.cells[colIndex];
-        if (cell && dataType === 'text') {
-            const text = cell.textContent.trim();
-            // Stocker la valeur de tri normalisée
-            cell.dataset.sortValue = getSortValue(text);
-        }
-    });
+    // Préparer les valeurs de tri pour les cellules
+    prepareSortValues(rows, colIndex, dataType);
     
     // Trier les lignes
     rows.sort((rowA, rowB) => {
@@ -121,7 +139,21 @@ function sortTableByColumn(table, colIndex, direction) {
         
         let comparison = 0;
         
-        if (dataType === 'number') {
+        // Utiliser d'abord data-sort-value s'il est disponible
+        if (cellA.dataset.sortValue !== undefined && cellB.dataset.sortValue !== undefined) {
+            const valueA = cellA.dataset.sortValue;
+            const valueB = cellB.dataset.sortValue;
+            
+            if (dataType === 'number') {
+                // Pour les nombres, convertir en nombres
+                comparison = parseFloat(valueA) - parseFloat(valueB);
+            } else {
+                // Pour le texte, utiliser localeCompare
+                comparison = valueA.localeCompare(valueB);
+            }
+        }
+        // Sinon, utiliser le type de données pour extraire et comparer les valeurs
+        else if (dataType === 'number') {
             // Traiter les nombres
             const valA = extractNumber(cellA.textContent);
             const valB = extractNumber(cellB.textContent);
@@ -134,7 +166,7 @@ function sortTableByColumn(table, colIndex, direction) {
             comparison = dateA - dateB;
         } 
         else {
-            // Utiliser les valeurs de tri précalculées pour le texte
+            // Texte par défaut
             const textA = cellA.dataset.sortValue || getSortValue(cellA.textContent.trim());
             const textB = cellB.dataset.sortValue || getSortValue(cellB.textContent.trim());
             comparison = textA.localeCompare(textB);
@@ -146,6 +178,41 @@ function sortTableByColumn(table, colIndex, direction) {
     
     // Réordonner les lignes dans le tableau
     rows.forEach(row => tbody.appendChild(row));
+    
+    console.log(`Tri terminé. ${rows.length} lignes réorganisées.`);
+}
+
+/**
+ * Prépare les valeurs de tri pour toutes les cellules d'une colonne
+ * @param {Array} rows - Lignes du tableau
+ * @param {number} colIndex - Index de la colonne
+ * @param {string} dataType - Type de données ('number', 'date', ou 'text')
+ */
+function prepareSortValues(rows, colIndex, dataType) {
+    rows.forEach(row => {
+        const cell = row.cells[colIndex];
+        if (!cell) return;
+        
+        // Si la cellule a déjà une valeur de tri définie, la respecter
+        if (cell.dataset.sortValue !== undefined) return;
+        
+        let sortValue;
+        
+        // Extraire et normaliser la valeur selon le type de données
+        if (dataType === 'number') {
+            sortValue = extractNumber(cell.textContent).toString();
+        } 
+        else if (dataType === 'date') {
+            sortValue = parseDate(cell.textContent).toString();
+        } 
+        else {
+            // Pour le texte, normaliser pour les accents et la casse
+            sortValue = getSortValue(cell.textContent.trim());
+        }
+        
+        // Stocker la valeur de tri normalisée
+        cell.dataset.sortValue = sortValue;
+    });
 }
 
 /**
@@ -194,17 +261,33 @@ function getSortValue(text) {
 function guessDataType(table, colIndex) {
     const tbody = table.querySelector('tbody');
     const headerCell = table.querySelector('thead tr').cells[colIndex];
+    
+    // Si un type est spécifié explicitement, l'utiliser
+    if (headerCell.dataset.type) {
+        return headerCell.dataset.type;
+    }
+    
     const headerText = headerCell.textContent.toLowerCase();
     
     // Vérifier le texte de l'en-tête
     if (headerText.includes('date')) return 'date';
-    if (headerText.includes('montant') || headerText.includes('prix') || headerText.includes('coût')) return 'number';
+    if (headerText.includes('montant') || headerText.includes('prix') || 
+        headerText.includes('coût') || headerText.includes('somme')) return 'number';
     
     // Analyser quelques cellules de données
     const rows = Array.from(tbody.rows).slice(0, 5); // Examiner les 5 premières lignes
     
     for (const row of rows) {
         if (!row.cells[colIndex]) continue;
+        
+        // Essayer d'abord d'utiliser data-sort-value s'il existe
+        if (row.cells[colIndex].dataset.sortValue) {
+            const value = row.cells[colIndex].dataset.sortValue;
+            // Vérifier si c'est une date
+            if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return 'date';
+            // Vérifier si c'est un nombre
+            if (/^-?[\d.,]+$/.test(value)) return 'number';
+        }
         
         const text = row.cells[colIndex].textContent.trim();
         
@@ -234,8 +317,17 @@ function extractNumber(text) {
     // Supprimer tout sauf les chiffres, le point et la virgule
     text = text.replace(/[^\d.,]/g, '');
     
-    // Remplacer la virgule par un point pour le parsing
-    text = text.replace(',', '.');
+    // Gérer correctement le format français (remplacer la virgule par un point)
+    // S'assurer de ne remplacer que le séparateur décimal
+    if (text.includes(',')) {
+        // Si on a aussi un point, considérer la virgule comme séparateur de milliers
+        if (text.includes('.')) {
+            text = text.replace(/,/g, '');
+        } else {
+            // Sinon, remplacer la virgule par un point pour le parsing
+            text = text.replace(',', '.');
+        }
+    }
     
     // Parser le nombre
     let value = parseFloat(text) || 0;
@@ -279,26 +371,38 @@ function initCheckableTable(table) {
         // Chercher toutes les cases à cocher du corps du tableau
         const checkboxes = table.querySelectorAll('tbody td input[type="checkbox"]');
         
-        // Ajouter l'écouteur au checkbox principal
-        headerCheckbox.addEventListener('change', function() {
+        // Supprimer les anciens écouteurs pour éviter les duplications
+        headerCheckbox.removeEventListener('change', handleHeaderCheckboxChange);
+        
+        // Fonction de gestion du changement de l'en-tête
+        function handleHeaderCheckboxChange() {
             checkboxes.forEach(checkbox => {
-                checkbox.checked = headerCheckbox.checked;
-                
-                // Mettre à jour l'apparence de la ligne
-                const row = checkbox.closest('tr');
-                if (row) {
-                    if (headerCheckbox.checked) {
-                        row.classList.add('selected');
-                    } else {
-                        row.classList.remove('selected');
+                if (!checkbox.disabled) {
+                    checkbox.checked = headerCheckbox.checked;
+                    
+                    // Mettre à jour l'apparence de la ligne
+                    const row = checkbox.closest('tr');
+                    if (row) {
+                        if (headerCheckbox.checked) {
+                            row.classList.add('selected');
+                        } else {
+                            row.classList.remove('selected');
+                        }
                     }
                 }
             });
-        });
+        }
+        
+        // Ajouter l'écouteur au checkbox principal
+        headerCheckbox.addEventListener('change', handleHeaderCheckboxChange);
         
         // Ajouter l'écouteur aux checkboxes individuels
         checkboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
+            // Supprimer les anciens écouteurs
+            checkbox.removeEventListener('change', handleIndividualCheckboxChange);
+            
+            // Fonction de gestion du changement individuel
+            function handleIndividualCheckboxChange() {
                 // Mettre à jour l'apparence de la ligne
                 const row = checkbox.closest('tr');
                 if (row) {
@@ -311,7 +415,10 @@ function initCheckableTable(table) {
                 
                 // Mettre à jour l'état du checkbox principal
                 updateHeaderCheckboxState(headerCheckbox, checkboxes);
-            });
+            }
+            
+            // Ajouter le nouvel écouteur
+            checkbox.addEventListener('change', handleIndividualCheckboxChange);
         });
     }
 }
@@ -322,8 +429,8 @@ function initCheckableTable(table) {
  * @param {NodeList} checkboxes - Liste des cases à cocher
  */
 function updateHeaderCheckboxState(headerCheckbox, checkboxes) {
-    const totalCheckboxes = checkboxes.length;
-    const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+    const totalCheckboxes = Array.from(checkboxes).filter(cb => !cb.disabled).length;
+    const checkedCount = Array.from(checkboxes).filter(cb => cb.checked && !cb.disabled).length;
     
     if (checkedCount === 0) {
         headerCheckbox.checked = false;
@@ -409,3 +516,26 @@ export function updateTableContent(tableSelector, data, rowRenderer) {
     // Réinitialiser les fonctionnalités du tableau
     initTables(tableSelector);
 }
+
+// Exposer les fonctions pour une utilisation externe
+window.TableManager = {
+    init: initTables,
+    initSortable: initSortableTable,
+    initCheckable: initCheckableTable,
+    initHoverable: initHoverableTable,
+    updateContent: updateTableContent
+};
+
+// Exposer pour compatibilité avec le code existant
+window.TableSorter = {
+    init: function() {
+        document.querySelectorAll('.sortable-table').forEach(initSortableTable);
+    },
+    makeSortable: function(selector) {
+        const table = document.querySelector(selector);
+        if (table) {
+            table.classList.add('sortable-table');
+            initSortableTable(table);
+        }
+    }
+};

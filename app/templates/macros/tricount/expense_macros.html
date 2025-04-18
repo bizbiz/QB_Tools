@@ -1,81 +1,99 @@
 {# app/templates/macros/tricount/expense_macros.html #}
 
-{% macro display_expense_name(expense, show_original=false, extra_classes='', tooltip=true, max_length=None) %}
-    {% if expense.renamed_merchant and not show_original %}
-        <div class="expense-name {{ extra_classes }}">
-            {% set content = expense.renamed_merchant %}
-            {% if max_length %}
-                {% set content = expense.renamed_merchant|truncate(max_length, true, "...") %}
-            {% endif %}
-            {{ content }}
-            {{ display_modification_source(expense.merchant_modified_by, tooltip) }}
-            {% if tooltip %}
-                <small class="text-muted ms-1" 
-                       data-bs-toggle="tooltip" 
-                       title="Nom original: {{ expense.merchant|truncate(100) }}"
-                       data-bs-placement="top">
-                    <i class="fas fa-tag"></i>
-                </small>
-            {% endif %}
-        </div>
-    {% elif expense.renamed_merchant and show_original %}
-        <div class="expense-name {{ extra_classes }}">
-            {% set content = expense.merchant %}
-            {% if max_length %}
-                {% set content = expense.merchant|truncate(max_length, true, "...") %}
-            {% endif %}
-            {{ content }}
-            <small class="text-muted ms-1">(renommé en: {{ expense.renamed_merchant|truncate(30) }})</small>
-            {{ display_modification_source(expense.merchant_modified_by, tooltip) }}
-        </div>
+{% macro display_expense_name(expense, show_original=false, extra_classes='', tooltip=true, max_length=None, sort_value=false) %}
+    {# Si sort_value=true, retourner uniquement la valeur à utiliser pour le tri #}
+    {% if sort_value %}
+        {% if expense.renamed_merchant and not show_original %}
+            {{ expense.renamed_merchant|lower }}
+        {% else %}
+            {{ expense.merchant|lower }}
+        {% endif %}
     {% else %}
-        <div class="expense-name {{ extra_classes }}">
-            {% set content = expense.merchant %}
-            {% if max_length %}
-                {% set content = expense.merchant|truncate(max_length, true, "...") %}
-            {% endif %}
-            {{ content }}
-            {{ display_modification_source(expense.merchant_modified_by, tooltip) }}
-        </div>
+        {% if expense.renamed_merchant and not show_original %}
+            <div class="expense-name {{ extra_classes }}">
+                {% set content = expense.renamed_merchant %}
+                {% if max_length %}
+                    {% set content = expense.renamed_merchant|truncate(max_length, true, "...") %}
+                {% endif %}
+                {{ content }}
+                {{ display_modification_source(expense.merchant_modified_by, tooltip) }}
+                {% if tooltip %}
+                    <small class="text-muted ms-1" 
+                           data-bs-toggle="tooltip" 
+                           title="Nom original: {{ expense.merchant|truncate(100) }}"
+                           data-bs-placement="top">
+                        <i class="fas fa-tag"></i>
+                    </small>
+                {% endif %}
+            </div>
+        {% elif expense.renamed_merchant and show_original %}
+            <div class="expense-name {{ extra_classes }}">
+                {% set content = expense.merchant %}
+                {% if max_length %}
+                    {% set content = expense.merchant|truncate(max_length, true, "...") %}
+                {% endif %}
+                {{ content }}
+                <small class="text-muted ms-1">(renommé en: {{ expense.renamed_merchant|truncate(30) }})</small>
+                {{ display_modification_source(expense.merchant_modified_by, tooltip) }}
+            </div>
+        {% else %}
+            <div class="expense-name {{ extra_classes }}">
+                {% set content = expense.merchant %}
+                {% if max_length %}
+                    {% set content = expense.merchant|truncate(max_length, true, "...") %}
+                {% endif %}
+                {{ content }}
+                {{ display_modification_source(expense.merchant_modified_by, tooltip) }}
+            </div>
+        {% endif %}
     {% endif %}
 {% endmacro %}
 
-{% macro display_expense_description(expense, show_original=false, extra_classes='', tooltip=true, max_length=None) %}
-    {% if expense.notes and not show_original %}
-        <div class="expense-description {{ extra_classes }}">
-            {% set content = expense.notes %}
-            {% if max_length %}
-                {% set content = expense.notes|truncate(max_length, true, "...") %}
-            {% endif %}
-            {{ content }}
-            {{ display_modification_source(expense.notes_modified_by, tooltip) }}
-            {% if tooltip %}
-                <small class="text-muted ms-1" 
-                       data-bs-toggle="tooltip" 
-                       title="Description originale: {{ expense.description|truncate(100) }}"
-                       data-bs-placement="top">
-                    <i class="fas fa-sticky-note"></i>
-                </small>
-            {% endif %}
-        </div>
-    {% elif expense.notes and show_original %}
-        <div class="expense-description {{ extra_classes }}">
-            {% set content = expense.description %}
-            {% if max_length %}
-                {% set content = expense.description|truncate(max_length, true, "...") %}
-            {% endif %}
-            {{ content }}
-            <small class="text-muted ms-1">(note: {{ expense.notes|truncate(30) }})</small>
-            {{ display_modification_source(expense.notes_modified_by, tooltip) }}
-        </div>
+{% macro display_expense_description(expense, show_original=false, extra_classes='', tooltip=true, max_length=None, sort_value=false) %}
+    {# Si sort_value=true, retourner uniquement la valeur à utiliser pour le tri #}
+    {% if sort_value %}
+        {% if expense.notes and not show_original %}
+            {{ expense.notes|lower }}
+        {% else %}
+            {{ expense.description|lower }}
+        {% endif %}
     {% else %}
-        <div class="expense-description {{ extra_classes }}">
-            {% set content = expense.description %}
-            {% if max_length %}
-                {% set content = expense.description|truncate(max_length, true, "...") %}
-            {% endif %}
-            {{ content }}
-        </div>
+        {% if expense.notes and not show_original %}
+            <div class="expense-description {{ extra_classes }}">
+                {% set content = expense.notes %}
+                {% if max_length %}
+                    {% set content = expense.notes|truncate(max_length, true, "...") %}
+                {% endif %}
+                {{ content }}
+                {{ display_modification_source(expense.notes_modified_by, tooltip) }}
+                {% if tooltip %}
+                    <small class="text-muted ms-1" 
+                           data-bs-toggle="tooltip" 
+                           title="Description originale: {{ expense.description|truncate(100) }}"
+                           data-bs-placement="top">
+                        <i class="fas fa-sticky-note"></i>
+                    </small>
+                {% endif %}
+            </div>
+        {% elif expense.notes and show_original %}
+            <div class="expense-description {{ extra_classes }}">
+                {% set content = expense.description %}
+                {% if max_length %}
+                    {% set content = expense.description|truncate(max_length, true, "...") %}
+                {% endif %}
+                {{ content }}
+                <small class="text-muted ms-1">(note: {{ expense.notes|truncate(30) }})</small>
+                {{ display_modification_source(expense.notes_modified_by, tooltip) }}
+            </div>
+        {% else %}
+            <div class="expense-description {{ extra_classes }}">
+                {% set content = expense.description %}
+                {% if max_length %}
+                    {% set content = expense.description|truncate(max_length, true, "...") %}
+                {% endif %}
+                {{ content }}
+            </div>
+        {% endif %}
     {% endif %}
 {% endmacro %}
 

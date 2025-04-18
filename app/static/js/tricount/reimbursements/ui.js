@@ -118,6 +118,7 @@ export function updateTableContent(expenses) {
             </div>
         `;
         
+        // Construire HTML de la ligne avec des attributs de tri explicites
         row.innerHTML = `
             <td>
                 <div class="form-check">
@@ -125,19 +126,23 @@ export function updateTableContent(expenses) {
                            ${isNotReimbursable ? 'disabled' : ''}>
                 </div>
             </td>
-            <td>${expense.date}</td>
-            <td class="description-cell">
+            <td data-sort-value="${expense.date_sort || expense.date}">${expense.date}</td>
+            <td class="description-cell" data-sort-value="${expense.merchant.toLowerCase()}">
                 <div class="fw-bold">${expense.merchant}</div>
                 <div class="small text-muted">${expense.description || ''}</div>
             </td>
-            <td class="${amountClass}">
+            <td class="${amountClass}" data-sort-value="${parseFloat(expense.amount).toFixed(2)}">
                 ${amountPrefix}${expense.amount.toFixed(2)} €
             </td>
-            <td>
+            <td data-sort-value="${expense.flag ? expense.flag.name.toLowerCase() : 'zzzz'}">
                 ${expense.flag_html || '<span class="badge bg-secondary">Non défini</span>'}
             </td>
-            <td>${declaredSwitchHTML}</td>
-            <td>${reimbursedSwitchHTML}</td>
+            <td data-sort-value="${expense.is_declared ? '1' : '0'}">
+                ${declaredSwitchHTML}
+            </td>
+            <td data-sort-value="${expense.is_reimbursed ? '1' : '0'}">
+                ${reimbursedSwitchHTML}
+            </td>
             <td class="text-center">
                 <button type="button" class="btn btn-sm btn-outline-primary edit-expense-btn" 
                         data-expense-id="${expense.id}" 
@@ -164,6 +169,11 @@ export function updateTableContent(expenses) {
     // Réinitialiser le tri des tableaux
     if (window.TableSorter) {
         window.TableSorter.init();
+    }
+    
+    // Utiliser aussi le nouveau TableManager si disponible
+    if (window.TableManager) {
+        window.TableManager.init('#expenses-table');
     }
 }
 

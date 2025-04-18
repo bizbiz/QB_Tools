@@ -216,6 +216,46 @@
         </div>
     </div>
     
+    <!-- Nouvelle section de légende pour les types de dépenses -->
+    <div class="row mb-3">
+        <div class="col">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h3 class="card-title">Légende</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h5>Types de dépenses</h5>
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                {% for flag in flags %}
+                                <div class="d-flex align-items-center me-3 mb-2">
+                                    {{ flag_badge(flag, text_hidden=True) }}
+                                    <span class="ms-2">{{ flag.name }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <h5>Statuts</h5>
+                            <div class="d-flex flex-wrap gap-3 mb-3">
+                                <div class="d-flex align-items-center me-3">
+                                    <span class="badge bg-secondary">Non déclarée</span>
+                                </div>
+                                <div class="d-flex align-items-center me-3">
+                                    <span class="badge bg-primary">Déclarée</span>
+                                </div>
+                                <div class="d-flex align-items-center me-3">
+                                    <span class="badge bg-success">Remboursée</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <div class="row">
         <div class="col">
             <div class="card shadow-sm">
@@ -245,7 +285,7 @@
                                     <th data-type="text">Type</th>
                                     <th data-type="text">Déclarée</th>
                                     <th data-type="text">Remboursée</th>
-                                    <th data-type="text" class="text-center">Actions</th>
+                                    <th data-type="text" class="text-center no-sort">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="expenses-table-body">
@@ -253,58 +293,58 @@
                                     {% for expense in expenses.items %}
                                     <tr data-expense-id="{{ expense.id }}" 
                                         class="{% if expense.declaration_status == 'declared' %}expense-declared{% endif %} 
-                                           {% if expense.declaration_status == 'reimbursed' %}expense-reimbursed{% endif %}
-                                           {% if not expense.is_reimbursable %}expense-not-reimbursable{% endif %}">
+                                        {% if expense.declaration_status == 'reimbursed' %}expense-reimbursed{% endif %}
+                                        {% if not expense.is_reimbursable %}expense-not-reimbursable{% endif %}">
                                         <td>
                                             <div class="form-check">
                                                 <input class="form-check-input expense-checkbox" type="checkbox" value="{{ expense.id }}"
-                                                      {% if not expense.is_reimbursable %}disabled{% endif %}>
+                                                        {% if not expense.is_reimbursable %}disabled{% endif %}>
                                             </div>
                                         </td>
-                                        <td>{{ expense.date.strftime('%d/%m/%Y') }}</td>
-                                        <td class="description-cell">
+                                        <td data-sort-value="{{ expense.date.strftime('%Y%m%d') }}">{{ expense.date.strftime('%d/%m/%Y') }}</td>
+                                        <td class="description-cell" data-sort-value="{{ display_expense_name(expense, sort_value=true) }}">
                                             <div class="fw-bold">{{ display_expense_name(expense, max_length=70) }}</div>
                                             <div class="small text-muted">{{ display_expense_description(expense, max_length=70) }}</div>
                                         </td>
-                                        <td class="text-danger">
+                                        <td class="text-danger" data-sort-value="{{ expense.amount }}">
                                             {{ "%.2f"|format(expense.amount) }} €
                                         </td>
-                                        <td>
+                                        <td data-sort-value="{{ expense.flag.name|lower if expense.flag else 'zzz_non_defini' }}">
                                             {% if expense.flag %}
                                             {{ flag_badge(expense.flag) }}
                                             {% else %}
                                             <span class="badge bg-secondary">Non défini</span>
                                             {% endif %}
                                         </td>
-                                        <td>
+                                        <td data-sort-value="{{ '1' if expense.declaration_status in ['declared', 'reimbursed'] else '0' }}">
                                             <div class="form-check form-switch">
                                                 <input class="form-check-input status-switch declared-switch" 
-                                                       type="checkbox" 
-                                                       data-expense-id="{{ expense.id }}" 
-                                                       data-status="declared" 
-                                                       {% if expense.declaration_status in ['declared', 'reimbursed'] %}checked{% endif %}
-                                                       {% if not expense.is_reimbursable %}disabled{% endif %}>
+                                                        type="checkbox" 
+                                                        data-expense-id="{{ expense.id }}" 
+                                                        data-status="declared" 
+                                                        {% if expense.declaration_status in ['declared', 'reimbursed'] %}checked{% endif %}
+                                                        {% if not expense.is_reimbursable %}disabled{% endif %}>
                                                 <label class="form-check-label">Déclarée</label>
                                                 {% if not expense.is_reimbursable %}
                                                 <i class="fas fa-info-circle text-muted ms-1" 
-                                                   data-bs-toggle="tooltip" 
-                                                   title="Cette dépense n'est pas remboursable (type: {{ expense.flag.name }})"></i>
+                                                    data-bs-toggle="tooltip" 
+                                                    title="Cette dépense n'est pas remboursable (type: {{ expense.flag.name }})"></i>
                                                 {% endif %}
                                             </div>
                                         </td>
-                                        <td>
+                                        <td data-sort-value="{{ '1' if expense.declaration_status == 'reimbursed' else '0' }}">
                                             <div class="form-check form-switch">
                                                 <input class="form-check-input status-switch reimbursed-switch" 
-                                                       type="checkbox" 
-                                                       data-expense-id="{{ expense.id }}" 
-                                                       data-status="reimbursed" 
-                                                       {% if expense.declaration_status == 'reimbursed' %}checked{% endif %}
-                                                       {% if not expense.is_reimbursable %}disabled{% endif %}>
+                                                        type="checkbox" 
+                                                        data-expense-id="{{ expense.id }}" 
+                                                        data-status="reimbursed" 
+                                                        {% if expense.declaration_status == 'reimbursed' %}checked{% endif %}
+                                                        {% if not expense.is_reimbursable %}disabled{% endif %}>
                                                 <label class="form-check-label">Remboursée</label>
                                                 {% if not expense.is_reimbursable %}
                                                 <i class="fas fa-info-circle text-muted ms-1" 
-                                                   data-bs-toggle="tooltip" 
-                                                   title="Cette dépense n'est pas remboursable (type: {{ expense.flag.name }})"></i>
+                                                    data-bs-toggle="tooltip" 
+                                                    title="Cette dépense n'est pas remboursable (type: {{ expense.flag.name }})"></i>
                                                 {% endif %}
                                             </div>
                                         </td>
@@ -560,6 +600,37 @@ document.addEventListener('DOMContentLoaded', function() {
         window.expenseEditor.config.expenseEndpointUrl = '/tricount/reimbursements/expense';
         window.expenseEditor.config.updateUrl = '/tricount/update_expense';
         window.expenseEditor.config.afterSaveCallback = window.refreshExpenses;
+    }
+        if (window.TableSorter) {
+        window.TableSorter.init();
+    }
+    
+    // Utiliser aussi le nouveau gestionnaire de tableau si disponible
+    if (window.TableManager) {
+        window.TableManager.init('#expenses-table');
+    }
+    
+    // Logique pour détecter le chargement asynchrone du contenu du tableau
+    const tableObserver = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                // Réinitialiser le tri après modification du contenu
+                if (window.TableSorter) {
+                    console.log("Réinitialisation du tri après modification du contenu");
+                    window.TableSorter.init();
+                }
+                
+                if (window.TableManager) {
+                    window.TableManager.init('#expenses-table');
+                }
+            }
+        });
+    });
+    
+    // Observer les modifications du corps du tableau
+    const tableBody = document.getElementById('expenses-table-body');
+    if (tableBody) {
+        tableObserver.observe(tableBody, { childList: true });
     }
 });
 </script>
