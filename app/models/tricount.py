@@ -4,6 +4,8 @@ from datetime import datetime
 from sqlalchemy import or_
 import hashlib
 import enum
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy import case
 
 class ReimbursementType(enum.Enum):
     """
@@ -189,6 +191,22 @@ class Expense(db.Model):
     def is_reimbursed(self):
         """Vérifie si cette dépense a été remboursée"""
         return self.declaration_status == DeclarationStatus.REIMBURSED.value
+
+    @hybrid_property
+    def signed_amount(self):
+        """Retourne le montant signé (négatif pour les dépenses, positif pour les revenus)"""
+        if self.is_debit:
+            return -self.amount
+        else:
+            return self.amount
+    
+    # Expression SQLAlchemy pour pouvoir utiliser cette propriété dans les requêtes
+    @signed_amount.expression
+    def signed_amount(cls):
+        return case(
+            [(cls.is_debit == True, -cls.amount)],
+            else_=cls.amount
+        )
 
 class AutoCategorizationRule(db.Model):
     """Modèle pour stocker les règles d'auto-catégorisation des dépenses"""

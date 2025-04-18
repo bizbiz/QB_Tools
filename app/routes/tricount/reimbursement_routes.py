@@ -10,8 +10,19 @@ import traceback
 import csv
 from io import StringIO
 
-# ===== Utilitaires de filtrage =====
-"""
+
+def build_reimbursement_query(
+    flag_id=None, 
+    status_values=None, 
+    start_date=None, 
+    end_date=None, 
+    search_query="", 
+    show_all=False,
+    sort_by='date',  # Ajouter sort_by à la fonction
+    order='desc'     # Ajouter order à la fonction
+    ):
+    
+    """
     Construit une requête pour les dépenses en fonction des critères de filtrage.
     
     Args:
@@ -21,18 +32,12 @@ from io import StringIO
         end_date (str, optional): Date de fin au format YYYY-MM-DD
         search_query (str, optional): Terme de recherche
         show_all (bool, optional): Afficher toutes les dépenses (True) ou uniquement les remboursables (False)
+        sort_by (str, optional): Champ de tri
+        order (str, optional): Direction du tri
     
     Returns:
         query: Requête SQLAlchemy filtrée
     """
-def build_reimbursement_query(
-    flag_id=None, 
-    status_values=None, 
-    start_date=None, 
-    end_date=None, 
-    search_query="", 
-    show_all=False
-    ):
     
     # Construire la requête de base
     query = Expense.query
@@ -86,6 +91,73 @@ def build_reimbursement_query(
             )
         )
     
+    # Appliquer le tri directement ici
+    try:
+        print(f"DEBUG - Tri reimbursement_query: {sort_by} {order}")
+        # Validation des entrées
+        if sort_by not in ['date', 'amount', 'merchant', 'description', 'status', 'flag', 'category']:
+            sort_by = 'date'
+        
+        if order not in ['asc', 'desc']:
+            order = 'desc'
+        
+        # Tri par différentes colonnes
+        if sort_by == 'date':
+            # Le plus simple: tri par date
+            if order == 'asc':
+                query = query.order_by(Expense.date.asc())
+            else:
+                query = query.order_by(Expense.date.desc())
+        elif sort_by == 'amount':
+            # Tri par montant
+            if order == 'asc':
+                query = query.order_by(Expense.amount.asc())
+            else:
+                query = query.order_by(Expense.amount.desc())
+        elif sort_by in ('merchant', 'description'):
+            # Tri par nom de marchand
+            from sqlalchemy import func
+            column = func.coalesce(func.lower(Expense.renamed_merchant), func.lower(Expense.merchant))
+            if order == 'asc':
+                query = query.order_by(column.asc())
+            else:
+                query = query.order_by(column.desc())
+        elif sort_by == 'status':
+            # Tri par statut
+            if order == 'asc':
+                query = query.order_by(Expense.declaration_status.asc())
+            else:
+                query = query.order_by(Expense.declaration_status.desc())
+        elif sort_by == 'flag':
+            # Tri par flag
+            from sqlalchemy import func, aliased
+            Flag_alias = aliased(Flag)
+            query = query.outerjoin(Flag_alias, Expense.flag_id == Flag_alias.id)
+            column = func.lower(Flag_alias.name)
+            if order == 'asc':
+                query = query.order_by(column.asc())
+            else:
+                query = query.order_by(column.desc())
+        elif sort_by == 'category':
+            # Tri par catégorie
+            from sqlalchemy import func, aliased
+            Category_alias = aliased(Category)
+            query = query.outerjoin(Category_alias, Expense.category_id == Category_alias.id)
+            column = func.lower(Category_alias.name)
+            if order == 'asc':
+                query = query.order_by(column.asc())
+            else:
+                query = query.order_by(column.desc())
+        else:
+            # Tri par défaut
+            query = query.order_by(Expense.date.desc())
+        
+        print("DEBUG - Tri appliqué avec succès")
+    except Exception as e:
+        print(f"ERROR - Erreur lors du tri: {str(e)}")
+        # En cas d'erreur, tri par défaut
+        query = query.order_by(Expense.date.desc())
+    
     return query
 
 def apply_sort_to_query(query, sort_by='date', order='desc'):
@@ -112,28 +184,28 @@ def apply_sort_to_query(query, sort_by='date', order='desc'):
         if sort_by == 'date':
             column = Expense.date
         elif sort_by == 'amount':
-            column = Expense.amount
+            # Utiliser directement la propriété hybride
+            column = Expense.signed_amount
         elif sort_by in ('merchant', 'description'):
             # Utiliser le nom renommé s'il existe, sinon le nom original
-            from sqlalchemy import func, case
+            from sqlalchemy import func
             column = func.coalesce(func.lower(Expense.renamed_merchant), func.lower(Expense.merchant))
         elif sort_by == 'status':
             column = Expense.declaration_status
         elif sort_by == 'flag':
-            # Joindre avec Flag pour trier par nom de flag
-            from sqlalchemy import func
-            query = query.join(Flag, Expense.flag_id == Flag.id, isouter=True)
-            column = func.lower(Flag.name)
+            # Utiliser un alias pour éviter le problème de table dupliquée
+            from sqlalchemy import func, aliased
+            Flag_alias = aliased(Flag)
+            query = query.outerjoin(Flag_alias, Expense.flag_id == Flag_alias.id)
+            column = func.lower(Flag_alias.name)
         elif sort_by == 'category':
-            # Joindre avec Category pour trier par nom de catégorie
-            from sqlalchemy import func
-            query = query.join(Category, Expense.category_id == Category.id, isouter=True)
-            column = func.lower(Category.name)
+            # Utiliser un alias pour éviter le problème de table dupliquée
+            from sqlalchemy import func, aliased
+            Category_alias = aliased(Category)
+            query = query.outerjoin(Category_alias, Expense.category_id == Category_alias.id)
+            column = func.lower(Category_alias.name)
         else:
             column = Expense.date
-        
-        # Journaliser le tri appliqué
-        print(f"Tri appliqué: {sort_by} {order}")
         
         # Appliquer l'ordre de tri
         if order == 'asc':
@@ -429,18 +501,23 @@ def reimbursements_list():
         # Extraire et valider les paramètres de filtrage
         params = get_filter_params_from_request()
         
-        # Construire la requête filtrée
+        # Récupérer explicitement les paramètres de tri
+        sort_by = params.get('sort_by', 'date')
+        order = params.get('order', 'desc')
+        
+        print(f"DEBUG - Paramètres de tri: sort_by={sort_by}, order={order}")
+        
+        # Construire la requête filtrée avec les paramètres de tri
         query = build_reimbursement_query(
             flag_id=params['flag_id'],
             status_values=params['status_values'],
             start_date=params['start_date'],
             end_date=params['end_date'],
             search_query=params['search_query'],
-            show_all=params['show_all']
+            show_all=params['show_all'],
+            sort_by=sort_by,  # Passer explicitement les paramètres de tri
+            order=order
         )
-        
-        # Appliquer le tri
-        query = apply_sort_to_query(query, params['sort_by'], params['order'])
         
         # Récupérer les flags et les catégories pour l'interface
         flags = Flag.query.all()
@@ -491,8 +568,8 @@ def reimbursements_list():
                               start_date=params['start_date'],
                               end_date=params['end_date'],
                               search_query=params['search_query'],
-                              sort_by=params['sort_by'],
-                              order=params['order'],
+                              sort_by=sort_by,
+                              order=order,
                               summary=summary,
                               declaration_statuses=DeclarationStatus,
                               show_all=params['show_all'],
@@ -540,22 +617,23 @@ def get_reimbursement_rows():
         # Extraire et valider les paramètres de filtrage
         params = get_filter_params_from_request()
         
-        # Journalisation des paramètres pour débogage
-        print(f"DEBUG - Row request params: sort={params['sort_by']}, order={params['order']}")
+        # Récupérer explicitement les paramètres de tri
+        sort_by = params.get('sort_by', 'date')
+        order = params.get('order', 'desc')
         
-        # Construire la requête filtrée
+        print(f"DEBUG - Paramètres de tri rows: sort_by={sort_by}, order={order}")
+        
+        # Construire la requête filtrée avec les paramètres de tri
         query = build_reimbursement_query(
             flag_id=params['flag_id'],
             status_values=params['status_values'],
             start_date=params['start_date'],
             end_date=params['end_date'],
             search_query=params['search_query'],
-            show_all=params['show_all']
+            show_all=params['show_all'],
+            sort_by=sort_by,  # Passer explicitement les paramètres de tri
+            order=order
         )
-        
-        # Application du tri avec des logs de débogage
-        print(f"DEBUG - Applying sort: {params['sort_by']}, {params['order']}")
-        query = apply_sort_to_query(query, params['sort_by'], params['order'])
         
         # Calculer les totaux pour le résumé avant pagination
         all_expenses = query.all()

@@ -83,35 +83,29 @@ def prepare_sort_for_reimbursements(query, model, sort_by, order):
     Returns:
         query: Requête SQLAlchemy avec tri appliqué
     """
+    from sqlalchemy import func, aliased
+    
     # Mappings spécifiques pour les remboursements
     if sort_by == 'date':
-        # Tri par date
         column = model.date
     elif sort_by == 'amount':
-        # Tri par montant
-        column = model.amount
+        # Utiliser directement la propriété hybride
+        column = model.signed_amount
     elif sort_by == 'merchant' or sort_by == 'description':
-        # Tri par marchand (préférer le nom renommé s'il existe)
-        from sqlalchemy import func
-        
-        # Version avec COALESCE (plus simple et plus sûre)
         column = func.coalesce(func.lower(model.renamed_merchant), func.lower(model.merchant))
-        
-        # Si cette version ne fonctionne pas, vous pouvez toujours revenir à
-        # la version CASE originale en la commentant/décommentant
-        # from sqlalchemy.sql.expression import case
-        # column = case(
-        #    [(model.renamed_merchant != None, func.lower(model.renamed_merchant))],
-        #    else_=func.lower(model.merchant)
-        # )
     elif sort_by == 'status':
-        # Tri par statut de déclaration
         column = model.declaration_status
     elif sort_by == 'flag' and hasattr(model, 'flag_id'):
-        # Tri par flag
-        column = model.flag_id
+        from app.models.tricount import Flag
+        Flag_alias = aliased(Flag)
+        query = query.outerjoin(Flag_alias, model.flag_id == Flag_alias.id)
+        column = func.lower(Flag_alias.name)
+    elif sort_by == 'category' and hasattr(model, 'category_id'):
+        from app.models.tricount import Category
+        Category_alias = aliased(Category)
+        query = query.outerjoin(Category_alias, model.category_id == Category_alias.id)
+        column = func.lower(Category_alias.name)
     else:
-        # Tri par défaut
         column = model.date
     
     # Appliquer l'ordre de tri
