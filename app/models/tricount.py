@@ -194,19 +194,14 @@ class Expense(db.Model):
 
     @hybrid_property
     def signed_amount(self):
-        """Retourne le montant signé (négatif pour les dépenses, positif pour les revenus)"""
-        if self.is_debit:
-            return -self.amount
-        else:
-            return self.amount
+        """Retourne le montant signé (négatif pour les débits)"""
+        return -self.amount if self.is_debit else self.amount
     
-    # Expression SQLAlchemy pour pouvoir utiliser cette propriété dans les requêtes
     @signed_amount.expression
     def signed_amount(cls):
-        return case(
-            [(cls.is_debit == True, -cls.amount)],
-            else_=cls.amount
-        )
+        """Expression SQL pour le montant signé"""
+        from sqlalchemy import case
+        return case([(cls.is_debit == True, -cls.amount)], else_=cls.amount)
 
 class AutoCategorizationRule(db.Model):
     """Modèle pour stocker les règles d'auto-catégorisation des dépenses"""

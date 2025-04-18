@@ -184,7 +184,6 @@ def apply_sort_to_query(query, sort_by='date', order='desc'):
         if sort_by == 'date':
             column = Expense.date
         elif sort_by == 'amount':
-            # Utiliser directement la propriété hybride
             column = Expense.signed_amount
         elif sort_by in ('merchant', 'description'):
             # Utiliser le nom renommé s'il existe, sinon le nom original
