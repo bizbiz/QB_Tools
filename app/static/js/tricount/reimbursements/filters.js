@@ -5,6 +5,8 @@ import { updateTableContent, updateSummary, updatePagination } from './ui.js';
 
 // Variable pour stocker le délai de filtrage
 let filterTimeout = null;
+// Variable pour éviter les requêtes simultanées
+let isRequestPending = false;
 
 /**
  * Initialise les filtres en mode AJAX
@@ -22,47 +24,30 @@ export function initFilters() {
     filterInputs.forEach(input => {
         const eventType = input.type === 'checkbox' || input.tagName === 'SELECT' ? 'change' : 'input';
         
-        input.addEventListener(eventType, function(e) {
-            // Empêcher le comportement par défaut pour éviter un rechargement de page
-            e.preventDefault();
-            
-            // Déclencher le filtrage avec délai
-            triggerFilter();
-            
-            // Empêcher la propagation de l'événement
-            return false;
-        });
+        // Supprimer les anciens écouteurs pour éviter les duplications
+        input.removeEventListener(eventType, handleFilterChange);
+        
+        // Ajouter le nouvel écouteur
+        input.addEventListener(eventType, handleFilterChange);
     });
     
     // Gérer le bouton de réinitialisation
     if (resetButton) {
-        resetButton.addEventListener('click', function(e) {
-            e.preventDefault();
-            resetFilters();
-            return false;
-        });
+        resetButton.removeEventListener('click', handleResetClick);
+        resetButton.addEventListener('click', handleResetClick);
     }
     
     if (resetFilterLink) {
-        resetFilterLink.addEventListener('click', function(e) {
-            e.preventDefault();
-            resetFilters();
-            return false;
-        });
+        resetFilterLink.removeEventListener('click', handleResetClick);
+        resetFilterLink.addEventListener('click', handleResetClick);
     }
     
     // Empêcher la soumission normale du formulaire
-    filterForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        submitFiltersAjax();
-        return false;
-    });
+    filterForm.removeEventListener('submit', handleFormSubmit);
+    filterForm.addEventListener('submit', handleFormSubmit);
     
     // Initialiser la pagination AJAX
     initAjaxPagination();
-    
-    // Initialiser le tri AJAX si la table a l'attribut approprié
-    initAjaxSorting();
     
     // Exposer la fonction triggerFilter globalement pour Select2
     window.triggerFilter = triggerFilter;
@@ -72,39 +57,43 @@ export function initFilters() {
     
     // Exposer la fonction submitFiltersAjax pour le tri AJAX
     window.submitFiltersAjax = submitFiltersAjax;
+    
+    console.log('Filters initialized');
 }
 
 /**
- * Initialise le tri AJAX pour le tableau de dépenses
+ * Gestionnaire pour le changement d'un filtre
+ * @param {Event} e - Événement
  */
-function initAjaxSorting() {
-    const expensesTable = document.getElementById('expenses-table');
-    if (!expensesTable) return;
+function handleFilterChange(e) {
+    // Empêcher le comportement par défaut pour éviter un rechargement de page
+    e.preventDefault();
     
-    // Vérifier si le tableau est déjà initialisé avec AjaxTableManager
-    if (expensesTable.dataset.ajaxSortable === 'true') return;
+    // Déclencher le filtrage avec délai
+    triggerFilter();
     
-    // Vérifier si AjaxTableManager est disponible
-    if (typeof window.AjaxTableManager !== 'undefined' && typeof window.AjaxTableManager.init === 'function') {
-        // Initialiser avec des options spécifiques pour ce tableau
-        window.AjaxTableManager.init(expensesTable, {
-            formSelector: '#filter-form',
-            submitFunction: submitFiltersAjax,
-            defaultSort: 'date',
-            defaultOrder: 'desc',
-            onBeforeSort: function(table, column, order) {
-                // Montrer l'indicateur de chargement
-                const loadingSpinner = document.getElementById('table-loading-spinner');
-                if (loadingSpinner) {
-                    loadingSpinner.style.display = 'block';
-                }
-            }
-        });
-        
-        console.log('AJAX sorting initialized for expenses table');
-    } else {
-        console.warn('AjaxTableManager not available, AJAX sorting disabled');
-    }
+    // Empêcher la propagation de l'événement
+    return false;
+}
+
+/**
+ * Gestionnaire pour le clic sur le bouton de réinitialisation
+ * @param {Event} e - Événement
+ */
+function handleResetClick(e) {
+    e.preventDefault();
+    resetFilters();
+    return false;
+}
+
+/**
+ * Gestionnaire pour la soumission du formulaire
+ * @param {Event} e - Événement
+ */
+function handleFormSubmit(e) {
+    e.preventDefault();
+    submitFiltersAjax();
+    return false;
 }
 
 /**
@@ -134,48 +123,72 @@ export function triggerFilter() {
 export function resetFilters() {
     console.log("Réinitialisation des filtres");
     const filterForm = document.getElementById('filter-form');
+    if (!filterForm) return;
     
-    // Réinitialiser tous les champs à leurs valeurs par défaut
-    filterForm.reset();
-    
-    // Conserver les paramètres de tri actuels
-    const sortInput = filterForm.querySelector('input[name="sort"]');
-    const orderInput = filterForm.querySelector('input[name="order"]');
-    const currentSort = sortInput ? sortInput.value : 'date';
-    const currentOrder = orderInput ? orderInput.value : 'desc';
-    
-    // Sélecteur de type d'affichage - définissons explicitement sa valeur
-    // Pour "Remboursables uniquement" par défaut:
-    document.getElementById('show_all').value = '0';
-    
-    // Cocher tous les statuts par défaut
-    document.getElementById('status-not-declared').checked = true;
-    document.getElementById('status-declared').checked = true;
-    document.getElementById('status-reimbursed').checked = true;
-    
-    // Pour les sélecteurs améliorés avec Select2, il faut aussi déclencher leur événement change
-    if (typeof $ !== 'undefined' && $.fn.select2) {
-        $('#show_all').trigger('change');
-        $('#flag_id').trigger('change');
+    try {
+        // Réinitialiser tous les champs à leurs valeurs par défaut
+        filterForm.reset();
+        
+        // Conserver les paramètres de tri actuels
+        const sortInput = filterForm.querySelector('input[name="sort"]');
+        const orderInput = filterForm.querySelector('input[name="order"]');
+        const currentSort = sortInput && sortInput.value ? sortInput.value : 'date';
+        const currentOrder = orderInput && orderInput.value ? orderInput.value : 'desc';
+        
+        // Sélecteur de type d'affichage - définissons explicitement sa valeur
+        // Pour "Remboursables uniquement" par défaut:
+        const showAllSelect = document.getElementById('show_all');
+        if (showAllSelect) {
+            showAllSelect.value = '0';
+        }
+        
+        // Cocher tous les statuts par défaut
+        const notDeclaredCheck = document.getElementById('status-not-declared');
+        const declaredCheck = document.getElementById('status-declared');
+        const reimbursedCheck = document.getElementById('status-reimbursed');
+        
+        if (notDeclaredCheck) notDeclaredCheck.checked = true;
+        if (declaredCheck) declaredCheck.checked = true;
+        if (reimbursedCheck) reimbursedCheck.checked = true;
+        
+        // Pour les sélecteurs améliorés avec Select2, il faut aussi déclencher leur événement change
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            $('#show_all').trigger('change');
+            $('#flag_id').trigger('change');
+        }
+        
+        // Restaurer les paramètres de tri
+        if (sortInput) sortInput.value = currentSort;
+        if (orderInput) orderInput.value = currentOrder;
+        
+        // Soumettre le formulaire avec AJAX
+        submitFiltersAjax();
+    } catch (error) {
+        console.error('Error in resetFilters:', error);
+        // Essayer une approche plus simple en cas d'erreur - recharger la page
+        window.location.reload();
     }
-    
-    // Restaurer les paramètres de tri
-    if (sortInput) sortInput.value = currentSort;
-    if (orderInput) orderInput.value = currentOrder;
-    
-    // Soumettre le formulaire avec AJAX
-    submitFiltersAjax();
 }
 
 /**
  * Soumet le formulaire de filtrage via AJAX
  */
 export function submitFiltersAjax() {
+    // Empêcher les requêtes simultanées
+    if (isRequestPending) {
+        console.log('Request already pending, ignoring');
+        return;
+    }
+    
+    isRequestPending = true;
+    
     const filterForm = document.getElementById('filter-form');
-    const tableBody = document.getElementById('expenses-table-body');
     const loadingSpinner = document.getElementById('table-loading-spinner');
     
-    if (!filterForm) return;
+    if (!filterForm) {
+        isRequestPending = false;
+        return;
+    }
     
     // Enregistrer la position de défilement actuelle
     const scrollPosition = window.scrollY || window.pageYOffset;
@@ -185,18 +198,19 @@ export function submitFiltersAjax() {
         loadingSpinner.style.display = 'block';
     }
     
-    // Mettre à jour l'UI de tri si AjaxTableManager est disponible
-    const sortInput = filterForm.querySelector('input[name="sort"]');
-    const orderInput = filterForm.querySelector('input[name="order"]');
-    const expensesTable = document.getElementById('expenses-table');
-    
-    if (expensesTable && sortInput && orderInput && window.AjaxTableManager) {
-        window.AjaxTableManager.updateSortUI(expensesTable, sortInput.value, orderInput.value);
+    // Créer directement un FormData pour capturer tous les champs
+    let formData;
+    try {
+        formData = new FormData(filterForm);
+        formData.append('ajax', 'true');
+    } catch (error) {
+        console.error('Error creating FormData:', error);
+        isRequestPending = false;
+        if (loadingSpinner) loadingSpinner.style.display = 'none';
+        return;
     }
     
-    // Créer directement un FormData pour capturer tous les champs
-    const formData = new FormData(filterForm);
-    formData.append('ajax', 'true');
+    console.log('Submitting AJAX request...');
     
     // Envoyer la requête AJAX avec POST au lieu de GET
     fetch(filterForm.action, {
@@ -206,40 +220,59 @@ export function submitFiltersAjax() {
             'X-Requested-With': 'XMLHttpRequest'
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
-        if (data.success) {
-            // Mettre à jour le tableau avec les nouvelles données
-            updateTableContent(data.expenses);
-            
-            // Mettre à jour les statistiques
-            updateSummary(data.summary);
-            
-            // Mettre à jour la pagination
-            if (data.pagination) {
-                updatePagination(data.pagination);
+        try {
+            if (data && data.success) {
+                // Vérifier et préparer les données pour éviter les erreurs
+                if (Array.isArray(data.expenses)) {
+                    // Mettre à jour le tableau avec les nouvelles données
+                    updateTableContent(data.expenses);
+                } else {
+                    showErrorMessage('Format de données invalide reçu du serveur.');
+                }
+                
+                // Mettre à jour les statistiques
+                if (data.summary) {
+                    updateSummary(data.summary);
+                }
+                
+                // Mettre à jour la pagination
+                if (data.pagination) {
+                    updatePagination(data.pagination);
+                }
+                
+                // Restaurer la position de défilement
+                setTimeout(() => {
+                    window.scrollTo({
+                        top: scrollPosition,
+                        behavior: 'auto'
+                    });
+                }, 10);
+            } else {
+                showErrorMessage(data.error || 'Une erreur est survenue lors du chargement des données.');
             }
-            
-            // Restaurer la position de défilement
-            setTimeout(() => {
-                window.scrollTo({
-                    top: scrollPosition,
-                    behavior: 'instant' // Utiliser 'auto' pour IE ou si 'instant' n'est pas supporté
-                });
-            }, 10);
-        } else {
-            showErrorMessage(data.error || 'Une erreur est survenue lors du chargement des données.');
+        } catch (error) {
+            console.error('Error processing response data:', error);
+            showErrorMessage('Erreur lors du traitement des données.');
         }
     })
     .catch(error => {
         console.error('Erreur AJAX:', error);
-        showErrorMessage('Erreur de communication avec le serveur.');
+        showErrorMessage('Erreur de communication avec le serveur: ' + error.message);
     })
     .finally(() => {
         // Cacher l'indicateur de chargement
         if (loadingSpinner) {
             loadingSpinner.style.display = 'none';
         }
+        // Réinitialiser le drapeau
+        isRequestPending = false;
     });
 }
 
@@ -274,6 +307,7 @@ function handlePaginationClick(e) {
     pageInput.value = page;
     
     const filterForm = document.getElementById('filter-form');
+    if (!filterForm) return false;
     
     // Supprimer l'ancien input de page s'il existe
     const oldPageInput = filterForm.querySelector('input[name="page"]');
@@ -281,11 +315,15 @@ function handlePaginationClick(e) {
         filterForm.removeChild(oldPageInput);
     }
     
-    // Ajouter le nouvel input
-    filterForm.appendChild(pageInput);
-    
-    // Déclencher une soumission AJAX
-    submitFiltersAjax();
+    try {
+        // Ajouter le nouvel input
+        filterForm.appendChild(pageInput);
+        
+        // Déclencher une soumission AJAX
+        submitFiltersAjax();
+    } catch (error) {
+        console.error('Error in pagination handler:', error);
+    }
     
     return false;
 }

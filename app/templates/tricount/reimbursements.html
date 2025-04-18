@@ -648,7 +648,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Mettre en place les attributs data-sort-value pour améliorer le tri des descriptions
     setupSortValues();
     
-    // Logique pour détecter le chargement asynchrone du contenu du tableau
+    // IMPORTANT: Complètement désactiver l'observateur de mutations qui cause des boucles infinies
+    /* 
+    // Ancien code qui causait des problèmes:
     const tableObserver = new MutationObserver(function(mutations) {
         mutations.forEach(function(mutation) {
             if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
@@ -669,6 +671,25 @@ document.addEventListener('DOMContentLoaded', function() {
     if (tableBody) {
         tableObserver.observe(tableBody, { childList: true });
     }
+    */
+    
+    // À la place, permettons au système de tri AJAX de gérer les mises à jour
+    // et utilisons une approche plus simple :
+    
+    // Après chaque mise à jour AJAX complète, configurer les valeurs de tri une seule fois
+    const setupSortValuesOnce = function() {
+        setupSortValues();
+    };
+    
+    // Si window.submitFiltersAjax existe, wrappons-la pour exécuter setupSortValues une fois
+    if (window.submitFiltersAjax) {
+        const originalSubmit = window.submitFiltersAjax;
+        window.submitFiltersAjax = function() {
+            const result = originalSubmit.apply(this, arguments);
+            setTimeout(setupSortValuesOnce, 300); // Délai pour permettre au DOM de se mettre à jour
+            return result;
+        };
+    }
 });
 
 /**
@@ -676,19 +697,24 @@ document.addEventListener('DOMContentLoaded', function() {
  * afin d'améliorer le tri en utilisant le nom du marchand renommé si disponible
  */
 function setupSortValues() {
-    // Sélectionner toutes les cellules de description
-    const descriptionCells = document.querySelectorAll('td.description-cell');
-    
-    descriptionCells.forEach(cell => {
-        // Trouver le nom du marchand (original ou renommé)
-        const merchantName = cell.querySelector('.fw-bold');
+    try {
+        // Sélectionner toutes les cellules de description
+        const descriptionCells = document.querySelectorAll('td.description-cell');
         
-        if (merchantName) {
-            // Utiliser le texte du marchand comme valeur de tri
-            const sortValue = merchantName.textContent.trim().toLowerCase();
-            cell.setAttribute('data-sort-value', sortValue);
-        }
-    });
+        descriptionCells.forEach(cell => {
+            // Trouver le nom du marchand (original ou renommé)
+            const merchantName = cell.querySelector('.fw-bold');
+            
+            if (merchantName && merchantName.textContent) {
+                // Utiliser le texte du marchand comme valeur de tri
+                const sortValue = merchantName.textContent.trim().toLowerCase();
+                cell.setAttribute('data-sort-value', sortValue);
+            }
+        });
+        console.log("Sort values setup complete");
+    } catch (error) {
+        console.error("Error setting up sort values:", error);
+    }
 }
 </script>
 {% endblock %}
