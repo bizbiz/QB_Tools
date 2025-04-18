@@ -17,6 +17,7 @@
 {% from "macros/tricount/category_select.html" import category_badge, category_select, category_select_with_js %}
 {% from "macros/tricount/expense_macros.html" import display_expense_name, display_expense_description %}
 {% from "macros/ui_components.html" import loading_spinner %}
+{% from "macros/tricount/expense_edit_modal.html" import expense_edit_modal %}
 
 {% block content %}
 <div class="container py-4">
@@ -432,140 +433,21 @@
 </div>
 
 <!-- Modal d'édition de dépense amélioré -->
-<div class="modal fade" id="editExpenseModal" tabindex="-1" aria-labelledby="editExpenseModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editExpenseModalLabel">Modifier la dépense</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-            </div>
-            <div class="modal-body">
-                <form id="edit-expense-form" action="{{ url_for('tricount.update_expense') }}" method="POST">
-                    <input type="hidden" id="edit-expense-id" name="expense_id" value="">
-                    
-                    <!-- Informations de base en lecture seule -->
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="edit-date" class="form-label">Date</label>
-                            <input type="text" class="form-control" id="edit-date" disabled>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="edit-amount" class="form-label">Montant</label>
-                            <input type="text" class="form-control" id="edit-amount" disabled>
-                        </div>
-                    </div>
-                    
-                    <!-- Section Marchand avec option de renommage -->
-                    <div class="mb-3">
-                        <div class="accordion renaming-section">
-                            <div class="accordion-item">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#merchant-rename-collapse" aria-expanded="false" aria-controls="merchant-rename-collapse">
-                                        <i class="fas fa-tag me-2"></i>Marchand
-                                    </button>
-                                </h2>
-                                <div id="merchant-rename-collapse" class="accordion-collapse collapse">
-                                    <div class="accordion-body">
-                                        <div class="row">
-                                            <div class="col-md-12 mb-2">
-                                                <label for="edit-original-merchant" class="form-label">Marchand original</label>
-                                                <input type="text" class="form-control" id="edit-original-merchant" disabled>
-                                            </div>
-                                            <div class="col-md-12">
-                                                <label for="edit-renamed-merchant" class="form-label">Renommer le marchand</label>
-                                                <input type="text" class="form-control" id="edit-renamed-merchant" name="renamed_merchant" placeholder="Laisser vide pour utiliser le nom original">
-                                                <div class="form-text">Entrez un nouveau nom pour ce marchand, ou laissez vide pour utiliser le nom original.</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Section Description avec option de notes -->
-                    <div class="mb-3">
-                        <div class="accordion renaming-section">
-                            <div class="accordion-item">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#description-notes-collapse" aria-expanded="false" aria-controls="description-notes-collapse">
-                                        <i class="fas fa-align-left me-2"></i>Description
-                                    </button>
-                                </h2>
-                                <div id="description-notes-collapse" class="accordion-collapse collapse">
-                                    <div class="accordion-body">
-                                        <div class="row">
-                                            <div class="col-md-12 mb-2">
-                                                <label for="edit-original-description" class="form-label">Description originale</label>
-                                                <textarea class="form-control" id="edit-original-description" rows="2" disabled></textarea>
-                                            </div>
-                                            <div class="col-md-12">
-                                                <label for="edit-notes" class="form-label">Notes personnelles</label>
-                                                <textarea class="form-control" id="edit-notes" name="notes" rows="2" placeholder="Ajoutez des notes ou une description personnalisée"></textarea>
-                                                <div class="form-text">Ces notes remplaceront la description originale lors de l'affichage.</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Catégorie et Type (Flag) avec les macros avancées -->
-                    <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="edit-flag" class="form-label">Type de dépense</label>
-                                {{ flag_select(name='flag_id', id='edit-flag', all_flags=flags, placeholder='Sélectionner un type', show_preview=true) }}
-                            </div>
-                            <div class="col-md-6">
-                                <label for="edit-category" class="form-label">Catégorie</label>
-                                {{ category_select_with_js(name='category_id', id='edit-category', all_categories=categories, flag_select_id='edit-flag', placeholder='Sélectionner une catégorie') }}
-                            </div>
-                        </div>
-                    
-                    <!-- Référence de déclaration -->
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <label for="edit-declaration-ref" class="form-label">Référence de déclaration</label>
-                            <input type="text" class="form-control" id="edit-declaration-ref" name="declaration_reference" placeholder="Ex: Note de frais #123">
-                            <div class="form-text">Référence externe pour le suivi de la déclaration (numéro de note de frais, etc.)</div>
-                        </div>
-                    </div>
-                    
-                    <!-- Statut de déclaration -->
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <label class="form-label">Statut de déclaration</label>
-                            <div class="d-flex gap-4 mt-2">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input status-switch" type="checkbox" id="edit-declared" name="is_declared">
-                                    <label class="form-check-label" for="edit-declared">Déclarée</label>
-                                </div>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input status-switch" type="checkbox" id="edit-reimbursed" name="is_reimbursed">
-                                    <label class="form-check-label" for="edit-reimbursed">Remboursée</label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Message d'information pour les dépenses non remboursables -->
-                    <div id="non-reimbursable-warning" class="alert alert-warning d-none">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        <strong>Attention :</strong> Cette dépense n'est pas remboursable selon son type actuel.
-                        <div class="mt-2">
-                            Pour la rendre remboursable, vous pouvez changer son type pour un type remboursable.
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-primary" id="save-expense-btn">Enregistrer</button>
-            </div>
-        </div>
-    </div>
-</div>
+{{ expense_edit_modal(
+    modal_id='editExpenseModal',
+    form_id='edit-expense-form',
+    form_action=url_for('tricount.update_expense'),
+    flags=flags,
+    categories=categories,
+    editable_fields={
+        'merchant': true,
+        'description': true,
+        'category': true,
+        'flag': true,
+        'declaration': true,
+        'reference': true
+    }
+) }}
 
 <!-- Modal de détails de dépense -->
 <div class="modal fade" id="viewExpenseModal" tabindex="-1" aria-labelledby="viewExpenseModalLabel" aria-hidden="true">
@@ -653,15 +535,31 @@
     // Initialiser les données globales pour les catégories et les flags
     window.categoryData = {{ category_data_json|safe }};
     window.flagData = {{ flag_data_json|safe }};
-    
-    // Log pour le débogage
-    console.log("Données de catégories chargées:", window.categoryData);
-    console.log("Données de flags chargées:", window.flagData);
 </script>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/tricount/category_select.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/enhanced_selects.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tricount/expense_editor.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/tricount/reimbursements/index.js') }}"></script>
+
+<script>
+// Définir la fonction de rafraîchissement qui sera utilisée par l'éditeur
+window.refreshExpenses = function() {
+    if (typeof window.submitFiltersAjax === 'function') {
+        window.submitFiltersAjax();
+    }
+};
+
+// Configuration de l'ExpenseEditor pour l'intégrer avec le code existant
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.expenseEditor) {
+        // Configurer l'éditeur pour utiliser les URLs existantes
+        window.expenseEditor.config.expenseEndpointUrl = '/tricount/reimbursements/expense';
+        window.expenseEditor.config.updateUrl = '/tricount/update_expense';
+        window.expenseEditor.config.afterSaveCallback = window.refreshExpenses;
+    }
+});
+</script>
 {% endblock %}

@@ -4,321 +4,16 @@
  */
 
 import { submitFiltersAjax } from './filters.js';
+import { fetchAndUpdateSummary } from './ui.js';
 
 /**
  * Initialise les fonctionnalités de gestion des dépenses
  */
 export function initExpenseManagement() {
-    initExpenseEdit();
+    // Nous utilisons maintenant ExpenseEditor pour l'édition
+    // mais gardons les fonctionnalités de visualisation et d'export
     initExpenseView();
     initExportButton();
-}
-
-/**
- * Initialise les fonctionnalités d'édition de dépense
- */
-function initExpenseEdit() {
-    const editButtons = document.querySelectorAll('.edit-expense-btn');
-    const editModal = document.getElementById('editExpenseModal');
-    const saveButton = document.getElementById('save-expense-btn');
-    
-    if (!editModal) return;
-    
-    const modal = new bootstrap.Modal(editModal);
-    
-    // Réinitialiser le formulaire à l'ouverture du modal
-    editModal.addEventListener('show.bs.modal', function() {
-        document.getElementById('edit-expense-form').reset();
-        
-        // Réinitialiser les sélecteurs améliorés après un court délai
-        setTimeout(() => {
-            reinitializeSelectors();
-        }, 100);
-    });
-    
-    // Gérer les dépendances entre déclaré et remboursé
-    const editDeclaredSwitch = document.getElementById('edit-declared');
-    const editReimbursedSwitch = document.getElementById('edit-reimbursed');
-    
-    if (editDeclaredSwitch && editReimbursedSwitch) {
-        editReimbursedSwitch.addEventListener('change', function() {
-            if (this.checked && !editDeclaredSwitch.checked) {
-                editDeclaredSwitch.checked = true;
-            }
-        });
-        
-        editDeclaredSwitch.addEventListener('change', function() {
-            if (!this.checked && editReimbursedSwitch.checked) {
-                editReimbursedSwitch.checked = false;
-            }
-        });
-    }
-    
-    // Initialiser les boutons d'édition
-    editButtons.forEach(button => {
-        // Supprimer les gestionnaires d'événements existants pour éviter les doublons
-        button.removeEventListener('click', handleEditButtonClick);
-        // Ajouter le nouveau gestionnaire
-        button.addEventListener('click', handleEditButtonClick);
-    });
-    
-    // Fonction pour gérer le clic sur un bouton d'édition
-    function handleEditButtonClick() {
-        const expenseId = this.dataset.expenseId;
-        console.log("Édition dépense ID:", expenseId);
-        
-        // Charger les données de la dépense
-        fetchExpenseData(expenseId, function(data) {
-            populateEditForm(data);
-            modal.show();
-        });
-    }
-    
-    // Lien dans le modal de consultation pour passer en mode édition
-    const editFromViewBtn = document.querySelector('.edit-from-view-btn');
-    if (editFromViewBtn) {
-        editFromViewBtn.addEventListener('click', function() {
-            // Fermer le modal de consultation
-            const viewModal = document.getElementById('viewExpenseModal');
-            if (viewModal) {
-                bootstrap.Modal.getInstance(viewModal).hide();
-            }
-            
-            // Récupérer l'ID de la dépense depuis le formulaire caché
-            const expenseId = document.getElementById('view-expense-id')?.value;
-            if (expenseId) {
-                // Charger les données et ouvrir le modal d'édition
-                fetchExpenseData(expenseId, function(data) {
-                    populateEditForm(data);
-                    modal.show();
-                });
-            }
-        });
-    }
-    
-    // Sauvegarde des modifications
-    if (saveButton) {
-        saveButton.addEventListener('click', function() {
-            const form = document.getElementById('edit-expense-form');
-            const formData = new FormData(form);
-            
-            // Ajouter les statuts
-            formData.append('is_declared', document.getElementById('edit-declared').checked);
-            formData.append('is_reimbursed', document.getElementById('edit-reimbursed').checked);
-            
-            // Désactiver le bouton pendant la sauvegarde
-            saveButton.disabled = true;
-            saveButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Enregistrement...';
-            
-            // Envoyer les données
-            fetch(form.action, {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Fermer le modal
-                    modal.hide();
-                    
-                    // Recharger les données
-                    submitFiltersAjax();
-                    
-                    // Afficher un message de succès
-                    alert('Modifications enregistrées avec succès.');
-                } else {
-                    alert('Erreur lors de l\'enregistrement: ' + (data.error || 'Erreur inconnue'));
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Erreur de communication avec le serveur.');
-            })
-            .finally(() => {
-                // Réactiver le bouton
-                saveButton.disabled = false;
-                saveButton.innerHTML = 'Enregistrer';
-            });
-        });
-    }
-}
-
-/**
- * Remplit le formulaire d'édition avec les données de la dépense
- * @param {Object} expense - Données de la dépense
- */
-function populateEditForm(expense) {
-    // Champs textuels simples
-    setFieldValue('edit-expense-id', expense.id);
-    setFieldValue('edit-date', expense.date);
-    setFieldValue('edit-amount', `${parseFloat(expense.amount).toFixed(2)} €`);
-    setFieldValue('edit-original-merchant', expense.merchant);
-    setFieldValue('edit-renamed-merchant', expense.renamed_merchant || '');
-    setFieldValue('edit-original-description', expense.description || '');
-    setFieldValue('edit-notes', expense.notes || '');
-    setFieldValue('edit-declaration-reference', expense.declaration_reference || '');
-    setFieldValue('edit-declared', expense.is_declared);
-    setFieldValue('edit-reimbursed', expense.is_reimbursed);
-    
-    // Afficher un avertissement si la dépense n'est pas remboursable
-    const warningElement = document.getElementById('non-reimbursable-warning');
-    if (warningElement) {
-        if (expense.flag && expense.flag.reimbursement_type === 'not_reimbursable') {
-            warningElement.classList.remove('d-none');
-        } else {
-            warningElement.classList.add('d-none');
-        }
-    }
-    
-    // Remplir les champs plus complexes avec un délai pour s'assurer 
-    // que les sélecteurs sont correctement initialisés
-    setTimeout(() => {
-        updateFlagAndCategorySelectors(expense);
-    }, 300);
-}
-
-/**
- * Met à jour les sélecteurs de flag et de catégorie de manière coordonnée
- * @param {Object} expense - Données de la dépense
- */
-function updateFlagAndCategorySelectors(expense) {
-    const flagSelect = document.getElementById('edit-flag');
-    const categorySelect = document.getElementById('edit-category');
-    
-    if (!flagSelect || !categorySelect) {
-        console.warn("Sélecteurs manquants:", { flagSelect, categorySelect });
-        return;
-    }
-    
-    // IMPORTANT: Définir d'abord le flag, PUIS la catégorie
-    // Étape 1: Définir la valeur du flag
-    if (expense.flag_id) {
-        // Définir d'abord la valeur native
-        flagSelect.value = expense.flag_id;
-        
-        // Déclencher les événements
-        // 1. Événement natif
-        const nativeChangeEvent = new Event('change', { bubbles: true });
-        flagSelect.dispatchEvent(nativeChangeEvent);
-        
-        // 2. Événement jQuery Select2 (si disponible)
-        if (typeof $ !== 'undefined' && $.fn.select2) {
-            $(flagSelect).trigger('change.select2');
-        }
-        
-        console.log(`Flag défini à: ${expense.flag_id}`);
-    }
-    
-    // Étape 2: Attendre que le filtrage des catégories soit terminé 
-    // avant de définir la catégorie
-    setTimeout(() => {
-        if (expense.category_id) {
-            // Vérifier si la catégorie est disponible après filtrage
-            const optionExists = Array.from(categorySelect.options).some(opt => 
-                parseInt(opt.value) === expense.category_id
-            );
-            
-            if (optionExists) {
-                // Définir la valeur native
-                categorySelect.value = expense.category_id;
-                
-                // Déclencher les événements
-                // 1. Événement natif
-                const nativeChangeEvent = new Event('change', { bubbles: true });
-                categorySelect.dispatchEvent(nativeChangeEvent);
-                
-                // 2. Événement jQuery Select2 (si disponible)
-                if (typeof $ !== 'undefined' && $.fn.select2) {
-                    $(categorySelect).trigger('change.select2');
-                }
-                
-                console.log(`Catégorie définie à: ${expense.category_id}`);
-            } else {
-                console.warn(`La catégorie ID=${expense.category_id} n'est pas disponible avec le flag ID=${expense.flag_id}`);
-                
-                // Réinitialiser à vide
-                categorySelect.value = "";
-                if (typeof $ !== 'undefined' && $.fn.select2) {
-                    $(categorySelect).trigger('change.select2');
-                }
-            }
-        } else {
-            // Pas de catégorie à définir
-            categorySelect.value = "";
-            if (typeof $ !== 'undefined' && $.fn.select2) {
-                $(categorySelect).trigger('change.select2');
-            }
-        }
-    }, 500); // Délai plus long pour s'assurer que le filtrage est terminé
-}
-
-/**
- * Définit la valeur d'un champ en fonction de son type
- * @param {string} id - ID du champ
- * @param {any} value - Valeur à définir
- */
-function setFieldValue(id, value) {
-    const field = document.getElementById(id);
-    if (!field) return;
-    
-    if (field.type === 'checkbox') {
-        field.checked = !!value;
-    } else {
-        field.value = value !== undefined && value !== null ? value : '';
-    }
-}
-
-/**
- * Réinitialise les sélecteurs de catégorie et type
- */
-function reinitializeSelectors() {
-    console.log("Réinitialisation des sélecteurs");
-    
-    // Réinitialiser les sélecteurs améliorés
-    if (typeof window.EnhancedSelects !== 'undefined' && typeof window.EnhancedSelects.init === 'function') {
-        console.log("Réinitialisation des sélecteurs améliorés");
-        window.EnhancedSelects.init();
-    }
-    
-    // Réinitialiser la relation catégorie-flag
-    if (typeof window.CategorySelect !== 'undefined' && typeof window.CategorySelect.init === 'function') {
-        console.log("Réinitialisation des relations catégorie-flag");
-        window.CategorySelect.init();
-    }
-    
-    // Actualiser les icônes Iconify
-    if (window.Iconify) {
-        console.log("Actualisation des icônes Iconify");
-        window.Iconify.scan();
-    }
-}
-
-/**
- * Récupère les données d'une dépense
- * @param {number} expenseId - ID de la dépense
- * @param {Function} callback - Fonction à appeler avec les données
- */
-function fetchExpenseData(expenseId, callback) {
-    console.log("Fetching expense data for ID:", expenseId);
-    
-    fetch(`/tricount/reimbursements/expense/${expenseId}`, {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            console.log("Données reçues:", data.expense);
-            callback(data.expense);
-        } else {
-            alert('Erreur lors du chargement des données: ' + (data.error || 'Erreur inconnue'));
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Erreur de communication avec le serveur.');
-    });
 }
 
 /**
@@ -349,6 +44,34 @@ function initExpenseView() {
             modal.show();
         });
     }
+}
+
+/**
+ * Récupère les données d'une dépense
+ * @param {number} expenseId - ID de la dépense
+ * @param {Function} callback - Fonction à appeler avec les données
+ */
+function fetchExpenseData(expenseId, callback) {
+    console.log("Fetching expense data for ID:", expenseId);
+    
+    fetch(`/tricount/reimbursements/expense/${expenseId}`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log("Données reçues:", data.expense);
+            callback(data.expense);
+        } else {
+            alert('Erreur lors du chargement des données: ' + (data.error || 'Erreur inconnue'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erreur de communication avec le serveur.');
+    });
 }
 
 /**
@@ -482,6 +205,36 @@ function populateViewModal(expense) {
         } else {
             originalTextContainer.style.display = 'none';
         }
+    }
+    
+    // Configurer le bouton d'édition dans la vue détaillée
+    setupEditFromViewButton(expense.id);
+}
+
+/**
+ * Configure le bouton pour passer du mode visualisation au mode édition
+ * @param {number} expenseId - ID de la dépense
+ */
+function setupEditFromViewButton(expenseId) {
+    const editFromViewBtn = document.querySelector('.edit-from-view-btn');
+    if (editFromViewBtn) {
+        // Supprimer les anciens listeners
+        const newBtn = editFromViewBtn.cloneNode(true);
+        editFromViewBtn.parentNode.replaceChild(newBtn, editFromViewBtn);
+        
+        // Ajouter le nouveau listener
+        newBtn.addEventListener('click', function() {
+            // Fermer le modal de consultation
+            const viewModal = document.getElementById('viewExpenseModal');
+            if (viewModal) {
+                bootstrap.Modal.getInstance(viewModal).hide();
+            }
+            
+            // Utiliser l'éditeur de dépense pour ouvrir le modal d'édition
+            if (window.expenseEditor) {
+                window.expenseEditor.loadExpense(expenseId);
+            }
+        });
     }
 }
 
