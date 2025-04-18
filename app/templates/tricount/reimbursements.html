@@ -114,12 +114,10 @@
                                         <i class="fas fa-bolt small"></i>
                                     </span>
                                 </label>
-                                <select class="form-select" id="flag_id" name="flag_id">
-                                    <option value="-1" {% if selected_flag_id is none %}selected{% endif %}>Tous les types</option>
-                                    {% for flag in flags %}
-                                    <option value="{{ flag.id }}" {% if selected_flag_id is not none and selected_flag_id == flag.id %}selected{% endif %}>{{ flag.name }}</option>
-                                    {% endfor %}
-                                </select>
+                                <!-- Utilisation de la macro flag_select avec l'option include_all_option=true -->
+                                {{ flag_select(name='flag_id', id='flag_id', selected_flag=selected_flag_id, 
+                                              classes='', all_flags=flags, placeholder='Choisir un type',
+                                              include_all_option=true, all_option_text='Tous les types') }}
                             </div>
                             
                             <div class="col-md-3 mb-3">

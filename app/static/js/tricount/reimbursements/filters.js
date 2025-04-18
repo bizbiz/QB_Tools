@@ -1,7 +1,4 @@
 // app/static/js/tricount/reimbursements/filters.js
-/**
- * Gestion des filtres pour le module de remboursements
- */
 
 import { showErrorMessage } from './core.js';
 import { updateTableContent, updateSummary, updatePagination } from './ui.js';
@@ -64,6 +61,9 @@ export function initFilters() {
     // Initialiser la pagination AJAX
     initAjaxPagination();
     
+    // Exposer la fonction triggerFilter globalement pour Select2
+    window.triggerFilter = triggerFilter;
+    
     // Exposer la fonction resetFilters globalement pour pouvoir l'appeler depuis ailleurs
     window.resetFilters = resetFilters;
 }
@@ -102,11 +102,6 @@ export function resetFilters() {
     // Sélecteur de type d'affichage - définissons explicitement sa valeur
     // Pour "Remboursables uniquement" par défaut:
     document.getElementById('show_all').value = '0';
-    // Ou pour "Toutes les dépenses" par défaut (décommentez si nécessaire):
-    // document.getElementById('show_all').value = '1';
-    
-    // Sélecteur de flag - s'assurer qu'aucun n'est sélectionné
-    document.getElementById('flag_id').value = '-1';
     
     // Cocher tous les statuts par défaut
     document.getElementById('status-not-declared').checked = true;

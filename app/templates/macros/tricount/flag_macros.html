@@ -32,7 +32,10 @@
 {% endmacro %}
 
 {# Macro pour un sélecteur de flag avec affichage des icônes via Select2 #}
-{% macro flag_select(name='flag_id', id=None, selected_flag=None, classes='', required=False, placeholder='Choisir un type de dépense', all_flags=None, data_attribute_expense_id=None, show_preview=false) %}
+{% macro flag_select(name='flag_id', id=None, selected_flag=None, classes='', required=False, 
+                    placeholder='Choisir un type de dépense', all_flags=None, 
+                    data_attribute_expense_id=None, show_preview=false, 
+                    include_all_option=false, all_option_text='Tous les types', all_option_value='-1') %}
     {# Générer un ID unique si non fourni #}
     {% set select_id = id if id else 'flag-' ~ name %}
     
@@ -46,6 +49,10 @@
         {% if data_attribute_expense_id %}data-expense-id="{{ data_attribute_expense_id }}"{% endif %}
     >
         <option value="">{{ placeholder }}</option>
+        
+        {% if include_all_option %}
+        <option value="{{ all_option_value }}" {% if selected_flag is none or selected_flag == all_option_value or selected_flag < 0 %}selected{% endif %}>{{ all_option_text }}</option>
+        {% endif %}
         
         {% for flag in all_flags %}
             <option value="{{ flag.id }}" 

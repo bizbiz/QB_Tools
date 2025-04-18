@@ -41,6 +41,19 @@
                 escapeMarkup: function(markup) { return markup; } // Permettre le HTML
             });
             
+            // *** AJOUT - Événement spécial pour les filtres AJAX ***
+            if (flagSelect.closest('#filter-form[data-ajax-filter="true"]').length > 0) {
+                flagSelect.on('select2:select', function() {
+                    console.log("Flag sélectionné dans un formulaire de filtres AJAX");
+                    // Déclencher la fonction triggerFilter du module de filtres
+                    if (window.triggerFilter) {
+                        window.triggerFilter();
+                    } else if (typeof triggerFilter === 'function') {
+                        triggerFilter();
+                    }
+                });
+            }
+            
             flagSelect.on('change', function() {
                 // Éviter les boucles infinies
                 if (flagSelectionInProgress) return;
@@ -141,6 +154,19 @@
                 templateSelection: formatCategorySelection,
                 escapeMarkup: function(markup) { return markup; }
             });
+            
+            // *** AJOUT - Événement spécial pour les filtres AJAX ***
+            if (categorySelect.closest('#filter-form[data-ajax-filter="true"]').length > 0) {
+                categorySelect.on('select2:select', function() {
+                    console.log("Catégorie sélectionnée dans un formulaire de filtres AJAX");
+                    // Déclencher la fonction triggerFilter du module de filtres
+                    if (window.triggerFilter) {
+                        window.triggerFilter();
+                    } else if (typeof triggerFilter === 'function') {
+                        triggerFilter();
+                    }
+                });
+            }
             
             // Écouter les changements de catégorie
             categorySelect.on('change', function() {
