@@ -99,10 +99,25 @@ export function resetFilters() {
     // Réinitialiser tous les champs à leurs valeurs par défaut
     filterForm.reset();
     
+    // Sélecteur de type d'affichage - définissons explicitement sa valeur
+    // Pour "Remboursables uniquement" par défaut:
+    document.getElementById('show_all').value = '0';
+    // Ou pour "Toutes les dépenses" par défaut (décommentez si nécessaire):
+    // document.getElementById('show_all').value = '1';
+    
+    // Sélecteur de flag - s'assurer qu'aucun n'est sélectionné
+    document.getElementById('flag_id').value = '-1';
+    
     // Cocher tous les statuts par défaut
     document.getElementById('status-not-declared').checked = true;
     document.getElementById('status-declared').checked = true;
     document.getElementById('status-reimbursed').checked = true;
+    
+    // Pour les sélecteurs améliorés avec Select2, il faut aussi déclencher leur événement change
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $('#show_all').trigger('change');
+        $('#flag_id').trigger('change');
+    }
     
     // Soumettre le formulaire avec AJAX
     submitFiltersAjax();

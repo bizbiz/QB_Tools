@@ -115,9 +115,10 @@
                                     </span>
                                 </label>
                                 <select class="form-select" id="flag_id" name="flag_id">
+                                    <!-- CORRECTION: S'assurer qu'aucun type n'est sélectionné par défaut si flag_id est None -->
                                     <option value="-1" {% if selected_flag_id is none or selected_flag_id < 0 %}selected{% endif %}>Tous les types</option>
                                     {% for flag in flags %}
-                                    <option value="{{ flag.id }}" {% if selected_flag_id == flag.id %}selected{% endif %}>{{ flag.name }}</option>
+                                    <option value="{{ flag.id }}" {% if selected_flag_id is not none and selected_flag_id == flag.id %}selected{% endif %}>{{ flag.name }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
@@ -130,8 +131,9 @@
                                     </span>
                                 </label>
                                 <select class="form-select" id="show_all" name="show_all">
-                                    <option value="0" {% if not show_all %}selected{% endif %}>Remboursables uniquement</option>
-                                    <option value="1" {% if show_all %}selected{% endif %}>Toutes les dépenses</option>
+                                    <!-- CORRECTION: Utiliser une vérification stricte avec is sameas -->
+                                    <option value="0" {% if show_all is sameas false %}selected{% endif %}>Remboursables uniquement</option>
+                                    <option value="1" {% if show_all is sameas true %}selected{% endif %}>Toutes les dépenses</option>
                                 </select>
                             </div>
                             

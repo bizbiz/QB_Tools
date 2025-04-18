@@ -60,8 +60,13 @@ def reimbursements_list():
     start_date = request.values.get('start_date')
     end_date = request.values.get('end_date')
     search_query = request.values.get('search', '')
-    show_all = request.values.get('show_all', '0') == '1'  # Nouveau paramètre
+    show_all = request.values.get('show_all') == '1'  # Nouveau paramètre
+
+    if 'flag_id' not in request.values:
+        flag_id = None
     
+    show_all = request.values.get('show_all') == '1'
+
     # Paramètres de tri
     sort_by = request.values.get('sort', 'date')
     order = request.values.get('order', 'desc')
@@ -69,7 +74,7 @@ def reimbursements_list():
     # Construire la requête de base
     query = Expense.query
     
-    # Ne filtrer par type remboursable que si show_all est False
+    # Filtrage par type remboursable (si show_all est False)
     if not show_all:
         query = query.join(Flag).filter(
             Flag.reimbursement_type.in_([
@@ -78,8 +83,8 @@ def reimbursements_list():
             ])
         )
     else:
-        # Sinon, juste joindre Flag sans filtrer
-        query = query.join(Flag, isouter=True)  # isouter=True pour inclure les dépenses sans flag
+        # Sinon, juste joindre Flag sans filtrer, pour inclure toutes les dépenses
+        query = query.join(Flag, isouter=True)
         
     # Filtre par flag spécifique
     if flag_id is not None and flag_id > 0:

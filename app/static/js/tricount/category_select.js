@@ -94,8 +94,17 @@
             return;
         }
         
-        // Récupérer l'ID du flag sélectionné comme nombre
-        const flagId = parseInt(flagSelect.value);
+        // Récupérer l'ID du flag sélectionné comme nombre 
+        // CORRECTION: Gérer correctement le cas où la valeur est vide ou non numérique
+        let flagId = null;
+        if (flagSelect.value && flagSelect.value !== '-1') {
+            flagId = parseInt(flagSelect.value);
+            if (isNaN(flagId)) {
+                console.warn(`La valeur du flag ${flagSelect.value} n'est pas un nombre valide`);
+                flagId = null;
+            }
+        }
+        
         console.log(`Filtrage des catégories pour flag_id=${flagId} (type: ${typeof flagId})`);
         
         // Sauvegarder la valeur actuelle
@@ -134,8 +143,9 @@
             // Décider si l'option doit être incluse
             let shouldInclude = false;
             
-            // Si pas de flag sélectionné, inclure toutes les options
-            if (!flagId || isNaN(flagId)) {
+            // CORRECTION: Vérifier correctement si aucun flag n'est sélectionné
+            // Si flagId est null, undefined, NaN ou -1, alors aucun flag n'est sélectionné
+            if (flagId === null || flagId === undefined || isNaN(flagId) || flagId === -1) {
                 shouldInclude = true;
                 console.log(`  Option ${option.value} (${option.text}): incluse car aucun flag sélectionné`);
             } 

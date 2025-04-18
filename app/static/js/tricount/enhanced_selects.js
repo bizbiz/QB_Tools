@@ -41,14 +41,30 @@
                 escapeMarkup: function(markup) { return markup; } // Permettre le HTML
             });
             
-            // Gérer le changement de flag pour filtrer les catégories
             flagSelect.on('change', function() {
                 // Éviter les boucles infinies
                 if (flagSelectionInProgress) return;
                 flagSelectionInProgress = true;
                 
-                const flagId = $(this).val();
-                console.log(`Flag changed to ${flagId} for expense ${expenseId}`);
+                // CORRECTION: S'assurer que la valeur est correctement parsée
+                let flagId = null;
+                const flagValue = $(this).val();
+                
+                // Initialiser le log
+                console.log(`Flag changé à: ${flagValue}`);
+                
+                // Ne considérer la valeur que si elle est valide
+                if (flagValue && flagValue !== '-1' && flagValue !== '') {
+                    flagId = parseInt(flagValue);
+                    if (isNaN(flagId)) {
+                        console.warn(`La valeur du flag '${flagValue}' n'est pas un nombre valide`);
+                        flagId = null;
+                    } else {
+                        console.log(`Flag changé à ID=${flagId} pour sélecteur ${flagSelectId}`);
+                    }
+                } else {
+                    console.log(`Flag réinitialisé (valeur: ${flagValue}) pour sélecteur ${flagSelectId}`);
+                }
                 
                 try {
                     // Récupérer le select de catégorie correspondant
