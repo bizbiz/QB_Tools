@@ -1,3 +1,4 @@
+
 {% extends "base.html" %}
 
 {% block title %}QB Tools - Suivi des remboursements{% endblock %}
@@ -594,6 +595,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{{ url_for('static', filename='js/common/ajax_table_manager.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/category_select.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/enhanced_selects.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tricount/expense_editor.js') }}"></script>
@@ -609,20 +611,42 @@ window.refreshExpenses = function() {
 
 // Configuration de l'ExpenseEditor pour l'intégrer avec le code existant
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialiser l'AjaxTableManager pour le tri AJAX
+    if (window.AjaxTableManager) {
+        console.log("Initialisation du tri AJAX...");
+        window.AjaxTableManager.init('#expenses-table', {
+            formSelector: '#filter-form',
+            submitFunction: function() {
+                if (typeof window.submitFiltersAjax === 'function') {
+                    window.submitFiltersAjax();
+                }
+            },
+            defaultSort: 'date',
+            defaultOrder: 'desc',
+            onBeforeSort: function() {
+                // Afficher l'indicateur de chargement
+                const loadingSpinner = document.getElementById('table-loading-spinner');
+                if (loadingSpinner) {
+                    loadingSpinner.style.display = 'block';
+                }
+            }
+        });
+    }
+
     if (window.expenseEditor) {
         // Configurer l'éditeur pour utiliser les URLs existantes
         window.expenseEditor.config.expenseEndpointUrl = '/tricount/reimbursements/expense';
         window.expenseEditor.config.updateUrl = '/tricount/update_expense';
         window.expenseEditor.config.afterSaveCallback = window.refreshExpenses;
     }
-        if (window.TableSorter) {
+        
+    // Utiliser le gestionnaire de tableau amélioré si disponible
+    if (window.TableSorter) {
         window.TableSorter.init();
     }
     
-    // Utiliser aussi le nouveau gestionnaire de tableau si disponible
-    if (window.TableManager) {
-        window.TableManager.init('#expenses-table');
-    }
+    // Mettre en place les attributs data-sort-value pour améliorer le tri des descriptions
+    setupSortValues();
     
     // Logique pour détecter le chargement asynchrone du contenu du tableau
     const tableObserver = new MutationObserver(function(mutations) {
@@ -634,9 +658,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     window.TableSorter.init();
                 }
                 
-                if (window.TableManager) {
-                    window.TableManager.init('#expenses-table');
-                }
+                // Mettre en place les attributs data-sort-value pour le tri
+                setupSortValues();
             }
         });
     });
@@ -647,5 +670,25 @@ document.addEventListener('DOMContentLoaded', function() {
         tableObserver.observe(tableBody, { childList: true });
     }
 });
+
+/**
+ * Configure les attributs data-sort-value pour les cellules de description
+ * afin d'améliorer le tri en utilisant le nom du marchand renommé si disponible
+ */
+function setupSortValues() {
+    // Sélectionner toutes les cellules de description
+    const descriptionCells = document.querySelectorAll('td.description-cell');
+    
+    descriptionCells.forEach(cell => {
+        // Trouver le nom du marchand (original ou renommé)
+        const merchantName = cell.querySelector('.fw-bold');
+        
+        if (merchantName) {
+            // Utiliser le texte du marchand comme valeur de tri
+            const sortValue = merchantName.textContent.trim().toLowerCase();
+            cell.setAttribute('data-sort-value', sortValue);
+        }
+    });
+}
 </script>
 {% endblock %}

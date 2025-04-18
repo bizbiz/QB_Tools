@@ -1,7 +1,8 @@
-// app/static/js/common/table_sorter_simple.js
+// app/static/js/common/table_sorter_improved.js
 /**
- * Module simplifié pour le tri des tableaux
- * Fournit des fonctionnalités essentielles sans les problèmes de la version précédente
+ * Module amélioré pour le tri des tableaux
+ * Version optimisée du module table_sorter_simple.js avec une meilleure détection des types
+ * et un traitement correct des dates et des descriptions
  */
 
 document.addEventListener('DOMContentLoaded', function() {
