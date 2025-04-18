@@ -173,8 +173,6 @@ export function resetFilters() {
 /**
  * Soumet le formulaire de filtrage via AJAX
  */
-// Dans app/static/js/tricount/reimbursements/filters.js
-
 export function submitFiltersAjax() {
     // Empêcher les requêtes simultanées
     if (isRequestPending) {
@@ -204,15 +202,6 @@ export function submitFiltersAjax() {
     try {
         formData = new FormData(filterForm);
         formData.append('ajax', 'true');
-        
-        // Vérifier que les données nécessaires sont présentes
-        console.log('Form data prepared:', 
-            [...formData.entries()].map(e => `${e[0]}=${e[1]}`).join(', '));
-            
-        // Log spécifique pour le tri
-        const sortValue = formData.get('sort');
-        const orderValue = formData.get('order');
-        console.log(`DEBUG - Sending sort request: sort=${sortValue}, order=${orderValue}`);
     } catch (error) {
         console.error('Error creating FormData:', error);
         isRequestPending = false;

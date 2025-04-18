@@ -35,8 +35,13 @@ export function updateTableContent(html) {
     initExpenseManagement();
     
     // Réinitialiser le tri des tableaux
-    if (window.TableSorter && typeof window.TableSorter.init === 'function') {
-        setTimeout(() => window.TableSorter.init(), 100);
+    if (window.TableManager) {
+        setTimeout(() => {
+            const table = document.getElementById('expenses-table');
+            if (table && table.ajaxSorter) {
+                table.ajaxSorter.updateUI();
+            }
+        }, 100);
     }
 }
 
