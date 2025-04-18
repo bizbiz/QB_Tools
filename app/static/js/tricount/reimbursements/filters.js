@@ -213,53 +213,24 @@ export function submitFiltersAjax() {
     console.log('Submitting AJAX request...');
     
     // Envoyer la requête AJAX avec POST au lieu de GET
-    fetch(filterForm.action, {
+    fetch('/tricount/reimbursements/rows', {  // Nouvel endpoint
         method: 'POST',
         body: formData,
         headers: {
             'X-Requested-With': 'XMLHttpRequest'
         }
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        return response.json();
-    })
+    .then(response => response.json())
     .then(data => {
-        try {
-            if (data && data.success) {
-                // Vérifier et préparer les données pour éviter les erreurs
-                if (Array.isArray(data.expenses)) {
-                    // Mettre à jour le tableau avec les nouvelles données
-                    updateTableContent(data.expenses);
-                } else {
-                    showErrorMessage('Format de données invalide reçu du serveur.');
-                }
-                
-                // Mettre à jour les statistiques
-                if (data.summary) {
-                    updateSummary(data.summary);
-                }
-                
-                // Mettre à jour la pagination
-                if (data.pagination) {
-                    updatePagination(data.pagination);
-                }
-                
-                // Restaurer la position de défilement
-                setTimeout(() => {
-                    window.scrollTo({
-                        top: scrollPosition,
-                        behavior: 'auto'
-                    });
-                }, 10);
-            } else {
-                showErrorMessage(data.error || 'Une erreur est survenue lors du chargement des données.');
+        if (data && data.success) {
+            // Mettre à jour le tableau avec le HTML généré côté serveur
+            if (data.html) {
+                updateTableContent(data.html);
             }
-        } catch (error) {
-            console.error('Error processing response data:', error);
-            showErrorMessage('Erreur lors du traitement des données.');
+            
+            // Mettre à jour les statistiques et la pagination
+            if (data.summary) updateSummary(data.summary);
+            if (data.pagination) updatePagination(data.pagination);
         }
     })
     .catch(error => {

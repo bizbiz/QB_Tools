@@ -1,5 +1,5 @@
 # app/routes/tricount/reimbursement_routes.py
-from flask import render_template, redirect, url_for, flash, request, jsonify
+from flask import render_template, redirect, url_for, flash, request, jsonify, Response
 from app.routes.tricount import tricount_bp
 from app.extensions import db
 from app.models.tricount import Expense, Flag, Category, DeclarationStatus, ReimbursementType, AutoCategorizationRule
@@ -7,55 +7,196 @@ from datetime import datetime
 from sqlalchemy import or_, case, func
 import json
 import traceback
+import csv
+from io import StringIO
 
-# Fonction utilitaire pour préparer les données JavaScript des catégories
-def prepare_category_data(categories, flags):
+# ===== Utilitaires de filtrage =====
+
+def build_reimbursement_query(
+    flag_id=None, 
+    status_values=None, 
+    start_date=None, 
+    end_date=None, 
+    search_query="", 
+    show_all=False
+):
     """
-    Prépare les données des catégories pour JavaScript
+    Construit une requête pour les dépenses en fonction des critères de filtrage.
     
     Args:
-        categories (list): Liste des catégories
-        flags (list): Liste des flags
-        
+        flag_id (int, optional): ID du flag pour filtrer
+        status_values (list, optional): Liste des statuts de déclaration
+        start_date (str, optional): Date de début au format YYYY-MM-DD
+        end_date (str, optional): Date de fin au format YYYY-MM-DD
+        search_query (str, optional): Terme de recherche
+        show_all (bool, optional): Afficher toutes les dépenses (True) ou uniquement les remboursables (False)
+    
     Returns:
-        dict: Dictionnaire des données de catégories
+        query: Requête SQLAlchemy filtrée
     """
-    # Créer un dictionnaire des flags par ID pour un accès rapide
-    flags_by_id = {flag.id: flag for flag in flags}
+    # Construire la requête de base
+    query = Expense.query
     
-    # Préparer les données de catégorie pour JavaScript
-    category_data = {}
-    for category in categories:
-        # Récupérer les IDs des flags associés à cette catégorie
-        flag_ids = [flag.id for flag in category.flags]
+    # Joindre avec Flag (requis pour le filtrage des types remboursables)
+    if show_all:
+        # Si show_all est activé, joindre Flag sans filtrer
+        query = query.join(Flag, isouter=True)
+    else:
+        # Sinon, ne montrer que les dépenses remboursables
+        query = query.join(Flag).filter(
+            Flag.reimbursement_type.in_([
+                ReimbursementType.PARTIALLY_REIMBURSABLE.value,
+                ReimbursementType.FULLY_REIMBURSABLE.value
+            ])
+        )
         
-        # Préparer les données d'icône
-        icon_data = {}
-        if hasattr(category, 'iconify_id') and category.iconify_id:
-            icon_data['iconify_id'] = category.iconify_id
-        elif hasattr(category, 'legacy_icon') and category.legacy_icon:
-            icon_data['icon_class'] = category.legacy_icon
+    # Filtre par flag spécifique
+    if flag_id is not None and flag_id > 0:
+        query = query.filter(Expense.flag_id == flag_id)
+    
+    # Filtre par statut de déclaration (multiple)
+    if status_values:
+        query = query.filter(Expense.declaration_status.in_(status_values))
+    
+    # Filtre par date
+    if start_date:
+        try:
+            start_date_obj = datetime.strptime(start_date, '%Y-%m-%d')
+            query = query.filter(Expense.date >= start_date_obj)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
+            query = query.filter(Expense.date <= end_date_obj)
+        except ValueError:
+            pass
+    
+    # Filtre par recherche textuelle
+    if search_query:
+        search_term = f"%{search_query}%"
+        query = query.filter(
+            or_(
+                Expense.merchant.ilike(search_term),
+                Expense.renamed_merchant.ilike(search_term),
+                Expense.description.ilike(search_term),
+                Expense.notes.ilike(search_term),
+                Expense.declaration_reference.ilike(search_term)
+            )
+        )
+    
+    return query
+
+def apply_sort_to_query(query, sort_by='date', order='desc'):
+    """
+    Applique le tri à une requête SQLAlchemy.
+    
+    Args:
+        query: Requête SQLAlchemy
+        sort_by (str): Champ de tri (date, amount, merchant, etc.)
+        order (str): Direction du tri (asc/desc)
+    
+    Returns:
+        query: Requête avec tri appliqué
+    """
+    try:
+        # Validation des entrées
+        if sort_by not in ['date', 'amount', 'merchant', 'description', 'status', 'flag']:
+            sort_by = 'date'
         
-        # Ajouter les données de cette catégorie
-        category_data[category.id] = {
-            'id': category.id,
-            'name': category.name,
-            'color': category.color if hasattr(category, 'color') else '#e9ecef',
-            'flagIds': flag_ids,
-            **icon_data
+        if order not in ['asc', 'desc']:
+            order = 'desc'
+        
+        # Déterminer la colonne à utiliser pour le tri
+        if sort_by == 'date':
+            column = Expense.date
+        elif sort_by == 'amount':
+            column = Expense.amount
+        elif sort_by in ('merchant', 'description'):
+            # Utiliser le nom renommé s'il existe, sinon le nom original
+            column = case(
+                [(Expense.renamed_merchant != None, func.lower(Expense.renamed_merchant))],
+                else_=func.lower(Expense.merchant)
+            )
+        elif sort_by == 'status':
+            column = Expense.declaration_status
+        elif sort_by == 'flag':
+            column = Expense.flag_id
+        else:
+            column = Expense.date
+        
+        # Appliquer l'ordre de tri
+        if order == 'asc':
+            query = query.order_by(column.asc())
+        else:
+            query = query.order_by(column.desc())
+        
+        return query
+    except Exception as e:
+        # En cas d'erreur, revenir au tri par défaut
+        print(f"Erreur lors de l'application du tri: {str(e)}")
+        return query.order_by(Expense.date.desc())
+
+def get_filter_params_from_request(is_post=True):
+    """
+    Extrait et valide les paramètres de filtrage depuis la requête.
+    
+    Args:
+        is_post (bool): True si requête POST, False pour GET
+    
+    Returns:
+        dict: Paramètres de filtrage validés
+    """
+    source = request.form if is_post else request.args
+    
+    try:
+        params = {
+            'flag_id': source.get('flag_id', type=int),
+            'status_values': source.getlist('status'),
+            'start_date': source.get('start_date'),
+            'end_date': source.get('end_date'),
+            'search_query': source.get('search', ''),
+            'show_all': source.get('show_all') == '1',
+            'sort_by': source.get('sort', 'date'),
+            'order': source.get('order', 'desc'),
+            'page': source.get('page', 1, type=int)
         }
-    
-    return category_data
+        
+        # Validation du tri
+        if params['sort_by'] not in ['date', 'merchant', 'amount', 'status', 'description', 'flag']:
+            params['sort_by'] = 'date'
+        
+        if params['order'] not in ['asc', 'desc']:
+            params['order'] = 'desc'
+        
+        return params
+    except Exception as e:
+        print(f"Erreur lors de l'extraction des paramètres: {str(e)}")
+        # Valeurs par défaut sécurisées
+        return {
+            'flag_id': None,
+            'status_values': [],
+            'start_date': None,
+            'end_date': None,
+            'search_query': '',
+            'show_all': False,
+            'sort_by': 'date',
+            'order': 'desc',
+            'page': 1
+        }
+
+# ===== Utilitaires pour les données =====
 
 def calculate_summary(expenses):
     """
-    Calcule les statistiques des dépenses remboursables
+    Calcule les statistiques des dépenses remboursables.
     
     Args:
-        expenses (list): Liste des dépenses remboursables
+        expenses (list): Liste des dépenses
     
     Returns:
-        dict: Dictionnaire contenant les statistiques
+        dict: Statistiques calculées
     """
     total_amount = 0
     total_declared = 0
@@ -81,181 +222,220 @@ def calculate_summary(expenses):
         'percentage_declared': percentage_declared
     }
 
-def apply_sort_to_query(query, expense_model, sort_by, order):
+def prepare_category_data(categories, flags):
     """
-    Applique le tri à la requête en fonction des paramètres
+    Prépare les données des catégories pour JavaScript.
     
     Args:
-        query: Requête SQLAlchemy
-        expense_model: Modèle Expense
-        sort_by (str): Champ par lequel trier
-        order (str): Ordre du tri ('asc' ou 'desc')
+        categories (list): Liste des catégories
+        flags (list): Liste des flags
         
     Returns:
-        query: Requête avec tri appliqué
+        dict: Données de catégories structurées
     """
-    try:
-        # Vérifier que les paramètres de tri sont valides
-        if not sort_by or not isinstance(sort_by, str):
-            sort_by = 'date'  # Valeur par défaut sécurisée
+    category_data = {}
+    
+    for category in categories:
+        # Récupérer les IDs des flags associés à cette catégorie
+        flag_ids = [flag.id for flag in category.flags]
         
-        if order not in ('asc', 'desc'):
-            order = 'desc'  # Valeur par défaut sécurisée
+        # Préparer les données d'icône
+        icon_data = {}
+        if hasattr(category, 'iconify_id') and category.iconify_id:
+            icon_data['iconify_id'] = category.iconify_id
+        elif hasattr(category, 'legacy_icon') and category.legacy_icon:
+            icon_data['icon_class'] = category.legacy_icon
         
-        # Déterminer la colonne à utiliser pour le tri
-        if sort_by == 'date':
-            column = expense_model.date
-        elif sort_by == 'amount':
-            column = expense_model.amount
-        elif sort_by in ('merchant', 'description'):
-            # Utiliser le nom renommé s'il existe, sinon le nom original
-            from sqlalchemy import case, func
-            column = case(
-                [(expense_model.renamed_merchant != None, func.lower(expense_model.renamed_merchant))],
-                else_=func.lower(expense_model.merchant)
-            )
-        elif sort_by == 'status':
-            column = expense_model.declaration_status
-        else:
-            # Par défaut, trier par date
-            column = expense_model.date
-            
-        # Appliquer l'ordre de tri
-        if order == 'asc':
-            query = query.order_by(column.asc())
-        else:
-            query = query.order_by(column.desc())
-            
-        return query
-    except Exception as e:
-        # Journaliser l'erreur
-        print(f"Erreur lors de l'application du tri: {str(e)}")
+        # Ajouter les données de cette catégorie
+        category_data[category.id] = {
+            'id': category.id,
+            'name': category.name,
+            'color': category.color if hasattr(category, 'color') else '#e9ecef',
+            'flagIds': flag_ids,
+            **icon_data
+        }
+    
+    return category_data
+
+def prepare_flag_data(flags):
+    """
+    Prépare les données des flags pour JavaScript.
+    
+    Args:
+        flags (list): Liste des flags
         
-        # En cas d'erreur, retourner la requête sans tri
-        return query.order_by(expense_model.date.desc())
+    Returns:
+        dict: Données de flags structurées
+    """
+    flag_data = {}
+    
+    for flag in flags:
+        flag_data[flag.id] = {
+            'id': flag.id,
+            'name': flag.name,
+            'color': flag.color,
+            'iconify_id': flag.iconify_id if hasattr(flag, 'iconify_id') else None,
+            'legacy_icon': flag.legacy_icon if hasattr(flag, 'legacy_icon') else None,
+            'reimbursement_type': flag.reimbursement_type if hasattr(flag, 'reimbursement_type') else None
+        }
+    
+    return flag_data
+
+def prepare_expense_response_data(expense):
+    """
+    Prépare les données d'une dépense pour la réponse JSON.
+    
+    Args:
+        expense (Expense): Objet dépense
+        
+    Returns:
+        dict: Données formatées
+    """
+    # Générer le HTML pour le badge du flag
+    flag_html = None
+    if expense.flag:
+        from flask import render_template_string
+        flag_html = render_template_string(
+            "{% from 'macros/tricount/flag_macros.html' import flag_badge %}{{ flag_badge(flag) }}",
+            flag=expense.flag
+        )
+    
+    # Données de base
+    expense_data = {
+        'id': expense.id,
+        'date': expense.date.strftime('%d/%m/%Y'),
+        'merchant': expense.merchant,
+        'renamed_merchant': expense.renamed_merchant,
+        'display_name': expense.renamed_merchant if expense.renamed_merchant else expense.merchant,
+        'description': expense.description,
+        'notes': expense.notes,
+        'amount': float(expense.amount),
+        'is_debit': expense.is_debit,
+        'category_id': expense.category_id,
+        'flag_id': expense.flag_id,
+        'flag_html': flag_html,
+        'declaration_status': expense.declaration_status,
+        'is_declared': expense.declaration_status in [DeclarationStatus.DECLARED.value, DeclarationStatus.REIMBURSED.value],
+        'is_reimbursed': expense.declaration_status == DeclarationStatus.REIMBURSED.value,
+        'declaration_reference': expense.declaration_reference,
+        'declaration_date': expense.declaration_date.strftime('%d/%m/%Y') if expense.declaration_date else None,
+        'reimbursement_date': expense.reimbursement_date.strftime('%d/%m/%Y') if expense.reimbursement_date else None,
+        'original_text': expense.original_text,
+        'is_reimbursable': expense.is_reimbursable
+    }
+    
+    # Ajouter les relations
+    if expense.category:
+        expense_data['category'] = {
+            'id': expense.category.id,
+            'name': expense.category.name,
+            'color': expense.category.color
+        }
+    
+    if expense.flag:
+        expense_data['flag'] = {
+            'id': expense.flag.id,
+            'name': expense.flag.name,
+            'color': expense.flag.color
+        }
+    
+    # Vérifier si une règle a été créée à partir de cette dépense
+    rule = AutoCategorizationRule.query.filter_by(created_by_expense_id=expense.id).first()
+    if rule:
+        expense_data['rule_id'] = rule.id
+        expense_data['has_rule'] = True
+    
+    return expense_data
+
+def update_declaration_status(expense, status, update_dates=True):
+    """
+    Met à jour le statut de déclaration d'une dépense.
+    
+    Args:
+        expense (Expense): Dépense à mettre à jour
+        status (str): Nouveau statut
+        update_dates (bool): Si True, met à jour les dates de déclaration/remboursement
+        
+    Returns:
+        bool: True si la mise à jour a réussi
+    """
+    # Validation du statut
+    valid_statuses = [status.value for status in DeclarationStatus]
+    if status not in valid_statuses:
+        return False
+    
+    # Mise à jour du statut
+    expense.declaration_status = status
+    
+    # Mise à jour des dates si demandé
+    if update_dates:
+        if status == DeclarationStatus.DECLARED.value and not expense.declaration_date:
+            expense.declaration_date = datetime.utcnow()
+        elif status == DeclarationStatus.REIMBURSED.value:
+            if not expense.reimbursement_date:
+                expense.reimbursement_date = datetime.utcnow()
+            # Si la dépense est remboursée, elle est forcément déclarée
+            if not expense.declaration_date:
+                expense.declaration_date = datetime.utcnow()
+        elif status == DeclarationStatus.NOT_DECLARED.value:
+            expense.declaration_date = None
+            expense.reimbursement_date = None
+    
+    return True
+
+def handle_request_error(e, is_ajax=False):
+    """
+    Gère les erreurs de requête de manière cohérente.
+    
+    Args:
+        e (Exception): Exception à traiter
+        is_ajax (bool): Si True, retourne une réponse JSON, sinon redirige
+        
+    Returns:
+        Response: Réponse HTTP appropriée
+    """
+    error_msg = f"Erreur: {str(e)}"
+    traceback_str = traceback.format_exc()
+    print(error_msg)
+    print(traceback_str)
+    
+    if is_ajax:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'details': "Une erreur s'est produite lors du traitement de la requête."
+        }), 500
+    
+    flash(f"Une erreur s'est produite : {str(e)}", "danger")
+    return redirect(url_for('tricount.index'))
+
+# ===== Routes des remboursements =====
 
 @tricount_bp.route('/reimbursements', methods=['POST'])
 def reimbursements_list():
-    """Page de gestion des remboursements"""
+    """Page principale de gestion des remboursements."""
     try:
-        # Détecter si c'est une requête AJAX
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
         
-        # Récupérer les paramètres de filtrage avec validation stricte
-        try:
-            flag_id = request.form.get('flag_id', type=int)
-            status_values = request.form.getlist('status')  # Plusieurs statuts possibles
-            start_date = request.form.get('start_date')
-            end_date = request.form.get('end_date')
-            search_query = request.form.get('search', '')
-            show_all = request.form.get('show_all') == '1'  # Nouveau paramètre
-            
-            # Valider explicitement les paramètres de tri
-            sort_by = request.form.get('sort', 'date')
-            if sort_by not in ['date', 'merchant', 'amount', 'status', 'description', 'flag']:
-                sort_by = 'date'  # Valeur par défaut sécurisée
-                
-            order = request.form.get('order', 'desc')
-            if order not in ['asc', 'desc']:
-                order = 'desc'  # Valeur par défaut sécurisée
-                
-        except Exception as e:
-            print(f"Erreur lors de la validation des paramètres: {str(e)}")
-            # Utiliser des valeurs par défaut sécurisées en cas d'erreur
-            flag_id = None
-            status_values = []
-            start_date = None
-            end_date = None
-            search_query = ''
-            show_all = False
-            sort_by = 'date'
-            order = 'desc'
-
-        if 'flag_id' not in request.form:
-            flag_id = None
-
-        # Paramètres de tri
-        sort_by = request.form.get('sort', 'date')
-        order = request.form.get('order', 'desc')
+        # Extraire et valider les paramètres de filtrage
+        params = get_filter_params_from_request()
         
-        # Construire la requête de base
-        query = Expense.query
+        # Construire la requête filtrée
+        query = build_reimbursement_query(
+            flag_id=params['flag_id'],
+            status_values=params['status_values'],
+            start_date=params['start_date'],
+            end_date=params['end_date'],
+            search_query=params['search_query'],
+            show_all=params['show_all']
+        )
         
-        # Filtrage par type remboursable (si show_all est False)
-        if not show_all:
-            query = query.join(Flag).filter(
-                Flag.reimbursement_type.in_([
-                    ReimbursementType.PARTIALLY_REIMBURSABLE.value,
-                    ReimbursementType.FULLY_REIMBURSABLE.value
-                ])
-            )
-        else:
-            # Sinon, juste joindre Flag sans filtrer, pour inclure toutes les dépenses
-            query = query.join(Flag, isouter=True)
-            
-        # Filtre par flag spécifique
-        if flag_id is not None and flag_id > 0:
-            query = query.filter(Expense.flag_id == flag_id)
+        # Appliquer le tri
+        query = apply_sort_to_query(query, params['sort_by'], params['order'])
         
-        # Filtre par statut de déclaration (multiple)
-        if status_values:
-            # Filtrer pour n'inclure que les dépenses dont le statut est dans la liste
-            query = query.filter(Expense.declaration_status.in_(status_values))
-        
-        # Filtre par date
-        if start_date:
-            try:
-                start_date_obj = datetime.strptime(start_date, '%Y-%m-%d')
-                query = query.filter(Expense.date >= start_date_obj)
-            except ValueError:
-                start_date = None
-        
-        if end_date:
-            try:
-                end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
-                query = query.filter(Expense.date <= end_date_obj)
-            except ValueError:
-                end_date = None
-        
-        # Filtre par recherche textuelle
-        if search_query:
-            search_term = f"%{search_query}%"
-            query = query.filter(
-                or_(
-                    Expense.merchant.ilike(search_term),
-                    Expense.renamed_merchant.ilike(search_term),
-                    Expense.description.ilike(search_term),
-                    Expense.notes.ilike(search_term),
-                    Expense.declaration_reference.ilike(search_term)
-                )
-            )
-        
-        try:
-            # Appliquer le tri
-            query = apply_sort_to_query(query, Expense, sort_by, order)
-        except Exception as sort_error:
-            print(f"Erreur lors de l'application du tri: {str(sort_error)}")
-            # En cas d'erreur de tri, appliquer un tri par défaut
-            query = query.order_by(Expense.date.desc())
-        
-        # Récupérer tous les flags et les catégories
+        # Récupérer les flags et les catégories pour l'interface
         flags = Flag.query.all()
         categories = Category.query.all()
-        
-        # Préparer les données JavaScript pour les catégories et les flags
-        category_data = prepare_category_data(categories, flags)
-        
-        # Préparer les données JavaScript pour les flags
-        flag_data = {}
-        for flag in flags:
-            flag_data[flag.id] = {
-                'id': flag.id,
-                'name': flag.name,
-                'color': flag.color,
-                'iconify_id': flag.iconify_id if hasattr(flag, 'iconify_id') else None,
-                'legacy_icon': flag.legacy_icon if hasattr(flag, 'legacy_icon') else None,
-                'reimbursement_type': flag.reimbursement_type if hasattr(flag, 'reimbursement_type') else None
-            }
         
         # Calculer les totaux pour le résumé avant pagination
         all_expenses = query.all()
@@ -263,46 +443,18 @@ def reimbursements_list():
         
         # Pagination
         per_page = 20
-        page = request.form.get('page', 1, type=int)
-        expenses = query.paginate(page=page, per_page=per_page, error_out=False)
+        expenses = query.paginate(page=params['page'], per_page=per_page, error_out=False)
+        
+        # Préparer les données JavaScript
+        category_data = prepare_category_data(categories, flags)
+        flag_data = prepare_flag_data(flags)
         
         # Si c'est une requête AJAX, renvoyer du JSON
         if is_ajax:
-            # Préparer les données des dépenses pour le JSON
-            expenses_data = []
-            for expense in expenses.items:
-                try:
-                    # Générer le HTML pour le badge du flag
-                    flag_html = None
-                    if expense.flag:
-                        from flask import render_template_string
-                        flag_html = render_template_string(
-                            "{% from 'macros/tricount/flag_macros.html' import flag_badge %}{{ flag_badge(flag) }}",
-                            flag=expense.flag
-                        )
-                    
-                    # Ajouter les données de la dépense
-                    expense_data = {
-                        'id': expense.id,
-                        'date': expense.date.strftime('%d/%m/%Y'),
-                        'merchant': expense.renamed_merchant if expense.renamed_merchant else expense.merchant,
-                        'description': expense.description or '',
-                        'amount': float(expense.amount),
-                        'is_debit': expense.is_debit,
-                        'flag_id': expense.flag_id,
-                        'flag': expense.flag.name if expense.flag else None,
-                        'flag_html': flag_html,
-                        'is_declared': expense.declaration_status in [DeclarationStatus.DECLARED.value, DeclarationStatus.REIMBURSED.value],
-                        'is_reimbursed': expense.declaration_status == DeclarationStatus.REIMBURSED.value,
-                        'declaration_status': expense.declaration_status,
-                        'is_reimbursable': expense.is_reimbursable
-                    }
-                    expenses_data.append(expense_data)
-                except Exception as expense_error:
-                    print(f"Erreur lors du traitement de la dépense {getattr(expense, 'id', 'inconnu')}: {str(expense_error)}")
-                    # Continuer avec les autres dépenses
+            # Préparer les données pour la réponse JSON
+            expenses_data = [prepare_expense_response_data(expense) for expense in expenses.items]
             
-            # Préparer les données de pagination
+            # Données de pagination
             pagination_data = {
                 'page': expenses.page,
                 'pages': expenses.pages,
@@ -313,7 +465,6 @@ def reimbursements_list():
                 'next_num': expenses.next_num
             }
             
-            # Retourner les données JSON
             return jsonify({
                 'success': True,
                 'expenses': expenses_data,
@@ -326,40 +477,24 @@ def reimbursements_list():
                               expenses=expenses,
                               flags=flags,
                               categories=categories,
-                              selected_flag_id=flag_id,
-                              selected_status=status_values,
-                              start_date=start_date,
-                              end_date=end_date,
-                              search_query=search_query,
-                              sort_by=sort_by,
-                              order=order,
+                              selected_flag_id=params['flag_id'],
+                              selected_status=params['status_values'],
+                              start_date=params['start_date'],
+                              end_date=params['end_date'],
+                              search_query=params['search_query'],
+                              sort_by=params['sort_by'],
+                              order=params['order'],
                               summary=summary,
                               declaration_statuses=DeclarationStatus,
-                              show_all=show_all,
+                              show_all=params['show_all'],
                               category_data_json=json.dumps(category_data),
                               flag_data_json=json.dumps(flag_data))
     except Exception as e:
-        # En cas d'erreur, capturer et journaliser l'exception
-        error_msg = f"Erreur dans reimbursements_list: {str(e)}"
-        traceback_str = traceback.format_exc()
-        print(error_msg)
-        print(traceback_str)
-        
-        # Si c'est une requête AJAX, renvoyer une erreur JSON
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({
-                'success': False,
-                'error': str(e),
-                'details': "Une erreur s'est produite lors du traitement de la requête."
-            }), 500
-        
-        # Sinon, afficher un message d'erreur
-        flash(f"Une erreur s'est produite : {str(e)}", "danger")
-        return redirect(url_for('tricount.index'))
+        return handle_request_error(e, is_ajax)
 
 @tricount_bp.route('/reimbursements', methods=['GET'])
 def reimbursements_list_get():
-    """Redirection de GET vers POST pour la même route avec des valeurs par défaut"""
+    """Redirection de GET vers POST pour la page des remboursements."""
     # Créer un formulaire avec des valeurs par défaut
     form_html = """
     <!DOCTYPE html>
@@ -389,54 +524,95 @@ def reimbursements_list_get():
     
     return form_html
 
+@tricount_bp.route('/reimbursements/rows', methods=['POST'])
+def get_reimbursement_rows():
+    """Génère les lignes du tableau avec les macros Jinja pour AJAX."""
+    try:
+        # Extraire et valider les paramètres de filtrage
+        params = get_filter_params_from_request()
+        
+        # Construire la requête filtrée
+        query = build_reimbursement_query(
+            flag_id=params['flag_id'],
+            status_values=params['status_values'],
+            start_date=params['start_date'],
+            end_date=params['end_date'],
+            search_query=params['search_query'],
+            show_all=params['show_all']
+        )
+        
+        # Appliquer le tri
+        query = apply_sort_to_query(query, params['sort_by'], params['order'])
+        
+        # Calculer les totaux pour le résumé avant pagination
+        all_expenses = query.all()
+        summary = calculate_summary(all_expenses)
+        
+        # Pagination
+        per_page = 20
+        expenses = query.paginate(page=params['page'], per_page=per_page, error_out=False)
+        
+        # Générer le HTML des lignes avec les macros
+        rows_html = render_template('tricount/partials/reimbursement_rows.html',
+                                   expenses=expenses.items)
+        
+        # Données de pagination
+        pagination_data = {
+            'page': expenses.page,
+            'pages': expenses.pages,
+            'total': expenses.total,
+            'has_prev': expenses.has_prev,
+            'has_next': expenses.has_next,
+            'prev_num': expenses.prev_num,
+            'next_num': expenses.next_num
+        }
+        
+        return jsonify({
+            'success': True,
+            'html': rows_html,
+            'summary': summary,
+            'pagination': pagination_data
+        })
+    except Exception as e:
+        return handle_request_error(e, True)
+
+# ===== Routes pour les actions sur remboursements =====
+
 @tricount_bp.route('/reimbursements/update/<int:expense_id>', methods=['POST'])
 def update_reimbursement_status(expense_id):
-    """API pour mettre à jour le statut de remboursement d'une dépense"""
-    expense = Expense.query.get_or_404(expense_id)
-    
-    # Vérifier que la dépense est remboursable
-    if not expense.is_reimbursable:
-        return jsonify({
-            'success': False,
-            'error': 'Cette dépense n\'est pas remboursable'
-        }), 400
-    
-    # Récupérer les données
-    status = request.form.get('status')
-    reference = request.form.get('reference', '')
-    notes = request.form.get('notes', '')
-    
-    # Validation du statut
-    valid_statuses = [status.value for status in DeclarationStatus]
-    if status not in valid_statuses:
-        return jsonify({
-            'success': False,
-            'error': f'Statut invalide. Les statuts valides sont: {", ".join(valid_statuses)}'
-        }), 400
-    
-    # Mettre à jour le statut et autres informations
-    expense.declaration_status = status
-    
-    # Ne mettre à jour la référence et les notes que si elles sont fournies
-    if reference:
-        expense.declaration_reference = reference
-    if notes:
-        expense.declaration_notes = notes
-    
-    # Mettre à jour les dates selon le statut
-    if status == DeclarationStatus.DECLARED.value and not expense.declaration_date:
-        expense.declaration_date = datetime.utcnow()
-    elif status == DeclarationStatus.REIMBURSED.value and not expense.reimbursement_date:
-        expense.reimbursement_date = datetime.utcnow()
-        # Si la dépense est remboursée, elle est forcément déclarée
-        if not expense.declaration_date:
-            expense.declaration_date = datetime.utcnow()
-    elif status == DeclarationStatus.NOT_DECLARED.value:
-        expense.declaration_date = None
-        expense.reimbursement_date = None
-    
+    """Met à jour le statut de remboursement d'une dépense."""
     try:
+        expense = Expense.query.get_or_404(expense_id)
+        
+        # Vérifier que la dépense est remboursable
+        if not expense.is_reimbursable:
+            return jsonify({
+                'success': False,
+                'error': 'Cette dépense n\'est pas remboursable'
+            }), 400
+        
+        # Récupérer les données
+        status = request.form.get('status')
+        reference = request.form.get('reference', '')
+        notes = request.form.get('notes', '')
+        
+        # Mettre à jour le statut
+        if not update_declaration_status(expense, status):
+            return jsonify({
+                'success': False,
+                'error': f'Statut invalide: {status}'
+            }), 400
+        
+        # Mettre à jour les autres informations si fournies
+        if reference:
+            expense.declaration_reference = reference
+        if notes:
+            expense.declaration_notes = notes
+        
+        # Sauvegarder les modifications
         db.session.commit()
+        
+        # Préparer la réponse
         return jsonify({
             'success': True,
             'expense': {
@@ -457,58 +633,49 @@ def update_reimbursement_status(expense_id):
 
 @tricount_bp.route('/reimbursements/bulk-update', methods=['POST'])
 def bulk_update_reimbursement():
-    """API pour mettre à jour le statut de plusieurs dépenses en une seule fois"""
-    # Vérifier si les données sont envoyées en JSON ou en form-data
-    if request.is_json:
-        data = request.json
-        expense_ids = data.get('expense_ids', [])
-        status = data.get('status')
-    else:
-        expense_ids = request.form.getlist('expense_ids[]')
-        status = request.form.get('status')
-    
-    # Validation du statut
-    valid_statuses = [status.value for status in DeclarationStatus]
-    if status not in valid_statuses:
-        return jsonify({
-            'success': False,
-            'error': f'Statut invalide. Les statuts valides sont: {", ".join(valid_statuses)}'
-        }), 400
-    
-    if not expense_ids:
-        return jsonify({
-            'success': False,
-            'error': 'Aucune dépense sélectionnée'
-        }), 400
-    
-    # Mettre à jour toutes les dépenses sélectionnées
+    """Met à jour le statut de plusieurs dépenses en une seule fois."""
     try:
+        # Vérifier si les données sont envoyées en JSON ou en form-data
+        if request.is_json:
+            data = request.json
+            expense_ids = data.get('expense_ids', [])
+            status = data.get('status')
+        else:
+            expense_ids = request.form.getlist('expense_ids[]')
+            status = request.form.get('status')
+        
+        # Validation des entrées
+        if not status or not expense_ids:
+            return jsonify({
+                'success': False,
+                'error': 'Paramètres invalides'
+            }), 400
+            
+        # Validation du statut
+        valid_statuses = [status.value for status in DeclarationStatus]
+        if status not in valid_statuses:
+            return jsonify({
+                'success': False,
+                'error': f'Statut invalide: {status}'
+            }), 400
+        
+        # Mettre à jour toutes les dépenses sélectionnées
         updated_count = 0
         skipped_count = 0
         
         for expense_id in expense_ids:
             expense = Expense.query.get(expense_id)
             if expense and expense.is_reimbursable:
-                # Mettre à jour le statut
-                expense.declaration_status = status
-                
-                # Mettre à jour les dates selon le statut
-                if status == DeclarationStatus.DECLARED.value and not expense.declaration_date:
-                    expense.declaration_date = datetime.utcnow()
-                elif status == DeclarationStatus.REIMBURSED.value and not expense.reimbursement_date:
-                    expense.reimbursement_date = datetime.utcnow()
-                    # Si la dépense est remboursée, elle est forcément déclarée
-                    if not expense.declaration_date:
-                        expense.declaration_date = datetime.utcnow()
-                elif status == DeclarationStatus.NOT_DECLARED.value:
-                    expense.declaration_date = None
-                    expense.reimbursement_date = None
-                
-                updated_count += 1
+                if update_declaration_status(expense, status):
+                    updated_count += 1
+                else:
+                    skipped_count += 1
             else:
                 skipped_count += 1
         
+        # Sauvegarder les modifications
         db.session.commit()
+        
         return jsonify({
             'success': True,
             'updated': updated_count,
@@ -523,212 +690,111 @@ def bulk_update_reimbursement():
 
 @tricount_bp.route('/reimbursements/summary', methods=['GET', 'POST'])
 def get_reimbursement_summary():
-    """API pour récupérer les statistiques des remboursements"""
-    # On peut recevoir des filtres pour calculer les stats sur un sous-ensemble
-    flag_id = request.values.get('flag_id', type=int)
-    status_values = request.values.getlist('status')
-    start_date = request.values.get('start_date')
-    end_date = request.values.get('end_date')
-    search_query = request.values.get('search', '')
-    
-    # Construire la requête avec les mêmes filtres que la page principale
-    query = Expense.query.join(Flag).filter(
-        Flag.reimbursement_type.in_([
-            ReimbursementType.PARTIALLY_REIMBURSABLE.value,
-            ReimbursementType.FULLY_REIMBURSABLE.value
-        ])
-    )
-    
-    # Appliquer les filtres
-    if flag_id is not None and flag_id > 0:
-        query = query.filter(Expense.flag_id == flag_id)
-    
-    if status_values:
-        query = query.filter(Expense.declaration_status.in_(status_values))
-    
-    if start_date:
-        try:
-            start_date_obj = datetime.strptime(start_date, '%Y-%m-%d')
-            query = query.filter(Expense.date >= start_date_obj)
-        except ValueError:
-            pass
-    
-    if end_date:
-        try:
-            end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
-            query = query.filter(Expense.date <= end_date_obj)
-        except ValueError:
-            pass
-    
-    if search_query:
-        search_term = f"%{search_query}%"
-        query = query.filter(
-            or_(
-                Expense.merchant.ilike(search_term),
-                Expense.renamed_merchant.ilike(search_term),
-                Expense.description.ilike(search_term),
-                Expense.notes.ilike(search_term)
-            )
-        )
-    
-    # Récupérer les dépenses et calculer les statistiques
-    expenses = query.all()
-    summary = calculate_summary(expenses)
-    
-    return jsonify({
-        'success': True,
-        'summary': summary
-    })
-
-@tricount_bp.route('/reimbursements/export', methods=['GET', 'POST'])
-def export_reimbursements():
-    """Exporte les données de remboursement au format CSV"""
-    import csv
-    from flask import Response
-    from io import StringIO
-    
-    # Utiliser les mêmes filtres que la page principale
-    flag_id = request.values.get('flag_id', type=int)
-    status_values = request.values.getlist('status')
-    start_date = request.values.get('start_date')
-    end_date = request.values.get('end_date')
-    search_query = request.values.get('search', '')
-    
-    # Construire la requête avec les filtres
-    query = Expense.query.join(Flag).filter(
-        Flag.reimbursement_type.in_([
-            ReimbursementType.PARTIALLY_REIMBURSABLE.value,
-            ReimbursementType.FULLY_REIMBURSABLE.value
-        ])
-    )
-    
-    # Appliquer les filtres
-    if flag_id is not None and flag_id > 0:
-        query = query.filter(Expense.flag_id == flag_id)
-    
-    if status_values:
-        query = query.filter(Expense.declaration_status.in_(status_values))
-    
-    if start_date:
-        try:
-            start_date_obj = datetime.strptime(start_date, '%Y-%m-%d')
-            query = query.filter(Expense.date >= start_date_obj)
-        except ValueError:
-            pass
-    
-    if end_date:
-        try:
-            end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
-            query = query.filter(Expense.date <= end_date_obj)
-        except ValueError:
-            pass
-    
-    if search_query:
-        search_term = f"%{search_query}%"
-        query = query.filter(
-            or_(
-                Expense.merchant.ilike(search_term),
-                Expense.renamed_merchant.ilike(search_term),
-                Expense.description.ilike(search_term),
-                Expense.notes.ilike(search_term)
-            )
-        )
-    
-    # Récupérer les dépenses
-    expenses = query.order_by(Expense.date.desc()).all()
-    
-    # Créer un CSV en mémoire
-    output = StringIO()
-    writer = csv.writer(output)
-    
-    # Écrire l'en-tête
-    writer.writerow([
-        'Date', 'Marchand', 'Description', 'Montant', 'Type', 'Statut', 
-        'Date de déclaration', 'Date de remboursement', 'Référence'
-    ])
-    
-    # Écrire les données
-    for expense in expenses:
-        status_text = {
-            DeclarationStatus.NOT_DECLARED.value: 'Non déclarée',
-            DeclarationStatus.DECLARED.value: 'Déclarée',
-            DeclarationStatus.REIMBURSED.value: 'Remboursée'
-        }.get(expense.declaration_status, 'Inconnu')
+    """Récupère les statistiques des remboursements."""
+    try:
+        # Extraire les paramètres de filtrage
+        params = get_filter_params_from_request(request.method == 'POST')
         
-        writer.writerow([
-            expense.date.strftime('%d/%m/%Y'),
-            expense.renamed_merchant if expense.renamed_merchant else expense.merchant,
-            expense.description,
-            f"{expense.amount:.2f}",
-            expense.flag.name if expense.flag else 'Non défini',
-            status_text,
-            expense.declaration_date.strftime('%d/%m/%Y') if expense.declaration_date else '',
-            expense.reimbursement_date.strftime('%d/%m/%Y') if expense.reimbursement_date else '',
-            expense.declaration_reference or ''
-        ])
-    
-    # Renvoyer le CSV
-    output.seek(0)
-    return Response(
-        output,
-        mimetype="text/csv",
-        headers={"Content-Disposition": "attachment;filename=remboursements.csv"}
-    )
+        # Construire la requête
+        query = build_reimbursement_query(
+            flag_id=params['flag_id'],
+            status_values=params['status_values'],
+            start_date=params['start_date'],
+            end_date=params['end_date'],
+            search_query=params['search_query'],
+            show_all=params['show_all']
+        )
+        
+        # Récupérer les dépenses et calculer les statistiques
+        expenses = query.all()
+        summary = calculate_summary(expenses)
+        
+        return jsonify({
+            'success': True,
+            'summary': summary
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @tricount_bp.route('/reimbursements/expense/<int:expense_id>', methods=['GET'])
 def get_expense_details(expense_id):
-    """Récupère les détails d'une dépense pour le formulaire d'édition"""
-    expense = Expense.query.get_or_404(expense_id)
-    
-    # Vérifier si une règle a été créée à partir de cette dépense
-    rule = AutoCategorizationRule.query.filter_by(created_by_expense_id=expense_id).first()
-    
-    expense_data = {
-        'id': expense.id,
-        'date': expense.date.strftime('%d/%m/%Y'),
-        'merchant': expense.merchant,
-        'display_name': expense.renamed_merchant if expense.renamed_merchant else expense.merchant,
-        'description': expense.description,
-        'amount': float(expense.amount),
-        'is_debit': expense.is_debit,
-        'notes': expense.notes,
-        'category_id': expense.category_id,
-        'flag_id': expense.flag_id,
-        'declaration_status': expense.declaration_status,
-        'is_declared': expense.declaration_status in [DeclarationStatus.DECLARED.value, DeclarationStatus.REIMBURSED.value],
-        'is_reimbursed': expense.declaration_status == DeclarationStatus.REIMBURSED.value,
-        'declaration_reference': expense.declaration_reference,
-        'declaration_date': expense.declaration_date.strftime('%d/%m/%Y') if expense.declaration_date else None,
-        'reimbursement_date': expense.reimbursement_date.strftime('%d/%m/%Y') if expense.reimbursement_date else None,
-        'original_text': expense.original_text,
-        # Ajouter les informations de règle
-        'rule_id': rule.id if rule else None,
-        'has_rule': rule is not None
-    }
-    
-    # Ajouter des données de relations pour l'affichage
-    if expense.category:
-        expense_data['category'] = {
-            'id': expense.category.id,
-            'name': expense.category.name,
-            'color': expense.category.color
-        }
-    
-    if expense.flag:
-        expense_data['flag'] = {
-            'id': expense.flag.id,
-            'name': expense.flag.name,
-            'color': expense.flag.color
-        }
+    """Récupère les détails d'une dépense pour le formulaire d'édition."""
+    try:
+        expense = Expense.query.get_or_404(expense_id)
+        expense_data = prepare_expense_response_data(expense)
         
-        # Générer le HTML pour le badge du flag
-        from flask import render_template_string
-        expense_data['flag_html'] = render_template_string(
-            "{% from 'macros/tricount/flag_macros.html' import flag_badge %}{{ flag_badge(flag) }}",
-            flag=expense.flag
+        return jsonify({
+            'success': True,
+            'expense': expense_data
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@tricount_bp.route('/reimbursements/export', methods=['GET', 'POST'])
+def export_reimbursements():
+    """Exporte les données de remboursement au format CSV."""
+    try:
+        # Extraire les paramètres de filtrage
+        params = get_filter_params_from_request(request.method == 'POST')
+        
+        # Construire la requête filtrée
+        query = build_reimbursement_query(
+            flag_id=params['flag_id'],
+            status_values=params['status_values'],
+            start_date=params['start_date'],
+            end_date=params['end_date'],
+            search_query=params['search_query'],
+            show_all=params['show_all']
         )
-    
-    return jsonify({
-        'success': True,
-        'expense': expense_data
-    })
+        
+        # Appliquer le tri
+        query = apply_sort_to_query(query, params['sort_by'], params['order'])
+        
+        # Récupérer les dépenses
+        expenses = query.all()
+        
+        # Créer un CSV en mémoire
+        output = StringIO()
+        writer = csv.writer(output)
+        
+        # Écrire l'en-tête
+        writer.writerow([
+            'Date', 'Marchand', 'Description', 'Montant', 'Type', 'Statut', 
+            'Date de déclaration', 'Date de remboursement', 'Référence'
+        ])
+        
+        # Écrire les données
+        for expense in expenses:
+            status_text = {
+                DeclarationStatus.NOT_DECLARED.value: 'Non déclarée',
+                DeclarationStatus.DECLARED.value: 'Déclarée',
+                DeclarationStatus.REIMBURSED.value: 'Remboursée'
+            }.get(expense.declaration_status, 'Inconnu')
+            
+            writer.writerow([
+                expense.date.strftime('%d/%m/%Y'),
+                expense.renamed_merchant if expense.renamed_merchant else expense.merchant,
+                expense.description,
+                f"{expense.amount:.2f}",
+                expense.flag.name if expense.flag else 'Non défini',
+                status_text,
+                expense.declaration_date.strftime('%d/%m/%Y') if expense.declaration_date else '',
+                expense.reimbursement_date.strftime('%d/%m/%Y') if expense.reimbursement_date else '',
+                expense.declaration_reference or ''
+            ])
+        
+        # Renvoyer le CSV
+        output.seek(0)
+        return Response(
+            output,
+            mimetype="text/csv",
+            headers={"Content-Disposition": "attachment;filename=remboursements.csv"}
+        )
+    except Exception as e:
+        return handle_request_error(e, False)

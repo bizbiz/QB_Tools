@@ -1,0 +1,40 @@
+<!-- app/templates/tricount/partials/reimbursement_rows.html -->
+
+{% from "macros/tricount/flag_macros.html" import flag_badge %}
+{% from "macros/tricount/expense_macros.html" import display_expense_name, display_expense_description %}
+
+{% for expense in expenses %}
+<tr data-expense-id="{{ expense.id }}" 
+    class="{% if expense.declaration_status == 'declared' %}expense-declared{% endif %} 
+    {% if expense.declaration_status == 'reimbursed' %}expense-reimbursed{% endif %}
+    {% if not expense.is_reimbursable %}expense-not-reimbursable{% endif %}">
+    <td>
+        <div class="form-check">
+            <input class="form-check-input expense-checkbox" type="checkbox" value="{{ expense.id }}"
+                   {% if not expense.is_reimbursable %}disabled{% endif %}>
+        </div>
+    </td>
+    <td data-sort-value="{{ expense.date.strftime('%Y%m%d') }}">
+        {{ expense.date.strftime('%d/%m/%Y') }}
+    </td>
+    <td class="description-cell" data-sort-value="{{ display_expense_name(expense, show_original=false, sort_value=true) }}">
+        <div class="fw-bold">
+            {{ display_expense_name(expense, show_original=false) }}
+        </div>
+        <div class="small text-muted">
+            {{ display_expense_description(expense, show_original=false, max_length=70) }}
+        </div>
+    </td>
+    <!-- ... autres cellules ... -->
+</tr>
+{% else %}
+<tr id="no-expenses-row">
+    <td colspan="8" class="text-center py-4">
+        <div class="alert alert-info mb-0">
+            <i class="fas fa-info-circle me-2"></i>
+            Aucune dépense trouvée avec les filtres appliqués. 
+            <a href="#" class="reset-filters-link">Réinitialiser les filtres</a>.
+        </div>
+    </td>
+</tr>
+{% endfor %}
