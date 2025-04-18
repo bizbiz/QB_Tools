@@ -2,15 +2,15 @@
 
 /**
  * Module pour améliorer les selects avec Select2 et ajouter des icônes
+ * Fournit une gestion unifiée des sélecteurs de flags et catégories
  */
 (function() {
-    // Variable pour éviter les boucles infinies
+    // Variables pour éviter les boucles infinies
     let flagSelectionInProgress = false;
     let categorySelectionInProgress = false;
     
     // Initialiser au chargement du document
     document.addEventListener('DOMContentLoaded', function() {
-        console.log("Initializing enhanced selects...");
         initSelect2();
     });
 
@@ -41,11 +41,9 @@
                 escapeMarkup: function(markup) { return markup; } // Permettre le HTML
             });
             
-            // *** AJOUT - Événement spécial pour les filtres AJAX ***
+            // Événement spécial pour les filtres AJAX
             if (flagSelect.closest('#filter-form[data-ajax-filter="true"]').length > 0) {
                 flagSelect.on('select2:select', function() {
-                    console.log("Flag sélectionné dans un formulaire de filtres AJAX");
-                    // Déclencher la fonction triggerFilter du module de filtres
                     if (window.triggerFilter) {
                         window.triggerFilter();
                     } else if (typeof triggerFilter === 'function') {
@@ -58,26 +56,6 @@
                 // Éviter les boucles infinies
                 if (flagSelectionInProgress) return;
                 flagSelectionInProgress = true;
-                
-                // CORRECTION: S'assurer que la valeur est correctement parsée
-                let flagId = null;
-                const flagValue = $(this).val();
-                
-                // Initialiser le log
-                console.log(`Flag changé à: ${flagValue}`);
-                
-                // Ne considérer la valeur que si elle est valide
-                if (flagValue && flagValue !== '-1' && flagValue !== '') {
-                    flagId = parseInt(flagValue);
-                    if (isNaN(flagId)) {
-                        console.warn(`La valeur du flag '${flagValue}' n'est pas un nombre valide`);
-                        flagId = null;
-                    } else {
-                        console.log(`Flag changé à ID=${flagId} pour sélecteur ${flagSelectId}`);
-                    }
-                } else {
-                    console.log(`Flag réinitialisé (valeur: ${flagValue}) pour sélecteur ${flagSelectId}`);
-                }
                 
                 try {
                     // Récupérer le select de catégorie correspondant
@@ -155,11 +133,9 @@
                 escapeMarkup: function(markup) { return markup; }
             });
             
-            // *** AJOUT - Événement spécial pour les filtres AJAX ***
+            // Événement spécial pour les filtres AJAX
             if (categorySelect.closest('#filter-form[data-ajax-filter="true"]').length > 0) {
                 categorySelect.on('select2:select', function() {
-                    console.log("Catégorie sélectionnée dans un formulaire de filtres AJAX");
-                    // Déclencher la fonction triggerFilter du module de filtres
                     if (window.triggerFilter) {
                         window.triggerFilter();
                     } else if (typeof triggerFilter === 'function') {
@@ -175,7 +151,6 @@
                 
                 try {
                     // Logique additionnelle si nécessaire
-                    console.log("Catégorie changée:", $(this).val());
                 } finally {
                     setTimeout(() => {
                         categorySelectionInProgress = false;
@@ -192,7 +167,6 @@
      * Actualise les icônes Iconify dans le DOM
      */
     function refreshIconify() {
-        console.log("Refreshing Iconify icons...");
         setTimeout(function() {
             if (window.Iconify) {
                 window.Iconify.scan();
@@ -282,7 +256,7 @@
         const dataIconEmoji = $category.data('icon-emoji');
         const dataIconClass = $category.data('icon-class');
         
-        // Sinon, utiliser les données de window.categoryData
+        // Récupérer les données globales si disponibles
         const categoryData = window.categoryData && window.categoryData[category.id] ? window.categoryData[category.id] : {};
         const color = dataColor || categoryData.color || '#e9ecef';
         
@@ -291,7 +265,6 @@
         // Utiliser l'iconify-id en priorité
         if (dataIconifyId) {
             iconHtml = `<span class="iconify me-2" data-icon="${dataIconifyId}"></span>`;
-            console.log(`Using iconify for category ${category.id}: ${dataIconifyId}`);
         } 
         // Sinon utiliser l'emoji
         else if (dataIconEmoji) {
@@ -304,7 +277,6 @@
         // Rechercher dans categoryData
         else if (categoryData.iconify_id) {
             iconHtml = `<span class="iconify me-2" data-icon="${categoryData.iconify_id}"></span>`;
-            console.log(`Using iconify from categoryData for ${category.id}: ${categoryData.iconify_id}`);
         }
         // Icône par défaut
         else {
@@ -335,7 +307,7 @@
         const dataIconEmoji = $category.data('icon-emoji');
         const dataIconClass = $category.data('icon-class');
         
-        // Sinon, utiliser les données de window.categoryData
+        // Récupérer les données globales si disponibles
         const categoryData = window.categoryData && window.categoryData[category.id] ? window.categoryData[category.id] : {};
         const color = dataColor || categoryData.color || '#e9ecef';
         

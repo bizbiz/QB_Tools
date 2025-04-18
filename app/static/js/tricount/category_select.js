@@ -33,13 +33,13 @@
                     value: option.value,
                     text: option.text,
                     flags: flags,
-                    icon: option.dataset.icon || '',
+                    iconifyId: option.dataset.iconifyId || '',
+                    iconClass: option.dataset.iconClass || '',
+                    iconEmoji: option.dataset.iconEmoji || '',
+                    color: option.dataset.color || '',
                     selected: option.selected
                 };
             });
-            
-            // Log des options originales pour débug
-            console.log("Options originales:", categorySelect.originalOptions);
             
             // Sauvegarder la valeur initiale
             categorySelect.initialValue = categorySelect.value;
@@ -60,8 +60,6 @@
             
             // Si un sélecteur de flag est trouvé, ajouter un écouteur d'événement
             if (flagSelect) {
-                console.log(`Sélecteur de flag trouvé pour ${categorySelect.id}: ${flagSelect.id}`);
-                
                 flagSelect.addEventListener('change', function() {
                     filterCategoriesByFlag(categorySelect, flagSelect);
                 });
@@ -71,8 +69,6 @@
                 
                 // Filtrer initialement
                 filterCategoriesByFlag(categorySelect, flagSelect);
-            } else {
-                console.warn(`Aucun sélecteur de flag trouvé pour ${categorySelect.id}`);
             }
         });
     }
@@ -85,31 +81,24 @@
     function filterCategoriesByFlag(categorySelect, flagSelect) {
         // Vérifier que les sélecteurs et les options originales existent
         if (!categorySelect || !categorySelect.originalOptions) {
-            console.error("categorySelect ou ses options originales sont manquants");
             return;
         }
         
         if (!flagSelect) {
-            console.error("flagSelect est manquant");
             return;
         }
         
         // Récupérer l'ID du flag sélectionné comme nombre 
-        // CORRECTION: Gérer correctement le cas où la valeur est vide ou non numérique
         let flagId = null;
         if (flagSelect.value && flagSelect.value !== '-1') {
             flagId = parseInt(flagSelect.value);
             if (isNaN(flagId)) {
-                console.warn(`La valeur du flag ${flagSelect.value} n'est pas un nombre valide`);
                 flagId = null;
             }
         }
         
-        console.log(`Filtrage des catégories pour flag_id=${flagId} (type: ${typeof flagId})`);
-        
         // Sauvegarder la valeur actuelle
         const currentValue = categorySelect.value;
-        console.log(`Valeur actuelle du select: ${currentValue}`);
         
         // ÉTAPE 1: Créer un tableau des options filtrées
         let filteredOptions = [];
@@ -143,18 +132,13 @@
             // Décider si l'option doit être incluse
             let shouldInclude = false;
             
-            // CORRECTION: Vérifier correctement si aucun flag n'est sélectionné
             // Si flagId est null, undefined, NaN ou -1, alors aucun flag n'est sélectionné
             if (flagId === null || flagId === undefined || isNaN(flagId) || flagId === -1) {
                 shouldInclude = true;
-                console.log(`  Option ${option.value} (${option.text}): incluse car aucun flag sélectionné`);
             } 
             // Vérifier si le flagId est dans les flagIds de cette catégorie
             else if (flagIds.includes(flagId)) {
                 shouldInclude = true;
-                console.log(`  Option ${option.value} (${option.text}): incluse car flagIds ${JSON.stringify(flagIds)} contient flagId ${flagId}`);
-            } else {
-                console.log(`  Option ${option.value} (${option.text}): exclue car flagIds ${JSON.stringify(flagIds)} ne contient pas flagId ${flagId}`);
             }
             
             if (shouldInclude) {
@@ -168,9 +152,6 @@
             if (b.value === '') return 1;
             return a.text.localeCompare(b.text);
         });
-        
-        console.log(`Options filtrées (${filteredOptions.length}):`, 
-                    filteredOptions.map(o => o.text).join(', '));
         
         // ÉTAPE 4: Reconstruire le select avec les options filtrées
         // Vider le select
@@ -187,9 +168,11 @@
                 newOption.dataset.flags = JSON.stringify(option.flags);
             }
             
-            if (option.icon) {
-                newOption.dataset.icon = option.icon;
-            }
+            // Copier tous les attributs de données pertinents
+            if (option.iconifyId) newOption.dataset.iconifyId = option.iconifyId;
+            if (option.iconClass) newOption.dataset.iconClass = option.iconClass;
+            if (option.iconEmoji) newOption.dataset.iconEmoji = option.iconEmoji;
+            if (option.color) newOption.dataset.color = option.color;
             
             // Sélectionner cette option si elle était sélectionnée avant
             // ET qu'elle est compatible avec le nouveau flag
@@ -208,7 +191,6 @@
         if (!isCurrentValueAvailable && currentValue !== '') {
             // Réinitialiser à "Choisir une catégorie"
             categorySelect.selectedIndex = 0;
-            console.log(`La valeur actuelle "${currentValue}" n'est plus disponible, réinitialisation à "Choisir une catégorie"`);
         }
         
         // Signaler à Select2 que les options ont changé, s'il existe

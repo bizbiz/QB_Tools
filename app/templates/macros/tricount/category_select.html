@@ -72,8 +72,6 @@
     </select>
 {% endmacro %}
 
-# app/templates/macros/tricount/category_select.html
-
 {# Macro avec support JavaScript pour filtrage dynamique et Select2 #}
 {% macro category_select_with_js(name='category_id', id=None, selected_category=None, classes='', required=False, placeholder='Choisir une catégorie', all_categories=None, show_icons=True, flag_select_id=None) %}
     {# Générer un ID unique si non fourni #}
@@ -103,15 +101,6 @@
                     {% elif category.legacy_icon %}
                         data-icon-class="{{ category.legacy_icon }}"
                     {% endif %}>
-                {% if show_icons %}
-                    {% if category.iconify_id %}
-                        <span class="iconify" data-icon="{{ category.iconify_id }}"></span>
-                    {% elif category.icon %}
-                        {{ category.get_icon_emoji }}
-                    {% elif category.legacy_icon %}
-                        <i class="fas {{ category.legacy_icon }}"></i>
-                    {% endif %}
-                {% endif %}
                 {{ category.name }}
             </option>
         {% endfor %}
