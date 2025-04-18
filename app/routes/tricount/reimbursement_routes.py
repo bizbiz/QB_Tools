@@ -56,16 +56,15 @@ def reimbursements_list():
     # Utiliser request.values pour accepter à la fois GET et POST
     # Filtres
     flag_id = request.values.get('flag_id', type=int)
+    # Traitement explicite de flag_id
+    if 'flag_id' not in request.values or flag_id == -1:
+        flag_id = None
+        
     status_values = request.values.getlist('status')  # Plusieurs statuts possibles
     start_date = request.values.get('start_date')
     end_date = request.values.get('end_date')
     search_query = request.values.get('search', '')
     show_all = request.values.get('show_all') == '1'  # Nouveau paramètre
-
-    if 'flag_id' not in request.values:
-        flag_id = None
-    
-    show_all = request.values.get('show_all') == '1'
 
     # Paramètres de tri
     sort_by = request.values.get('sort', 'date')
@@ -214,25 +213,25 @@ def reimbursements_list():
             'pagination': pagination_data
         })
     
-    # Pour chaque dépense, ajouter explicitement la propriété is_reimbursable
+    # Dans la boucle de traitement des dépenses
     reimbursable_status = {}
-    flag_reimbursement_types = {}  # Dictionnaire pour stocker les types de remboursement des flags
+    flag_reimbursement_types = {}
 
     for expense in expenses.items:
-        flag_id = expense.flag_id
+        expense_flag_id = expense.flag_id  # Utiliser un nom de variable différent ici
         
         # Si on n'a pas encore mis en cache le type de remboursement pour ce flag
-        if flag_id and flag_id not in flag_reimbursement_types:
-            flag = Flag.query.get(flag_id)
+        if expense_flag_id and expense_flag_id not in flag_reimbursement_types:
+            flag = Flag.query.get(expense_flag_id)
             if flag and hasattr(flag, 'reimbursement_type'):
-                flag_reimbursement_types[flag_id] = flag.reimbursement_type
+                flag_reimbursement_types[expense_flag_id] = flag.reimbursement_type
             else:
-                flag_reimbursement_types[flag_id] = None
+                flag_reimbursement_types[expense_flag_id] = None
         
         # Déterminer si la dépense est remboursable
         is_reimbursable = False
-        if flag_id and flag_id in flag_reimbursement_types:
-            is_reimbursable = flag_reimbursement_types[flag_id] in [
+        if expense_flag_id and expense_flag_id in flag_reimbursement_types:
+            is_reimbursable = flag_reimbursement_types[expense_flag_id] in [
                 ReimbursementType.PARTIALLY_REIMBURSABLE.value,
                 ReimbursementType.FULLY_REIMBURSABLE.value
             ]

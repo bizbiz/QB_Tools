@@ -115,8 +115,7 @@
                                     </span>
                                 </label>
                                 <select class="form-select" id="flag_id" name="flag_id">
-                                    <!-- CORRECTION: S'assurer qu'aucun type n'est sélectionné par défaut si flag_id est None -->
-                                    <option value="-1" {% if selected_flag_id is none or selected_flag_id < 0 %}selected{% endif %}>Tous les types</option>
+                                    <option value="-1" {% if selected_flag_id is none %}selected{% endif %}>Tous les types</option>
                                     {% for flag in flags %}
                                     <option value="{{ flag.id }}" {% if selected_flag_id is not none and selected_flag_id == flag.id %}selected{% endif %}>{{ flag.name }}</option>
                                     {% endfor %}
