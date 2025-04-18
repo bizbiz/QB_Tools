@@ -1,6 +1,7 @@
 {# app/templates/tricount/partials/reimbursement_rows.html #}
 
 {% from "macros/tricount/flag_macros.html" import flag_badge %}
+{% from "macros/tricount/category_select.html" import category_badge %}
 {% from "macros/tricount/expense_macros.html" import display_expense_name, display_expense_description %}
 
 {% for expense in expenses %}
@@ -29,10 +30,17 @@
         {% if expense.is_debit %}-{% endif %}{{ "%.2f"|format(expense.amount) }} €
     </td>
     <td>
-        {% if expense.flag %}
-            {{ flag_badge(expense.flag, text_hidden=false, extra_classes='btn-sm') }}
+        {% if expense.category %}
+            {{ category_badge(expense.category, extra_classes='btn-sm') }}
         {% else %}
-            <span class="badge bg-secondary">Non défini</span>
+            <span class="badge bg-secondary">Non catégorisée</span>
+        {% endif %}
+    </td>
+    <td class="text-center">
+        {% if expense.flag %}
+            {{ flag_badge(expense.flag, text_hidden=true, extra_classes='btn-sm') }}
+        {% else %}
+            <span class="badge bg-secondary">N/A</span>
         {% endif %}
     </td>
     <td class="text-center">
@@ -64,7 +72,7 @@
 </tr>
 {% else %}
 <tr id="no-expenses-row">
-    <td colspan="8" class="text-center py-4">
+    <td colspan="9" class="text-center py-4">
         <div class="alert alert-info mb-0">
             <i class="fas fa-info-circle me-2"></i>
             Aucune dépense trouvée avec les filtres appliqués. 
