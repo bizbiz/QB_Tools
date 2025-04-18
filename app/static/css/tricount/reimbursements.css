@@ -289,3 +289,37 @@ tr.expense-not-reimbursable {
 .form-check-input:disabled + .form-check-label + .fas.fa-info-circle {
     cursor: help;
 }
+
+/* Style pour les badges de type plus grands */
+.flag-btn-lg {
+    padding: 0.4rem 0.9rem;
+    font-size: 1.1rem;
+}
+
+.flag-btn-lg .iconify,
+.flag-btn-lg i {
+    font-size: 1.3rem;
+}
+
+/* Ajuster l'espacement des cellules du tableau pour plus de cohérence */
+#expenses-table td {
+    vertical-align: middle;
+    padding: 0.75rem 0.5rem;
+}
+
+/* S'assurer que les form-check sont correctement alignés */
+#expenses-table .form-check.form-switch {
+    padding-left: 0;
+}
+
+/* Améliorer l'apparence des badges dans le tableau */
+#expenses-table .category-badge,
+#expenses-table .flag-badge {
+    white-space: nowrap;
+    display: inline-flex;
+}
+
+/* Garantir que les badges de type sont centrés et bien visibles */
+#expenses-table td .flag-badge {
+    margin: 0 auto;
+}

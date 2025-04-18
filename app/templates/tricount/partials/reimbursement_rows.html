@@ -26,19 +26,19 @@
             {{ display_expense_description(expense, show_original=false, max_length=70) }}
         </div>
     </td>
-    <td class="text-end {% if expense.is_debit %}text-danger{% else %}text-success{% endif %}" data-sort-value="{{ expense.amount }}">
+    <td data-sort-value="{{ expense.amount }}">
         {% if expense.is_debit %}-{% endif %}{{ "%.2f"|format(expense.amount) }} €
     </td>
     <td>
         {% if expense.category %}
-            {{ category_badge(expense.category, extra_classes='btn-sm') }}
+            {{ category_badge(expense.category) }}
         {% else %}
             <span class="badge bg-secondary">Non catégorisée</span>
         {% endif %}
     </td>
     <td class="text-center">
         {% if expense.flag %}
-            {{ flag_badge(expense.flag, text_hidden=true, extra_classes='btn-sm') }}
+            {{ flag_badge(expense.flag, text_hidden=true, extra_classes='flag-btn-lg') }}
         {% else %}
             <span class="badge bg-secondary">N/A</span>
         {% endif %}

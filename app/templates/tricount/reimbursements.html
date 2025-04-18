@@ -234,7 +234,7 @@
                             <div class="d-flex flex-wrap gap-2 mb-3">
                                 {% for flag in flags %}
                                 <div class="d-flex align-items-center me-3 mb-2">
-                                    {{ flag_badge(flag, text_hidden=True) }}
+                                    {{ flag_badge(flag, text_hidden=True, extra_classes='flag-btn-lg') }}
                                     <span class="ms-2">{{ flag.name }}</span>
                                 </div>
                                 {% endfor %}
@@ -287,9 +287,9 @@
                                     <th data-type="text">Description</th>
                                     <th data-type="number">Montant</th>
                                     <th data-type="text">Catégorie</th>
-                                    <th data-type="text">Type</th>
-                                    <th data-type="text">Déclarée</th>
-                                    <th data-type="text">Remboursée</th>
+                                    <th data-type="text" class="text-center">Type</th>
+                                    <th data-type="text" class="text-center">Déclarée</th>
+                                    <th data-type="text" class="text-center">Remboursée</th>
                                     <th data-type="text" class="text-center no-sort">Actions</th>
                                 </tr>
                             </thead>
