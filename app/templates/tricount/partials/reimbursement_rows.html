@@ -1,4 +1,4 @@
-<!-- app/templates/tricount/partials/reimbursement_rows.html -->
+{# app/templates/tricount/partials/reimbursement_rows.html #}
 
 {% from "macros/tricount/flag_macros.html" import flag_badge %}
 {% from "macros/tricount/expense_macros.html" import display_expense_name, display_expense_description %}
@@ -25,7 +25,42 @@
             {{ display_expense_description(expense, show_original=false, max_length=70) }}
         </div>
     </td>
-    <!-- ... autres cellules ... -->
+    <td class="text-end {% if expense.is_debit %}text-danger{% else %}text-success{% endif %}" data-sort-value="{{ expense.amount }}">
+        {% if expense.is_debit %}-{% endif %}{{ "%.2f"|format(expense.amount) }} €
+    </td>
+    <td>
+        {% if expense.flag %}
+            {{ flag_badge(expense.flag, text_hidden=false, extra_classes='btn-sm') }}
+        {% else %}
+            <span class="badge bg-secondary">Non défini</span>
+        {% endif %}
+    </td>
+    <td class="text-center">
+        <div class="form-check form-switch d-flex justify-content-center">
+            <input class="form-check-input status-switch declared-switch" type="checkbox" 
+                   {% if expense.declaration_status in ['declared', 'reimbursed'] %}checked{% endif %}
+                   {% if not expense.is_reimbursable %}disabled{% endif %}
+                   data-expense-id="{{ expense.id }}" data-status="declared">
+        </div>
+    </td>
+    <td class="text-center">
+        <div class="form-check form-switch d-flex justify-content-center">
+            <input class="form-check-input status-switch reimbursed-switch" type="checkbox"
+                   {% if expense.declaration_status == 'reimbursed' %}checked{% endif %}
+                   {% if not expense.is_reimbursable %}disabled{% endif %}
+                   data-expense-id="{{ expense.id }}" data-status="reimbursed">
+        </div>
+    </td>
+    <td class="text-center">
+        <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-primary view-expense-btn" data-expense-id="{{ expense.id }}">
+                <i class="fas fa-eye"></i>
+            </button>
+            <button type="button" class="btn btn-outline-secondary edit-expense-btn" data-expense-id="{{ expense.id }}">
+                <i class="fas fa-edit"></i>
+            </button>
+        </div>
+    </td>
 </tr>
 {% else %}
 <tr id="no-expenses-row">

@@ -40,6 +40,15 @@ document.addEventListener('DOMContentLoaded', function() {
     window.resetFilters = resetFilters;
     
     console.log("Reimbursements module initialized");
+
+    setTimeout(function() {
+        console.log("Triggering initial data load...");
+        if (typeof window.submitFiltersAjax === 'function') {
+            window.submitFiltersAjax();
+        } else {
+            console.error("submitFiltersAjax function not found!");
+        }
+    }, 100);
 });
 
 /**

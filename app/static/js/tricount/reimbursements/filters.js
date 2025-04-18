@@ -173,6 +173,8 @@ export function resetFilters() {
 /**
  * Soumet le formulaire de filtrage via AJAX
  */
+// Dans app/static/js/tricount/reimbursements/filters.js
+
 export function submitFiltersAjax() {
     // Empêcher les requêtes simultanées
     if (isRequestPending) {
@@ -180,18 +182,17 @@ export function submitFiltersAjax() {
         return;
     }
     
+    console.log('Starting AJAX request for table data...');
     isRequestPending = true;
     
     const filterForm = document.getElementById('filter-form');
     const loadingSpinner = document.getElementById('table-loading-spinner');
     
     if (!filterForm) {
+        console.error('Filter form not found!');
         isRequestPending = false;
         return;
     }
-    
-    // Enregistrer la position de défilement actuelle
-    const scrollPosition = window.scrollY || window.pageYOffset;
     
     // Afficher l'indicateur de chargement
     if (loadingSpinner) {
@@ -203,6 +204,10 @@ export function submitFiltersAjax() {
     try {
         formData = new FormData(filterForm);
         formData.append('ajax', 'true');
+        
+        // Vérifier que les données nécessaires sont présentes
+        console.log('Form data prepared:', 
+            [...formData.entries()].map(e => `${e[0]}=${e[1]}`).join(', '));
     } catch (error) {
         console.error('Error creating FormData:', error);
         isRequestPending = false;
@@ -210,31 +215,38 @@ export function submitFiltersAjax() {
         return;
     }
     
-    console.log('Submitting AJAX request...');
-    
-    // Envoyer la requête AJAX avec POST au lieu de GET
-    fetch('/tricount/reimbursements/rows', {  // Nouvel endpoint
+    // Envoyer la requête AJAX
+    fetch('/tricount/reimbursements/rows', {
         method: 'POST',
         body: formData,
         headers: {
             'X-Requested-With': 'XMLHttpRequest'
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Response received, status:', response.status);
+        return response.json();
+    })
     .then(data => {
+        console.log('Data processed successfully');
         if (data && data.success) {
             // Mettre à jour le tableau avec le HTML généré côté serveur
             if (data.html) {
                 updateTableContent(data.html);
+                console.log('Table content updated');
+            } else {
+                console.warn('No HTML content in response');
             }
             
             // Mettre à jour les statistiques et la pagination
             if (data.summary) updateSummary(data.summary);
             if (data.pagination) updatePagination(data.pagination);
+        } else {
+            console.error('Response indicated failure:', data?.error || 'Unknown error');
         }
     })
     .catch(error => {
-        console.error('Erreur AJAX:', error);
+        console.error('AJAX error:', error);
         showErrorMessage('Erreur de communication avec le serveur: ' + error.message);
     })
     .finally(() => {
@@ -244,6 +256,7 @@ export function submitFiltersAjax() {
         }
         // Réinitialiser le drapeau
         isRequestPending = false;
+        console.log('Request completed, pending flag reset');
     });
 }
 
