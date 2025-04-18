@@ -305,7 +305,7 @@
                                         <td data-sort-value="{{ expense.date.strftime('%Y%m%d') }}">
                                             {{ expense.date.strftime('%d/%m/%Y') }}
                                         </td>
-                                        <td class="description-cell" data-sort-value="{{ expense.merchant|lower }}">
+                                        <td class="description-cell" data-sort-value="{{ display_expense_name(expense, show_original=false, sort_value=true) }}">
                                             <div class="fw-bold">
                                                 {% if expense.renamed_merchant %}
                                                     {{ expense.renamed_merchant }}
@@ -321,9 +321,10 @@
                                                 {% endif %}
                                             </div>
                                         </td>
-                                        <td class="text-danger" data-sort-value="{{ expense.amount }}">
-                                            {{ "%.2f"|format(expense.amount) }} €
                                         </td>
+                                            <td class="text-danger" data-sort-value="${parseFloat(expense.amount).toFixed(2)}">
+                                                ${parseFloat(expense.amount).toFixed(2)} €
+                                            </td>
                                         <td data-sort-value="{{ expense.flag.name|lower if expense.flag else 'zzz' }}">
                                             {% if expense.flag %}
                                             {{ flag_badge(expense.flag) }}

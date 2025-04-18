@@ -125,9 +125,9 @@ export function updateTableContent(expenses) {
                 <td data-sort-value="${dateSortValue}">
                     ${safeExpense.date}
                 </td>
-                <td class="description-cell" data-sort-value="${merchantSortValue}">
-                    <div class="fw-bold">${safeExpense.merchant}</div>
-                    <div class="small text-muted">${safeExpense.description}</div>
+                <td class="description-cell" data-sort-value="${expense.renamed_merchant ? expense.renamed_merchant.toLowerCase() : expense.merchant.toLowerCase()}">
+                    <div class="fw-bold">${expense.renamed_merchant || expense.merchant}</div>
+                    <div class="small text-muted">${expense.notes || expense.description || ''}</div>
                 </td>
                 <td class="text-danger" data-sort-value="${parseFloat(safeExpense.amount).toFixed(2)}">
                     ${parseFloat(safeExpense.amount).toFixed(2)} €

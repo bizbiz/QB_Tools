@@ -156,7 +156,7 @@ function sortTable(table, colIndex, direction) {
  */
 function getCellValue(cell, dataType) {
     // Utiliser data-sort-value si disponible (prioritaire)
-    if (cell.hasAttribute('data-sort-value')) {
+    if (cell.hasAttribute('data-sort-value') && cell.getAttribute('data-sort-value') !== '') {
         const value = cell.getAttribute('data-sort-value');
         
         if (dataType === 'number') {
