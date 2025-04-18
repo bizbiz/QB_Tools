@@ -11,16 +11,7 @@ import csv
 from io import StringIO
 
 # ===== Utilitaires de filtrage =====
-
-def build_reimbursement_query(
-    flag_id=None, 
-    status_values=None, 
-    start_date=None, 
-    end_date=None, 
-    search_query="", 
-    show_all=False
-):
-    """
+"""
     Construit une requête pour les dépenses en fonction des critères de filtrage.
     
     Args:
@@ -34,6 +25,15 @@ def build_reimbursement_query(
     Returns:
         query: Requête SQLAlchemy filtrée
     """
+def build_reimbursement_query(
+    flag_id=None, 
+    status_values=None, 
+    start_date=None, 
+    end_date=None, 
+    search_query="", 
+    show_all=False
+    ):
+    
     # Construire la requête de base
     query = Expense.query
     
@@ -94,7 +94,7 @@ def apply_sort_to_query(query, sort_by='date', order='desc'):
     
     Args:
         query: Requête SQLAlchemy
-        sort_by (str): Champ de tri (date, amount, merchant, etc.)
+        sort_by (str): Champ de tri (date, amount, merchant, category, etc.)
         order (str): Direction du tri (asc/desc)
     
     Returns:
@@ -102,7 +102,7 @@ def apply_sort_to_query(query, sort_by='date', order='desc'):
     """
     try:
         # Validation des entrées
-        if sort_by not in ['date', 'amount', 'merchant', 'description', 'status', 'flag']:
+        if sort_by not in ['date', 'amount', 'merchant', 'description', 'status', 'flag', 'category']:
             sort_by = 'date'
         
         if order not in ['asc', 'desc']:
@@ -115,16 +115,25 @@ def apply_sort_to_query(query, sort_by='date', order='desc'):
             column = Expense.amount
         elif sort_by in ('merchant', 'description'):
             # Utiliser le nom renommé s'il existe, sinon le nom original
-            column = case(
-                [(Expense.renamed_merchant != None, func.lower(Expense.renamed_merchant))],
-                else_=func.lower(Expense.merchant)
-            )
+            from sqlalchemy import func, case
+            column = func.coalesce(func.lower(Expense.renamed_merchant), func.lower(Expense.merchant))
         elif sort_by == 'status':
             column = Expense.declaration_status
         elif sort_by == 'flag':
-            column = Expense.flag_id
+            # Joindre avec Flag pour trier par nom de flag
+            from sqlalchemy import func
+            query = query.join(Flag, Expense.flag_id == Flag.id, isouter=True)
+            column = func.lower(Flag.name)
+        elif sort_by == 'category':
+            # Joindre avec Category pour trier par nom de catégorie
+            from sqlalchemy import func
+            query = query.join(Category, Expense.category_id == Category.id, isouter=True)
+            column = func.lower(Category.name)
         else:
             column = Expense.date
+        
+        # Journaliser le tri appliqué
+        print(f"Tri appliqué: {sort_by} {order}")
         
         # Appliquer l'ordre de tri
         if order == 'asc':

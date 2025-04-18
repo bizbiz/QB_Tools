@@ -275,7 +275,7 @@
                 
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover table-striped mb-0 sortable-table" id="expenses-table">
+                        <table class="table table-hover table-striped mb-0 enhanced-table ajax-table" id="expenses-table">
                             <thead>
                                 <tr>
                                     <th class="no-sort select-all-column">
@@ -284,9 +284,9 @@
                                         </div>
                                     </th>
                                     <th data-type="date" data-sort-column="date">Date</th>
-                                    {# Modification ici: Renommer "Description" en "Marchand" #}
                                     <th data-type="text" data-sort-column="merchant">Marchand</th>
                                     <th data-type="number" data-sort-column="amount">Montant</th>
+                                    <th data-type="text" data-sort-column="category">Catégorie</th>
                                     <th data-type="text" data-sort-column="flag">Type</th>
                                     <th data-type="text">Déclarée</th>
                                     <th data-type="text">Remboursée</th>
@@ -500,197 +500,25 @@
         </div>
     </div>
 </div>
-<script type="text/javascript">
-    // Initialiser les données globales pour les catégories et les flags
-    window.categoryData = {{ category_data_json|safe }};
-    window.flagData = {{ flag_data_json|safe }};
-</script>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/common/ajax_table_manager.js') }}"></script>
-<script src="{{ url_for('static', filename='js/tricount/category_select.js') }}"></script>
-<script src="{{ url_for('static', filename='js/tricount/enhanced_selects.js') }}"></script>
-<script src="{{ url_for('static', filename='js/tricount/expense_editor.js') }}"></script>
-<script type="module" src="{{ url_for('static', filename='js/tricount/reimbursements/index.js') }}"></script>
+<script src="{{ url_for('static', filename='js/common/table/index.js') }}" type="module"></script>
+<script src="{{ url_for('static', filename='js/tricount/reimbursements/index.js') }}" type="module"></script>
 
 <script>
-// Définir la fonction de rafraîchissement qui sera utilisée par l'éditeur
-window.refreshExpenses = function() {
-    if (typeof window.submitFiltersAjax === 'function') {
-        window.submitFiltersAjax();
-    }
-};
+// Initialiser les données globales pour les catégories et les flags
+window.categoryData = {{ category_data_json|safe }};
+window.flagData = {{ flag_data_json|safe }};
 
-// Configuration de l'ExpenseEditor pour l'intégrer avec le code existant
+// Configuration minimale pour maintenir la compatibilité avec le code existant
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialiser l'AjaxTableManager pour le tri AJAX
-    if (window.AjaxTableManager) {
-        console.log("Initialisation du tri AJAX...");
-        window.AjaxTableManager.init('#expenses-table', {
-            formSelector: '#filter-form',
-            submitFunction: function() {
-                if (typeof window.submitFiltersAjax === 'function') {
-                    window.submitFiltersAjax();
-                }
-            },
-            defaultSort: 'date',
-            defaultOrder: 'desc',
-            onBeforeSort: function() {
-                // Afficher l'indicateur de chargement
-                const loadingSpinner = document.getElementById('table-loading-spinner');
-                if (loadingSpinner) {
-                    loadingSpinner.style.display = 'block';
-                }
-            }
-        });
-    }
-
-    if (window.expenseEditor) {
-        // Configurer l'éditeur pour utiliser les URLs existantes
-        window.expenseEditor.config.expenseEndpointUrl = '/tricount/reimbursements/expense';
-        window.expenseEditor.config.updateUrl = '/tricount/update_expense';
-        window.expenseEditor.config.afterSaveCallback = window.refreshExpenses;
-    }
-        
-    // Utiliser le gestionnaire de tableau amélioré si disponible
-    if (window.TableSorter) {
-        window.TableSorter.init();
-    }
-    
-    // Mettre en place les attributs data-sort-value pour améliorer le tri des descriptions
-    setupSortValues();
-    
-    // IMPORTANT: Complètement désactiver l'observateur de mutations qui cause des boucles infinies
-    /* 
-    // Ancien code qui causait des problèmes:
-    const tableObserver = new MutationObserver(function(mutations) {
-        mutations.forEach(function(mutation) {
-            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                // Réinitialiser le tri après modification du contenu
-                if (window.TableSorter) {
-                    console.log("Réinitialisation du tri après modification du contenu");
-                    window.TableSorter.init();
-                }
-                
-                // Mettre en place les attributs data-sort-value pour le tri
-                setupSortValues();
-            }
-        });
-    });
-    
-    // Observer les modifications du corps du tableau
-    const tableBody = document.getElementById('expenses-table-body');
-    if (tableBody) {
-        tableObserver.observe(tableBody, { childList: true });
-    }
-    */
-    
-    // À la place, permettons au système de tri AJAX de gérer les mises à jour
-    // et utilisons une approche plus simple :
-    
-    // Après chaque mise à jour AJAX complète, configurer les valeurs de tri une seule fois
-    const setupSortValuesOnce = function() {
-        setupSortValues();
-    };
-    
-    // Si window.submitFiltersAjax existe, wrappons-la pour exécuter setupSortValues une fois
-    if (window.submitFiltersAjax) {
-        const originalSubmit = window.submitFiltersAjax;
-        window.submitFiltersAjax = function() {
-            const result = originalSubmit.apply(this, arguments);
-            setTimeout(setupSortValuesOnce, 300); // Délai pour permettre au DOM de se mettre à jour
-            return result;
-        };
-    }
-    if (typeof window.submitFiltersAjax === 'function') {
-        window.submitFiltersAjax();
-    }
-});
-
-/**
- * Configure les attributs data-sort-value pour les cellules de description
- * afin d'améliorer le tri en utilisant le nom du marchand renommé si disponible
- */
-function setupSortValues() {
-    try {
-        // Sélectionner toutes les cellules de description
-        const descriptionCells = document.querySelectorAll('td.description-cell');
-        
-        descriptionCells.forEach(cell => {
-            // Trouver le nom du marchand (original ou renommé)
-            const merchantName = cell.querySelector('.fw-bold');
-            
-            if (merchantName && merchantName.textContent) {
-                // Utiliser le texte du marchand comme valeur de tri
-                const sortValue = merchantName.textContent.trim().toLowerCase();
-                cell.setAttribute('data-sort-value', sortValue);
-            }
-        });
-        console.log("Sort values setup complete");
-    } catch (error) {
-        console.error("Error setting up sort values:", error);
-    }
-}
-</script>
-<script>
-// Script de débogage pour le tri
-document.addEventListener('DOMContentLoaded', function() {
-    // Surcharger la fonction sortTable pour ajouter du débogage
-    const originalSortTable = window.TableSorter.sort;
-    window.TableSorter.sort = function(table, colIndex, direction) {
-        console.log("Sorting table by column:", colIndex, "in direction:", direction);
-        
-        // Vérifier les valeurs de tri disponibles
-        const tbody = table.querySelector('tbody');
-        if (tbody) {
-            const rows = Array.from(tbody.rows);
-            console.log("Nombre de lignes à trier:", rows.length);
-            
-            // Vérifier les premières valeurs
-            if (rows.length > 0) {
-                for (let i = 0; i < Math.min(3, rows.length); i++) {
-                    if (rows[i].cells[colIndex]) {
-                        const cell = rows[i].cells[colIndex];
-                        const sortValue = cell.getAttribute('data-sort-value');
-                        console.log(`Row ${i+1} sort value:`, sortValue || "(undefined)");
-                    }
-                }
-            }
+    // Définir la fonction de rafraîchissement utilisée par l'éditeur
+    window.refreshExpenses = function() {
+        if (typeof window.submitFiltersAjax === 'function') {
+            window.submitFiltersAjax();
         }
-        
-        // Appeler la fonction originale
-        return originalSortTable(table, colIndex, direction);
     };
-    
-    // Forcer l'application des valeurs de tri après chaque chargement AJAX
-    const setupSortValuesForMerchants = function() {
-        console.log("Setting up sort values for merchants...");
-        const merchantCells = document.querySelectorAll('td.merchant-cell, td.description-cell');
-        
-        merchantCells.forEach(cell => {
-            const merchantDiv = cell.querySelector('.fw-bold');
-            if (merchantDiv && merchantDiv.textContent) {
-                const merchantName = merchantDiv.textContent.trim().toLowerCase();
-                console.log(`Setting sort value: ${merchantName}`);
-                cell.setAttribute('data-sort-value', merchantName);
-            }
-        });
-    };
-    
-    // Remplacer la fonction existante ou ajouter cette étape supplémentaire
-    if (window.setupSortValues) {
-        const originalSetup = window.setupSortValues;
-        window.setupSortValues = function() {
-            originalSetup();
-            setupSortValuesForMerchants();
-        };
-    } else {
-        window.setupSortValues = setupSortValuesForMerchants;
-    }
-    
-    // Exécuter la configuration immédiatement
-    setTimeout(setupSortValuesForMerchants, 500);
 });
 </script>
 {% endblock %}
