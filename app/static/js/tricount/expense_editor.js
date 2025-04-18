@@ -18,7 +18,7 @@ class ExpenseEditor {
             saveButtonId: 'save-expense-btn',
             updateUrl: '/tricount/update_expense',
             expenseEndpointUrl: '/tricount/reimbursements/expense',
-            autoRuleCreateUrl: '/tricount/auto-rules/create-from-expense',
+            autoRuleCreateUrl: '/tricount/auto-categorize',
             autoRuleEditUrl: '/tricount/auto-rules/edit',
             afterSaveCallback: null,
             ...options

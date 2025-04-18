@@ -176,3 +176,97 @@ Utiliser l'IBAN comme critère supplémentaire pour identifier les transactions 
 
 
 .Dans auto categorize on a une regle de renommage de marchant mais pas de description, il faut l'implémenter
+
+Suggestions d'amélioration :
+Analyse et visualisation des données
+
+Tableau de bord analytique : Graphiques montrant la répartition des dépenses par catégorie/type
+Tendances temporelles : Visualisations de l'évolution des dépenses sur différentes périodes
+KPIs personnalisables : Permettre à l'utilisateur de définir ses propres indicateurs à suivre
+
+ Amélioration des règles d'auto-catégorisation
+
+Apprentissage automatique : Suggérer des catégories basées sur les habitudes de l'utilisateur
+Règles complexes : Permettre des combinaisons de règles (ET, OU, NON) pour plus de précision
+Templates de règles : Proposer des modèles de règles pré-configurées pour les cas courants
+
+Traitement par lots avancé
+
+Sélection multiple : Permettre de sélectionner plusieurs dépenses à la fois
+Actions groupées : Appliquer une catégorie/type/renommage à plusieurs dépenses en une seule fois
+Mode batch : Interface optimisée pour le traitement rapide de nombreuses dépenses
+
+Fonctionnalités d'enrichissement des données
+
+Enrichissement automatique : Compléter les dépenses avec des informations externes (logos des commerçants, catégories standards)
+Géolocalisation : Associer les dépenses à des lieux si les données sont disponibles
+Reconnaissance de facture : Scanner des factures pour créer ou enrichir des dépenses
+
+ Amélioration de l'expérience utilisateur
+
+Mode sombre : Option d'interface en mode sombre pour réduire la fatigue visuelle
+Raccourcis clavier : Navigation et actions rapides par raccourcis (Ctrl+S pour sauvegarder, etc.)
+Tour guidé : Présentation interactive des fonctionnalités pour les nouveaux utilisateurs
+Historique des modifications : Journal des changements effectués sur chaque dépense
+
+ Gestion avancée des importations
+
+Support multi-banques : Plus de formats d'importation pour différentes banques
+Détection intelligente de doublons : Algorithmes améliorés pour éviter les doublons lors de l'import
+Catégorisation prédictive : Suggestion de catégories dès l'importation basée sur l'historique
+
+
+Exportation et intégration
+
+Exportation vers des logiciels de comptabilité : Formats d'export compatibles avec les logiciels courants
+API RESTful : API complète pour intégrer les données dans d'autres applications
+Webhooks : Notifications en temps réel pour les intégrations externes
+
+
+Suggestions d'améliorations pour QB Tools - Tricount Helper
+Améliorations de l'interface utilisateur
+
+Mode sombre - Ajouter un mode sombre/nuit pour réduire la fatigue oculaire lors d'utilisations prolongées
+Interface mobile responsive - Optimiser davantage l'expérience sur appareils mobiles pour permettre la gestion des dépenses en déplacement
+Filtres enregistrables - Permettre aux utilisateurs d'enregistrer des combinaisons de filtres fréquemment utilisés
+Tableaux de bord personnalisables - Permettre aux utilisateurs de configurer les widgets et statistiques qu'ils souhaitent voir en page d'accueil
+
+Nouvelles fonctionnalités
+
+OCR de reçus - Ajouter la possibilité de photographier ou télécharger des reçus pour en extraire automatiquement les informations (date, montant, marchand)
+Capture automatique des emails - Connecter une boîte mail pour capturer automatiquement les reçus et factures envoyés par email
+Groupes de dépenses - Permettre de créer des groupes pour les dépenses liées à un même événement ou projet
+Mode voyage/mission - Créer un mode spécial pour suivre les dépenses lors de voyages professionnels, avec un résumé par jour/destination
+Prévisions de remboursement - Estimer la date de remboursement en fonction des délais habituels de traitement
+Rappels et notifications - Ajouter des rappels pour déclarer les dépenses qui ne l'ont pas encore été
+Modèles pour les notes de frais - Créer des modèles préremplis pour accélérer la création de notes de frais récurrentes
+
+Améliorations techniques
+
+API REST complète - Développer une API REST pour permettre l'interaction avec d'autres services et applications
+Synchronisation hors-ligne - Permettre l'utilisation de l'application sans connexion internet avec synchronisation ultérieure
+Caching amélioré - Optimiser les performances en mettant en cache les données fréquemment accédées
+Exportation multi-formats - Étendre les options d'exportation pour inclure PDF, Excel, JSON et formats spécifiques à certains logiciels de comptabilité
+Tests automatisés - Améliorer la couverture des tests pour garantir la stabilité à mesure que l'application évolue
+
+Intégrations
+
+Intégration comptable - Connecter directement avec des logiciels de comptabilité (QuickBooks, Xero, etc.)
+API bancaires - S'intégrer avec les API des banques pour importer automatiquement les transactions
+Services RH - Intégration avec les systèmes RH pour la gestion des notes de frais
+Services de stockage cloud - Permettre de stocker les reçus et documents sur Dropbox, Google Drive, etc.
+Système de rappel d'échéances - Intégration avec les calendriers (Google Calendar, Outlook) pour les échéances importantes
+
+Analyses et visualisations
+
+Tableau de bord analytique - Créer un tableau de bord avec des graphiques et statistiques sur les dépenses
+Rapports périodiques - Générer automatiquement des rapports mensuels/trimestriels sur les dépenses et remboursements
+Prédictions par IA - Utiliser l'apprentissage automatique pour prédire les catégories et types de futures dépenses
+Détection d'anomalies - Alerter sur des dépenses inhabituelles ou des écarts par rapport aux tendances historiques
+Visualisation géographique - Cartographier les dépenses par lieu pour les déplacements professionnels
+
+Optimisations sectorielles
+
+Adaptation aux règles fiscales - Personnaliser l'outil selon les règles fiscales du pays/région
+Templates spécifiques aux industries - Créer des configurations prédéfinies selon le secteur d'activité (consulting, santé, etc.)
+Module pour les indépendants - Adaptation spécifique pour les travailleurs indépendants et leur comptabilité
