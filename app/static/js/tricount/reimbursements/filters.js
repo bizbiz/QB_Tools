@@ -208,6 +208,11 @@ export function submitFiltersAjax() {
         // Vérifier que les données nécessaires sont présentes
         console.log('Form data prepared:', 
             [...formData.entries()].map(e => `${e[0]}=${e[1]}`).join(', '));
+            
+        // Log spécifique pour le tri
+        const sortValue = formData.get('sort');
+        const orderValue = formData.get('order');
+        console.log(`DEBUG - Sending sort request: sort=${sortValue}, order=${orderValue}`);
     } catch (error) {
         console.error('Error creating FormData:', error);
         isRequestPending = false;

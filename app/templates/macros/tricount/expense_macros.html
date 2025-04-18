@@ -9,6 +9,7 @@
             {{ expense.merchant|lower }}
         {% endif %}
     {% else %}
+        {# Le reste du code existant pour l'affichage normal #}
         {% if expense.renamed_merchant and not show_original %}
             <div class="expense-name {{ extra_classes }}">
                 {% set content = expense.renamed_merchant %}

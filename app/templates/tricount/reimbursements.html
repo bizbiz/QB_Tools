@@ -283,13 +283,13 @@
                                             <input class="form-check-input" type="checkbox" id="select-all-expenses">
                                         </div>
                                     </th>
-                                    <th data-type="date">Date</th>
-                                    <th data-type="text">Description</th>
-                                    <th data-type="number">Montant</th>
-                                    <th data-type="text">Catégorie</th>
-                                    <th data-type="text" class="text-center">Type</th>
-                                    <th data-type="text" class="text-center">Déclarée</th>
-                                    <th data-type="text" class="text-center">Remboursée</th>
+                                    <th data-type="date" data-sort-column="date">Date</th>
+                                    {# Modification ici: Renommer "Description" en "Marchand" #}
+                                    <th data-type="text" data-sort-column="merchant">Marchand</th>
+                                    <th data-type="number" data-sort-column="amount">Montant</th>
+                                    <th data-type="text" data-sort-column="flag">Type</th>
+                                    <th data-type="text">Déclarée</th>
+                                    <th data-type="text">Remboursée</th>
                                     <th data-type="text" class="text-center no-sort">Actions</th>
                                 </tr>
                             </thead>
@@ -632,5 +632,65 @@ function setupSortValues() {
         console.error("Error setting up sort values:", error);
     }
 }
+</script>
+<script>
+// Script de débogage pour le tri
+document.addEventListener('DOMContentLoaded', function() {
+    // Surcharger la fonction sortTable pour ajouter du débogage
+    const originalSortTable = window.TableSorter.sort;
+    window.TableSorter.sort = function(table, colIndex, direction) {
+        console.log("Sorting table by column:", colIndex, "in direction:", direction);
+        
+        // Vérifier les valeurs de tri disponibles
+        const tbody = table.querySelector('tbody');
+        if (tbody) {
+            const rows = Array.from(tbody.rows);
+            console.log("Nombre de lignes à trier:", rows.length);
+            
+            // Vérifier les premières valeurs
+            if (rows.length > 0) {
+                for (let i = 0; i < Math.min(3, rows.length); i++) {
+                    if (rows[i].cells[colIndex]) {
+                        const cell = rows[i].cells[colIndex];
+                        const sortValue = cell.getAttribute('data-sort-value');
+                        console.log(`Row ${i+1} sort value:`, sortValue || "(undefined)");
+                    }
+                }
+            }
+        }
+        
+        // Appeler la fonction originale
+        return originalSortTable(table, colIndex, direction);
+    };
+    
+    // Forcer l'application des valeurs de tri après chaque chargement AJAX
+    const setupSortValuesForMerchants = function() {
+        console.log("Setting up sort values for merchants...");
+        const merchantCells = document.querySelectorAll('td.merchant-cell, td.description-cell');
+        
+        merchantCells.forEach(cell => {
+            const merchantDiv = cell.querySelector('.fw-bold');
+            if (merchantDiv && merchantDiv.textContent) {
+                const merchantName = merchantDiv.textContent.trim().toLowerCase();
+                console.log(`Setting sort value: ${merchantName}`);
+                cell.setAttribute('data-sort-value', merchantName);
+            }
+        });
+    };
+    
+    // Remplacer la fonction existante ou ajouter cette étape supplémentaire
+    if (window.setupSortValues) {
+        const originalSetup = window.setupSortValues;
+        window.setupSortValues = function() {
+            originalSetup();
+            setupSortValuesForMerchants();
+        };
+    } else {
+        window.setupSortValues = setupSortValuesForMerchants;
+    }
+    
+    // Exécuter la configuration immédiatement
+    setTimeout(setupSortValuesForMerchants, 500);
+});
 </script>
 {% endblock %}

@@ -155,9 +155,10 @@ function sortTable(table, colIndex, direction) {
  * @returns {*} - La valeur à utiliser pour le tri
  */
 function getCellValue(cell, dataType) {
-    // Utiliser data-sort-value si disponible (prioritaire)
+    // Priorité absolue à data-sort-value s'il est défini
     if (cell.hasAttribute('data-sort-value') && cell.getAttribute('data-sort-value') !== '') {
         const value = cell.getAttribute('data-sort-value');
+        console.log(`Using data-sort-value: ${value}`);
         
         if (dataType === 'number') {
             return parseFloat(value.replace(/[^\d.,\-]/g, '').replace(',', '.')) || 0;
@@ -166,7 +167,14 @@ function getCellValue(cell, dataType) {
         return value;
     }
     
-    // Sinon, utiliser le contenu de la cellule
+    // Rechercher dans les enfants du premier niveau
+    const merchantDiv = cell.querySelector('.fw-bold');
+    if (merchantDiv && merchantDiv.textContent) {
+        console.log(`Using inner div content: ${merchantDiv.textContent.trim()}`);
+        return merchantDiv.textContent.trim();
+    }
+    
+    // Fallback: utiliser le contenu de la cellule
     const text = cell.textContent.trim();
     
     if (dataType === 'number') {

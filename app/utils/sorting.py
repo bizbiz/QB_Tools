@@ -32,7 +32,6 @@ def get_sort_params(default_sort='date', default_order='desc'):
     
     return sort_by, order
 
-
 def apply_sort_to_query(query, model, sort_by, order, column_mappings=None):
     """
     Applique les paramètres de tri à une requête SQLAlchemy
@@ -71,7 +70,6 @@ def apply_sort_to_query(query, model, sort_by, order, column_mappings=None):
     
     return query
 
-
 def prepare_sort_for_reimbursements(query, model, sort_by, order):
     """
     Applique un tri spécifique pour les remboursements, gérant les cas particuliers
@@ -94,12 +92,18 @@ def prepare_sort_for_reimbursements(query, model, sort_by, order):
         column = model.amount
     elif sort_by == 'merchant' or sort_by == 'description':
         # Tri par marchand (préférer le nom renommé s'il existe)
-        # SQLAlchemy ne peut pas faire de COALESCE directement, nous utilisons une expression case_when
-        from sqlalchemy import case, func
-        column = case(
-            [(model.renamed_merchant != None, func.lower(model.renamed_merchant))],
-            else_=func.lower(model.merchant)
-        )
+        from sqlalchemy import func
+        
+        # Version avec COALESCE (plus simple et plus sûre)
+        column = func.coalesce(func.lower(model.renamed_merchant), func.lower(model.merchant))
+        
+        # Si cette version ne fonctionne pas, vous pouvez toujours revenir à
+        # la version CASE originale en la commentant/décommentant
+        # from sqlalchemy.sql.expression import case
+        # column = case(
+        #    [(model.renamed_merchant != None, func.lower(model.renamed_merchant))],
+        #    else_=func.lower(model.merchant)
+        # )
     elif sort_by == 'status':
         # Tri par statut de déclaration
         column = model.declaration_status
@@ -112,12 +116,11 @@ def prepare_sort_for_reimbursements(query, model, sort_by, order):
     
     # Appliquer l'ordre de tri
     if order == 'asc':
-        query = query.order_by(asc(column))
+        query = query.order_by(column.asc())
     else:
-        query = query.order_by(desc(column))
+        query = query.order_by(column.desc())
     
     return query
-
 
 def prepare_paginated_response(query, page, per_page, item_processor=None):
     """

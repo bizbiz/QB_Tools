@@ -531,6 +531,9 @@ def get_reimbursement_rows():
         # Extraire et valider les paramètres de filtrage
         params = get_filter_params_from_request()
         
+        # Journalisation des paramètres pour débogage
+        print(f"DEBUG - Row request params: sort={params['sort_by']}, order={params['order']}")
+        
         # Construire la requête filtrée
         query = build_reimbursement_query(
             flag_id=params['flag_id'],
@@ -541,7 +544,8 @@ def get_reimbursement_rows():
             show_all=params['show_all']
         )
         
-        # Appliquer le tri
+        # Application du tri avec des logs de débogage
+        print(f"DEBUG - Applying sort: {params['sort_by']}, {params['order']}")
         query = apply_sort_to_query(query, params['sort_by'], params['order'])
         
         # Calculer les totaux pour le résumé avant pagination

@@ -18,7 +18,7 @@
     <td data-sort-value="{{ expense.date.strftime('%Y%m%d') }}">
         {{ expense.date.strftime('%d/%m/%Y') }}
     </td>
-    <td class="description-cell" data-sort-value="{{ display_expense_name(expense, show_original=false, sort_value=true) }}">
+    <td class="merchant-cell" data-sort-value="{{ display_expense_name(expense, show_original=false, sort_value=true)|lower }}">
         <div class="fw-bold">
             {{ display_expense_name(expense, show_original=false) }}
         </div>
