@@ -36,39 +36,26 @@ def prepare_category_data(categories, flags):
     
     return category_data
 
-# Fonction utilitaire pour déterminer si une dépense est remboursable
-def is_expense_reimbursable(expense):
-    """Determine si une dépense est remboursable en fonction de son type (flag)"""
-    if not expense.flag:
-        return False
-        
-    return expense.flag.reimbursement_type in [
-        ReimbursementType.PARTIALLY_REIMBURSABLE.value,
-        ReimbursementType.FULLY_REIMBURSABLE.value
-    ]
-
-@tricount_bp.route('/reimbursements', methods=['GET', 'POST'])
+@tricount_bp.route('/reimbursements', methods=['POST'])
 def reimbursements_list():
     """Page de gestion des remboursements"""
     # Détecter si c'est une requête AJAX
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     
-    # Utiliser request.values pour accepter à la fois GET et POST
-    # Filtres
-    flag_id = request.values.get('flag_id', type=int)
-    # Traitement explicite de flag_id
-    if 'flag_id' not in request.values or flag_id == -1:
+    # Récupérer les paramètres de filtrage
+    flag_id = request.form.get('flag_id', type=int)
+    status_values = request.form.getlist('status')  # Plusieurs statuts possibles
+    start_date = request.form.get('start_date')
+    end_date = request.form.get('end_date')
+    search_query = request.form.get('search', '')
+    show_all = request.form.get('show_all') == '1'  # Nouveau paramètre
+
+    if 'flag_id' not in request.form:
         flag_id = None
-        
-    status_values = request.values.getlist('status')  # Plusieurs statuts possibles
-    start_date = request.values.get('start_date')
-    end_date = request.values.get('end_date')
-    search_query = request.values.get('search', '')
-    show_all = request.values.get('show_all') == '1'  # Nouveau paramètre
 
     # Paramètres de tri
-    sort_by = request.values.get('sort', 'date')
-    order = request.values.get('order', 'desc')
+    sort_by = request.form.get('sort', 'date')
+    order = request.form.get('order', 'desc')
     
     # Construire la requête de base
     query = Expense.query
@@ -157,7 +144,7 @@ def reimbursements_list():
     
     # Pagination
     per_page = 20
-    page = request.values.get('page', 1, type=int)
+    page = request.form.get('page', 1, type=int)
     expenses = query.paginate(page=page, per_page=per_page, error_out=False)
     
     # Si c'est une requête AJAX, renvoyer du JSON
@@ -174,9 +161,6 @@ def reimbursements_list():
                     flag=expense.flag
                 )
             
-            # Déterminer explicitement si la dépense est remboursable
-            is_reimbursable = is_expense_reimbursable(expense)
-            
             # Ajouter les données de la dépense
             expense_data = {
                 'id': expense.id,
@@ -190,7 +174,7 @@ def reimbursements_list():
                 'is_declared': expense.declaration_status in [DeclarationStatus.DECLARED.value, DeclarationStatus.REIMBURSED.value],
                 'is_reimbursed': expense.declaration_status == DeclarationStatus.REIMBURSED.value,
                 'declaration_status': expense.declaration_status,
-                'is_reimbursable': is_reimbursable  # Cruciale pour l'interface
+                'is_reimbursable': expense.is_reimbursable
             }
             expenses_data.append(expense_data)
         
@@ -213,39 +197,6 @@ def reimbursements_list():
             'pagination': pagination_data
         })
     
-    # Dans la boucle de traitement des dépenses
-    reimbursable_status = {}
-    flag_reimbursement_types = {}
-
-    for expense in expenses.items:
-        expense_flag_id = expense.flag_id  # Utiliser un nom de variable différent ici
-        
-        # Si on n'a pas encore mis en cache le type de remboursement pour ce flag
-        if expense_flag_id and expense_flag_id not in flag_reimbursement_types:
-            flag = Flag.query.get(expense_flag_id)
-            if flag and hasattr(flag, 'reimbursement_type'):
-                flag_reimbursement_types[expense_flag_id] = flag.reimbursement_type
-            else:
-                flag_reimbursement_types[expense_flag_id] = None
-        
-        # Déterminer si la dépense est remboursable
-        is_reimbursable = False
-        if expense_flag_id and expense_flag_id in flag_reimbursement_types:
-            is_reimbursable = flag_reimbursement_types[expense_flag_id] in [
-                ReimbursementType.PARTIALLY_REIMBURSABLE.value,
-                ReimbursementType.FULLY_REIMBURSABLE.value
-            ]
-        
-        reimbursable_status[expense.id] = is_reimbursable
-    
-    # Récupérer les flags remboursables pour le filtrage
-    reimbursable_flags = Flag.query.filter(
-        Flag.reimbursement_type.in_([
-            ReimbursementType.PARTIALLY_REIMBURSABLE.value, 
-            ReimbursementType.FULLY_REIMBURSABLE.value
-        ])
-    ).all()
-    
     # Rendu du template normal
     return render_template('tricount/reimbursements.html',
                           expenses=expenses,
@@ -261,9 +212,29 @@ def reimbursements_list():
                           summary=summary,
                           declaration_statuses=DeclarationStatus,
                           show_all=show_all,
-                          reimbursable_status=reimbursable_status,
-                          category_data_json=json.dumps(category_data),  # Données JSON pour JavaScript
+                          category_data_json=json.dumps(category_data),
                           flag_data_json=json.dumps(flag_data))
+
+# Pour les requêtes GET, rediriger vers la méthode POST
+@tricount_bp.route('/reimbursements', methods=['GET'])
+def reimbursements_list_get():
+    """Redirection de GET vers POST pour la page de remboursements"""
+    return render_template('tricount/reimbursements.html',
+                          expenses=Expense.query.paginate(page=1, per_page=20, error_out=False),
+                          flags=Flag.query.all(),
+                          categories=Category.query.all(),
+                          selected_flag_id=None,
+                          selected_status=None,
+                          start_date=None,
+                          end_date=None,
+                          search_query='',
+                          sort_by='date',
+                          order='desc',
+                          summary=calculate_summary([]),
+                          declaration_statuses=DeclarationStatus,
+                          show_all=False,
+                          category_data_json=json.dumps({}),
+                          flag_data_json=json.dumps({}))
 
 def calculate_summary(expenses):
     """
@@ -636,4 +607,3 @@ def get_expense_details(expense_id):
         'success': True,
         'expense': expense_data
     })
-

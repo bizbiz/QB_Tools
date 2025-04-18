@@ -69,16 +69,12 @@ class Flag(db.Model):
     
     @property
     def is_reimbursable(self):
-        """Vérifie si cette dépense est remboursable (partiellement ou totalement)"""
-        if not self.flag:
+        """Vérifie si ce flag correspond à un type de dépense remboursable"""
+        # Correction: on vérifie directement sur l'instance du flag elle-même
+        if not hasattr(self, 'reimbursement_type'):
             return False
             
-        # Vérifier si le type de remboursement est défini pour ce flag
-        if not hasattr(self.flag, 'reimbursement_type'):
-            return False
-            
-        # Vérifier si le type de remboursement correspond à un type remboursable
-        return self.flag.reimbursement_type in [
+        return self.reimbursement_type in [
             ReimbursementType.PARTIALLY_REIMBURSABLE.value,
             ReimbursementType.FULLY_REIMBURSABLE.value
         ]
