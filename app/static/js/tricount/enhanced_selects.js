@@ -275,22 +275,39 @@
             return category.text; // Skip placeholder
         }
         
-        // Utiliser directement les données d'attribut de l'option si disponibles
+        // Utiliser directement les données d'attribut de l'option
         const $category = $(category.element);
         const dataColor = $category.data('color');
         const dataIconifyId = $category.data('iconify-id');
+        const dataIconEmoji = $category.data('icon-emoji');
+        const dataIconClass = $category.data('icon-class');
         
         // Sinon, utiliser les données de window.categoryData
         const categoryData = window.categoryData && window.categoryData[category.id] ? window.categoryData[category.id] : {};
         const color = dataColor || categoryData.color || '#e9ecef';
-        const iconifyId = dataIconifyId || categoryData.iconify_id;
         
         let iconHtml = '';
-        if (iconifyId) {
-            // Utiliser une icône Iconify si disponible
-            iconHtml = `<span class="iconify me-2" data-icon="${iconifyId}"></span>`;
-        } else {
-            // Icône par défaut
+        
+        // Utiliser l'iconify-id en priorité
+        if (dataIconifyId) {
+            iconHtml = `<span class="iconify me-2" data-icon="${dataIconifyId}"></span>`;
+            console.log(`Using iconify for category ${category.id}: ${dataIconifyId}`);
+        } 
+        // Sinon utiliser l'emoji
+        else if (dataIconEmoji) {
+            iconHtml = `<span class="me-2">${dataIconEmoji}</span>`;
+        } 
+        // Sinon utiliser Font Awesome
+        else if (dataIconClass) {
+            iconHtml = `<i class="fas ${dataIconClass} me-2"></i>`;
+        } 
+        // Rechercher dans categoryData
+        else if (categoryData.iconify_id) {
+            iconHtml = `<span class="iconify me-2" data-icon="${categoryData.iconify_id}"></span>`;
+            console.log(`Using iconify from categoryData for ${category.id}: ${categoryData.iconify_id}`);
+        }
+        // Icône par défaut
+        else {
             iconHtml = `<i class="fas fa-folder me-2"></i>`;
         }
         
@@ -311,20 +328,37 @@
             return category.text; // Skip placeholder
         }
         
-        // Utiliser directement les données d'attribut de l'option si disponibles
+        // Utiliser directement les données d'attribut de l'option
         const $category = $(category.element);
         const dataColor = $category.data('color');
         const dataIconifyId = $category.data('iconify-id');
+        const dataIconEmoji = $category.data('icon-emoji');
+        const dataIconClass = $category.data('icon-class');
         
         // Sinon, utiliser les données de window.categoryData
         const categoryData = window.categoryData && window.categoryData[category.id] ? window.categoryData[category.id] : {};
         const color = dataColor || categoryData.color || '#e9ecef';
-        const iconifyId = dataIconifyId || categoryData.iconify_id;
         
         let iconHtml = '';
-        if (iconifyId) {
-            iconHtml = `<span class="iconify me-1" data-icon="${iconifyId}"></span>`;
-        } else {
+        
+        // Utiliser l'iconify-id en priorité
+        if (dataIconifyId) {
+            iconHtml = `<span class="iconify me-1" data-icon="${dataIconifyId}"></span>`;
+        } 
+        // Sinon utiliser l'emoji
+        else if (dataIconEmoji) {
+            iconHtml = `<span class="me-1">${dataIconEmoji}</span>`;
+        } 
+        // Sinon utiliser Font Awesome
+        else if (dataIconClass) {
+            iconHtml = `<i class="fas ${dataIconClass} me-1"></i>`;
+        } 
+        // Rechercher dans categoryData
+        else if (categoryData.iconify_id) {
+            iconHtml = `<span class="iconify me-1" data-icon="${categoryData.iconify_id}"></span>`;
+        }
+        // Icône par défaut
+        else {
             iconHtml = `<i class="fas fa-folder me-1"></i>`;
         }
         

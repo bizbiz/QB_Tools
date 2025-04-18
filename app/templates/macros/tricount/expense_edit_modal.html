@@ -1,3 +1,5 @@
+# app/templates/macros/tricount/expense_edit_modal.html
+
 {# app/templates/macros/tricount/expense_edit_modal.html #}
 
 {% from "macros/tricount/flag_macros.html" import flag_select %}
@@ -29,42 +31,39 @@
                 <form id="{{ form_id }}" action="{{ form_action }}" method="POST">
                     <input type="hidden" id="edit-expense-id" name="expense_id" value="">
                     
-                    <!-- Informations de base en lecture seule -->
+                    <!-- Informations de base en lecture seule avec icônes inline -->
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="edit-date" class="form-label">Date</label>
+                            <label for="edit-date" class="form-label">
+                                <i class="fas fa-calendar-alt text-secondary"></i> Date
+                            </label>
                             <input type="text" class="form-control" id="edit-date" disabled>
                         </div>
                         <div class="col-md-6">
-                            <label for="edit-amount" class="form-label">Montant</label>
+                            <label for="edit-amount" class="form-label">
+                                <i class="fas fa-euro-sign text-secondary"></i> Montant
+                            </label>
                             <input type="text" class="form-control" id="edit-amount" disabled>
                         </div>
                     </div>
                     
                     {% if editable_fields.merchant %}
-                    <!-- Section Marchand avec option de renommage -->
+                    <!-- Section Marchand avec plus d'espace pour le champ d'édition -->
                     <div class="mb-3">
-                        <div class="accordion renaming-section">
-                            <div class="accordion-item">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#merchant-rename-collapse" aria-expanded="false" aria-controls="merchant-rename-collapse">
-                                        <i class="fas fa-tag me-2"></i>Marchand
-                                    </button>
-                                </h2>
-                                <div id="merchant-rename-collapse" class="accordion-collapse collapse">
-                                    <div class="accordion-body">
-                                        <div class="row">
-                                            <div class="col-md-12 mb-2">
-                                                <label for="edit-original-merchant" class="form-label">Marchand original</label>
-                                                <input type="text" class="form-control" id="edit-original-merchant" disabled>
-                                            </div>
-                                            <div class="col-md-12">
-                                                <label for="edit-renamed-merchant" class="form-label">Renommer le marchand</label>
-                                                <input type="text" class="form-control" id="edit-renamed-merchant" name="renamed_merchant" placeholder="Laisser vide pour utiliser le nom original">
-                                                <div class="form-text">Entrez un nouveau nom pour ce marchand, ou laissez vide pour utiliser le nom original.</div>
-                                            </div>
-                                        </div>
-                                    </div>
+                        <label for="edit-merchant-section" class="form-label">
+                            <i class="fas fa-store text-primary"></i> <strong>Marchand</strong>
+                        </label>
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="fas fa-tag text-muted"></i></span>
+                                    <input type="text" class="form-control bg-light" id="edit-original-merchant" placeholder="Original" disabled>
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-edit text-primary"></i></span>
+                                    <input type="text" class="form-control" id="edit-renamed-merchant" name="renamed_merchant" placeholder="Renommer (optionnel)">
                                 </div>
                             </div>
                         </div>
@@ -72,29 +71,22 @@
                     {% endif %}
                     
                     {% if editable_fields.description %}
-                    <!-- Section Description avec option de notes -->
+                    <!-- Section Description avec plus d'espace pour le champ d'édition -->
                     <div class="mb-3">
-                        <div class="accordion renaming-section">
-                            <div class="accordion-item">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#description-notes-collapse" aria-expanded="false" aria-controls="description-notes-collapse">
-                                        <i class="fas fa-align-left me-2"></i>Description
-                                    </button>
-                                </h2>
-                                <div id="description-notes-collapse" class="accordion-collapse collapse">
-                                    <div class="accordion-body">
-                                        <div class="row">
-                                            <div class="col-md-12 mb-2">
-                                                <label for="edit-original-description" class="form-label">Description originale</label>
-                                                <textarea class="form-control" id="edit-original-description" rows="2" disabled></textarea>
-                                            </div>
-                                            <div class="col-md-12">
-                                                <label for="edit-notes" class="form-label">Notes personnelles</label>
-                                                <textarea class="form-control" id="edit-notes" name="notes" rows="2" placeholder="Ajoutez des notes ou une description personnalisée"></textarea>
-                                                <div class="form-text">Ces notes remplaceront la description originale lors de l'affichage.</div>
-                                            </div>
-                                        </div>
-                                    </div>
+                        <label for="edit-description-section" class="form-label">
+                            <i class="fas fa-align-left text-primary"></i> <strong>Description</strong>
+                        </label>
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <div class="input-group h-100">
+                                    <span class="input-group-text bg-light"><i class="fas fa-file-alt text-muted"></i></span>
+                                    <textarea class="form-control bg-light" id="edit-original-description" rows="3" placeholder="Original" disabled></textarea>
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="input-group h-100">
+                                    <span class="input-group-text"><i class="fas fa-sticky-note text-primary"></i></span>
+                                    <textarea class="form-control" id="edit-notes" name="notes" rows="3" placeholder="Notes personnelles (optionnel)"></textarea>
                                 </div>
                             </div>
                         </div>
@@ -102,61 +94,68 @@
                     {% endif %}
                     
                     {% if editable_fields.category or editable_fields.flag %}
-                    <!-- Catégorie et Type (Flag) avec les macros avancées -->
-                    <div class="row mb-3">
-                        {% if editable_fields.flag %}
-                        <div class="col-md-6">
-                            <label for="edit-flag" class="form-label">Type de dépense</label>
-                            {{ flag_select(name='flag_id', id='edit-flag', all_flags=flags, placeholder='Sélectionner un type', show_preview=true) }}
+                    <!-- Classification avec icônes correctement alignées -->
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-tags text-primary"></i> <strong>Classification</strong>
+                        </label>
+                        <div class="row g-2">
+                            {% if editable_fields.flag %}
+                            <div class="col-md-6">
+                                <label for="edit-flag" class="visually-hidden">Type de dépense</label>
+                                {{ flag_select(name='flag_id', id='edit-flag', all_flags=flags, placeholder='Type de dépense', show_preview=false) }}
+                            </div>
+                            {% endif %}
+                            
+                            {% if editable_fields.category %}
+                            <div class="col-md-6">
+                                <label for="edit-category" class="visually-hidden">Catégorie</label>
+                                {{ category_select_with_js(name='category_id', id='edit-category', all_categories=categories, flag_select_id='edit-flag', placeholder='Catégorie') }}
+                            </div>
+                            {% endif %}
                         </div>
-                        {% endif %}
+                    </div>
+                    {% endif %}
+                    
+                    {% if editable_fields.declaration or editable_fields.reference %}
+                    <!-- Section remboursement plus compacte -->
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-receipt text-primary"></i> <strong>Remboursement</strong>
+                        </label>
                         
-                        {% if editable_fields.category %}
-                        <div class="col-md-6">
-                            <label for="edit-category" class="form-label">Catégorie</label>
-                            {{ category_select_with_js(name='category_id', id='edit-category', all_categories=categories, flag_select_id='edit-flag', placeholder='Sélectionner une catégorie') }}
-                        </div>
-                        {% endif %}
-                    </div>
-                    {% endif %}
-                    
-                    {% if editable_fields.reference %}
-                    <!-- Référence de déclaration -->
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <label for="edit-declaration-ref" class="form-label">Référence de déclaration</label>
-                            <input type="text" class="form-control" id="edit-declaration-ref" name="declaration_reference" placeholder="Ex: Note de frais #123">
-                            <div class="form-text">Référence externe pour le suivi de la déclaration (numéro de note de frais, etc.)</div>
-                        </div>
-                    </div>
-                    {% endif %}
-                    
-                    {% if editable_fields.declaration %}
-                    <!-- Statut de déclaration -->
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <label class="form-label">Statut de déclaration</label>
-                            <div class="d-flex gap-4 mt-2">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input status-switch" type="checkbox" id="edit-declared" name="is_declared">
-                                    <label class="form-check-label" for="edit-declared">Déclarée</label>
-                                </div>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input status-switch" type="checkbox" id="edit-reimbursed" name="is_reimbursed">
-                                    <label class="form-check-label" for="edit-reimbursed">Remboursée</label>
+                        <div class="row g-2">
+                            {% if editable_fields.declaration %}
+                            <div class="col-md-6">
+                                <div class="d-flex gap-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input status-switch" type="checkbox" id="edit-declared" name="is_declared">
+                                        <label class="form-check-label" for="edit-declared">Déclarée</label>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input status-switch" type="checkbox" id="edit-reimbursed" name="is_reimbursed">
+                                        <label class="form-check-label" for="edit-reimbursed">Remboursée</label>
+                                    </div>
                                 </div>
                             </div>
+                            {% endif %}
+                            
+                            {% if editable_fields.reference %}
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-hashtag"></i></span>
+                                    <input type="text" class="form-control" id="edit-declaration-ref" name="declaration_reference" placeholder="Référence (ex: Note de frais #123)">
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                     {% endif %}
 
-                    <!-- Message d'information pour les dépenses non remboursables -->
-                    <div id="non-reimbursable-warning" class="alert alert-warning d-none">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        <strong>Attention :</strong> Cette dépense n'est pas remboursable selon son type actuel.
-                        <div class="mt-2">
-                            Pour la rendre remboursable, vous pouvez changer son type pour un type remboursable.
-                        </div>
+                    <!-- Message d'avertissement plus compact -->
+                    <div id="non-reimbursable-warning" class="alert alert-warning py-2 px-3 d-none">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Attention :</strong> Cette dépense n'est pas remboursable avec le type actuel.
                     </div>
                 </form>
             </div>
@@ -167,6 +166,87 @@
         </div>
     </div>
 </div>
+{% endmacro %}
+
+{# Macro pour inclure le JavaScript nécessaire #}
+{% macro expense_edit_scripts(modal_id='editExpenseModal', form_id='edit-expense-form', save_btn_id='save-expense-btn', ajax_update_url='/tricount/update_expense', callback_function='refreshExpenses') %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Référence au modal et au formulaire
+    const editForm = document.getElementById('{{ form_id }}');
+    const saveBtn = document.getElementById('{{ save_btn_id }}');
+    
+    if (!editForm || !saveBtn) return;
+    
+    // Gérer les dépendances entre déclaré et remboursé
+    const editDeclaredSwitch = document.getElementById('edit-declared');
+    const editReimbursedSwitch = document.getElementById('edit-reimbursed');
+    
+    if (editDeclaredSwitch && editReimbursedSwitch) {
+        editReimbursedSwitch.addEventListener('change', function() {
+            if (this.checked && !editDeclaredSwitch.checked) {
+                editDeclaredSwitch.checked = true;
+            }
+        });
+        
+        editDeclaredSwitch.addEventListener('change', function() {
+            if (!this.checked && editReimbursedSwitch.checked) {
+                editReimbursedSwitch.checked = false;
+            }
+        });
+    }
+    
+    // Sauvegarde des modifications
+    saveBtn.addEventListener('click', function() {
+        const formData = new FormData(editForm);
+        
+        // Ajouter les statuts
+        if (editDeclaredSwitch) {
+            formData.append('is_declared', editDeclaredSwitch.checked);
+        }
+        if (editReimbursedSwitch) {
+            formData.append('is_reimbursed', editReimbursedSwitch.checked);
+        }
+        
+        // Désactiver le bouton pendant la sauvegarde
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Enregistrement...';
+        
+        // Envoyer les données
+        fetch('{{ ajax_update_url }}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Fermer le modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('{{ modal_id }}'));
+                if (modal) modal.hide();
+                
+                // Exécuter la fonction de rappel si elle existe
+                if (typeof window.{{ callback_function }} === 'function') {
+                    window.{{ callback_function }}();
+                }
+                
+                // Afficher un message de succès
+                alert('Modifications enregistrées avec succès.');
+            } else {
+                alert('Erreur lors de l\'enregistrement: ' + (data.error || 'Erreur inconnue'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Erreur de communication avec le serveur.');
+        })
+        .finally(() => {
+            // Réactiver le bouton
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = 'Enregistrer';
+        });
+    });
+});
+</script>
 {% endmacro %}
 
 {# Macro pour inclure le JavaScript nécessaire #}
