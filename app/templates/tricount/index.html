@@ -110,12 +110,22 @@
                         <span class="badge bg-warning float-end">{{ expenses_stats.uncategorized }}</span>
                         {% endif %}
                     </a>
-                    <a href="{{ url_for('tricount.reimbursements_list') }}" class="list-group-item list-group-item-action">
-                        <i class="fas fa-receipt me-2"></i>Suivi des remboursements
-                        {% if reimbursable_count > 0 %}
-                        <span class="badge bg-info float-end">{{ reimbursable_count }}</span>
-                        {% endif %}
-                    </a>
+                    <form action="{{ url_for('tricount.reimbursements_list') }}" method="POST" class="m-0 p-0">
+                        <!-- Valeurs par défaut pour le filtrage initial -->
+                        <input type="hidden" name="show_all" value="0">
+                        <input type="hidden" name="sort" value="date">
+                        <input type="hidden" name="order" value="desc">
+                        <input type="hidden" name="status" value="not_declared">
+                        <input type="hidden" name="status" value="declared">
+                        <input type="hidden" name="status" value="reimbursed">
+                        
+                        <button type="submit" class="list-group-item list-group-item-action text-start w-100 border-0">
+                            <i class="fas fa-receipt me-2"></i>Suivi des remboursements
+                            {% if reimbursable_count > 0 %}
+                            <span class="badge bg-info float-end">{{ reimbursable_count }}</span>
+                            {% endif %}
+                        </button>
+                    </form>
                     <a href="{{ url_for('tricount.categories_list') }}" class="list-group-item list-group-item-action">
                         <i class="fas fa-folder me-2"></i>Gérer les catégories
                     </a>

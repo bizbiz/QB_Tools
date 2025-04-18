@@ -215,26 +215,37 @@ def reimbursements_list():
                           category_data_json=json.dumps(category_data),
                           flag_data_json=json.dumps(flag_data))
 
-# Pour les requêtes GET, rediriger vers la méthode POST
 @tricount_bp.route('/reimbursements', methods=['GET'])
 def reimbursements_list_get():
-    """Redirection de GET vers POST pour la page de remboursements"""
-    return render_template('tricount/reimbursements.html',
-                          expenses=Expense.query.paginate(page=1, per_page=20, error_out=False),
-                          flags=Flag.query.all(),
-                          categories=Category.query.all(),
-                          selected_flag_id=None,
-                          selected_status=None,
-                          start_date=None,
-                          end_date=None,
-                          search_query='',
-                          sort_by='date',
-                          order='desc',
-                          summary=calculate_summary([]),
-                          declaration_statuses=DeclarationStatus,
-                          show_all=False,
-                          category_data_json=json.dumps({}),
-                          flag_data_json=json.dumps({}))
+    """Redirection de GET vers POST pour la même route avec des valeurs par défaut"""
+    # Créer un formulaire avec des valeurs par défaut
+    form_html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Redirection...</title>
+        <script>
+            window.onload = function() {
+                document.getElementById('redirectForm').submit();
+            }
+        </script>
+    </head>
+    <body>
+        <form id="redirectForm" method="POST" action="/tricount/reimbursements">
+            <!-- Valeurs par défaut pour le filtrage initial -->
+            <input type="hidden" name="show_all" value="0">
+            <input type="hidden" name="sort" value="date">
+            <input type="hidden" name="order" value="desc">
+            <input type="hidden" name="status" value="not_declared">
+            <input type="hidden" name="status" value="declared">
+            <input type="hidden" name="status" value="reimbursed">
+        </form>
+        <p>Redirection en cours...</p>
+    </body>
+    </html>
+    """
+    
+    return form_html
 
 def calculate_summary(expenses):
     """
