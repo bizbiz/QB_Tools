@@ -1,0 +1,76 @@
+/* app/static/css/tricount/toast.css */
+
+/* Styles pour les notifications toast personnalisées */
+#toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1080;
+}
+
+.toast {
+    min-width: 250px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: none;
+    opacity: 0;
+    transition: all 0.3s ease-in-out;
+    transform: translateY(-20px);
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Toast variants */
+.toast.bg-success {
+    background-color: #28a745 !important;
+}
+
+.toast.bg-danger {
+    background-color: #dc3545 !important;
+}
+
+.toast.bg-warning {
+    background-color: #ffc107 !important;
+    color: #212529 !important;
+}
+
+.toast.bg-info {
+    background-color: #17a2b8 !important;
+}
+
+.toast .toast-body {
+    padding: 0.75rem 1.25rem;
+    display: flex;
+    align-items: center;
+}
+
+.toast .btn-close {
+    opacity: 0.8;
+}
+
+.toast .btn-close:hover {
+    opacity: 1;
+}
+
+/* Animation de fermeture */
+.toast.hide {
+    opacity: 0;
+    transform: translateY(-20px);
+}
+
+/* Responsive pour mobile */
+@media (max-width: 576px) {
+    #toast-container {
+        width: 100%;
+        top: 10px;
+        right: 0;
+        padding: 0 10px;
+    }
+    
+    .toast {
+        min-width: auto;
+        width: 100%;
+    }
+}

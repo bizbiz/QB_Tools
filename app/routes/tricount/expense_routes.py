@@ -1,8 +1,9 @@
 # app/routes/tricount/expense_routes.py
+# app/routes/tricount/expense_routes.py
 from flask import render_template, jsonify, request
 from app.routes.tricount import tricount_bp
 from app.extensions import db
-from app.models.tricount import Expense, Category, Flag, ModificationSource
+from app.models.tricount import Expense, Category, Flag, ModificationSource, DeclarationStatus
 from datetime import datetime
 from sqlalchemy import or_
 

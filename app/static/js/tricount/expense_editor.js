@@ -17,7 +17,7 @@ class ExpenseEditor {
             formId: 'edit-expense-form',
             saveButtonId: 'save-expense-btn',
             updateUrl: '/tricount/update_expense',
-            expenseEndpointUrl: '/tricount/expense',
+            expenseEndpointUrl: '/tricount/reimbursements/expense',
             afterSaveCallback: null,
             ...options
         };
@@ -46,6 +46,9 @@ class ExpenseEditor {
         
         // Initialiser le bouton de sauvegarde
         this.initSaveButton();
+        
+        // Créer le conteneur de notification s'il n'existe pas
+        this.createNotificationContainer();
         
         console.log('ExpenseEditor initialisé avec succès:', {
             modalId: this.config.modalId,
@@ -118,6 +121,59 @@ class ExpenseEditor {
     }
     
     /**
+     * Crée un conteneur pour les notifications si nécessaire
+     */
+    createNotificationContainer() {
+        if (!document.getElementById('toast-container')) {
+            const container = document.createElement('div');
+            container.id = 'toast-container';
+            container.className = 'toast-container position-fixed top-0 end-0 p-3';
+            container.style.zIndex = '1080';
+            document.body.appendChild(container);
+        }
+    }
+    
+    /**
+     * Affiche une notification toast
+     * @param {string} message - Message à afficher
+     * @param {string} type - Type de notification (success, danger, warning, info)
+     */
+    showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+        
+        // Créer le toast
+        const toast = document.createElement('div');
+        toast.className = `toast align-items-center border-0 bg-${type} text-white`;
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+        
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="fas fa-check-circle me-2"></i> ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        `;
+        
+        container.appendChild(toast);
+        
+        // Initialiser et afficher le toast
+        const bsToast = new bootstrap.Toast(toast, {
+            autohide: true,
+            delay: 3000
+        });
+        bsToast.show();
+        
+        // Supprimer le toast après qu'il soit caché
+        toast.addEventListener('hidden.bs.toast', () => {
+            toast.remove();
+        });
+    }
+    
+    /**
      * Sauvegarde les modifications de la dépense
      */
     saveExpense() {
@@ -147,6 +203,9 @@ class ExpenseEditor {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                // Afficher un message de confirmation
+                this.showToast('Modifications enregistrées avec succès', 'success');
+                
                 // Fermer le modal
                 const bsModal = bootstrap.Modal.getInstance(this.modal);
                 if (bsModal) bsModal.hide();
@@ -154,17 +213,21 @@ class ExpenseEditor {
                 // Exécuter le callback après sauvegarde
                 if (typeof this.config.afterSaveCallback === 'function') {
                     this.config.afterSaveCallback(data);
+                } else if (typeof window.submitFiltersAjax === 'function') {
+                    // Fallback sur la fonction globale si disponible
+                    window.submitFiltersAjax();
+                } else if (typeof window.refreshExpenses === 'function') {
+                    // Autre fallback possible
+                    window.refreshExpenses();
                 }
-                
-                // Afficher un message de succès
-                alert('Modifications enregistrées avec succès.');
             } else {
-                alert('Erreur lors de l\'enregistrement: ' + (data.error || 'Erreur inconnue'));
+                // Afficher un message d'erreur
+                this.showToast('Erreur: ' + (data.error || 'Erreur inconnue'), 'danger');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Erreur de communication avec le serveur.');
+            this.showToast('Erreur de communication avec le serveur', 'danger');
         })
         .finally(() => {
             // Réactiver le bouton
@@ -193,7 +256,12 @@ class ExpenseEditor {
                 'X-Requested-With': 'XMLHttpRequest'
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erreur HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 // Réinitialiser les sélecteurs Select2 s'ils existent
@@ -211,12 +279,12 @@ class ExpenseEditor {
                 const bsModal = new bootstrap.Modal(this.modal);
                 bsModal.show();
             } else {
-                alert('Erreur lors du chargement des données: ' + (data.error || 'Erreur inconnue'));
+                this.showToast('Erreur lors du chargement des données: ' + (data.error || 'Erreur inconnue'), 'danger');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Erreur de communication avec le serveur.');
+            this.showToast(`Erreur: ${error.message || 'Problème de communication avec le serveur'}`, 'danger');
         });
     }
     
