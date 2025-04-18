@@ -1,40 +1,55 @@
 /* app/static/css/common/table_sorter.css */
 
-/* Styles pour les tableaux triables */
+/* Styles simplifiés pour les tableaux triables */
 th.sortable {
     cursor: pointer;
     position: relative;
+    padding-right: 25px !important; /* Espace pour l'icône */
+    user-select: none; /* Empêche la sélection du texte */
 }
 
-/* Sort icons */
+/* Conteneur d'icône de tri */
 .sort-icon {
-    display: inline-block;
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
     width: 12px;
     height: 12px;
-    margin-left: 5px;
-    position: relative;
+    display: inline-block;
 }
 
+/* Styles des icônes de tri */
 .sort-icon.asc::after {
     content: '▲';
     font-size: 0.7em;
     position: absolute;
-    top: -8px;
+    color: #0d6efd; /* Bleu Bootstrap */
 }
 
 .sort-icon.desc::after {
     content: '▼';
     font-size: 0.7em;
     position: absolute;
-    top: -8px;
+    color: #0d6efd; /* Bleu Bootstrap */
 }
 
-/* Remove hover transformation */
-.card {
-    transition: box-shadow 0.3s ease;
+/* Style de hover pour les en-têtes triables */
+th.sortable:hover {
+    background-color: rgba(0, 0, 0, 0.05);
 }
 
-.card:hover {
-    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+/* Empêcher les transformations non désirées */
+.table th, .table td {
+    transition: none;
+    box-shadow: none;
     transform: none !important;
+}
+
+/* Supprimer les animations sur les cellules */
+.table th.sortable:active,
+.table th.sortable:focus {
+    transform: none !important;
+    outline: none;
+    box-shadow: none;
 }

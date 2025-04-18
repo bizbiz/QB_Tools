@@ -1,5 +1,4 @@
 # app/routes/tricount/expense_routes.py
-# app/routes/tricount/expense_routes.py
 from flask import render_template, jsonify, request
 from app.routes.tricount import tricount_bp
 from app.extensions import db

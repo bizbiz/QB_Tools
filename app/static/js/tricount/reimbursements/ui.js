@@ -63,62 +63,21 @@ export function updateTableContent(expenses) {
     
     // Créer les lignes pour chaque dépense
     expenses.forEach(expense => {
-        const row = document.createElement('tr');
-        row.dataset.expenseId = expense.id;
-        
-        // Ajouter des classes pour le style selon le statut
-        if (expense.is_declared) row.classList.add('expense-declared');
-        if (expense.is_reimbursed) row.classList.add('expense-reimbursed');
-        
-        // Classe pour les dépenses non remboursables
-        // Vérifier si la dépense a explicitement la propriété is_reimbursable à false
-        // ou si le flag associé est de type non remboursable
+        // Déterminer si la dépense est non remboursable
         const isNotReimbursable = expense.is_reimbursable === false;
-        if (isNotReimbursable) {
-            row.classList.add('expense-not-reimbursable');
-        }
         
-        // Afficher le montant en rouge pour les dépenses (débit)
-        const amountClass = expense.is_debit ? 'text-danger' : 'text-success';
-        const amountPrefix = expense.is_debit ? '' : '+';
-        
-        // Générer le HTML pour les switches de statut
-        // Désactiver uniquement si la dépense est explicitement marquée comme non remboursable
-        let declaredSwitchHTML = `
-            <div class="form-check form-switch">
-                <input class="form-check-input status-switch declared-switch" 
-                       type="checkbox" 
-                       data-expense-id="${expense.id}" 
-                       data-status="declared" 
-                       ${expense.is_declared ? 'checked' : ''}
-                       ${isNotReimbursable ? 'disabled' : ''}>
-                <label class="form-check-label">Déclarée</label>
-                ${isNotReimbursable ? 
-                  `<i class="fas fa-info-circle text-muted ms-1" 
-                      data-bs-toggle="tooltip" 
-                      title="Cette dépense n'est pas remboursable">
-                   </i>` : ''}
-            </div>
-        `;
-        
-        let reimbursedSwitchHTML = `
-            <div class="form-check form-switch">
-                <input class="form-check-input status-switch reimbursed-switch" 
-                       type="checkbox" 
-                       data-expense-id="${expense.id}" 
-                       data-status="reimbursed" 
-                       ${expense.is_reimbursed ? 'checked' : ''}
-                       ${isNotReimbursable ? 'disabled' : ''}>
-                <label class="form-check-label">Remboursée</label>
-                ${isNotReimbursable ? 
-                  `<i class="fas fa-info-circle text-muted ms-1" 
-                      data-bs-toggle="tooltip" 
-                      title="Cette dépense n'est pas remboursable">
-                   </i>` : ''}
-            </div>
-        `;
+        // Préparer les classes de la ligne
+        const rowClasses = [];
+        if (expense.is_declared) rowClasses.push('expense-declared');
+        if (expense.is_reimbursed) rowClasses.push('expense-reimbursed');
+        if (isNotReimbursable) rowClasses.push('expense-not-reimbursable');
         
         // Construire HTML de la ligne avec des attributs de tri explicites
+        const row = document.createElement('tr');
+        row.dataset.expenseId = expense.id;
+        row.className = rowClasses.join(' ');
+        
+        // Contenu HTML de la ligne
         row.innerHTML = `
             <td>
                 <div class="form-check">
@@ -126,22 +85,50 @@ export function updateTableContent(expenses) {
                            ${isNotReimbursable ? 'disabled' : ''}>
                 </div>
             </td>
-            <td data-sort-value="${expense.date_sort || expense.date}">${expense.date}</td>
+            <td data-sort-value="${expense.date.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3$2$1')}">
+                ${expense.date}
+            </td>
             <td class="description-cell" data-sort-value="${expense.merchant.toLowerCase()}">
                 <div class="fw-bold">${expense.merchant}</div>
                 <div class="small text-muted">${expense.description || ''}</div>
             </td>
-            <td class="${amountClass}" data-sort-value="${parseFloat(expense.amount).toFixed(2)}">
-                ${amountPrefix}${expense.amount.toFixed(2)} €
+            <td class="text-danger" data-sort-value="${parseFloat(expense.amount).toFixed(2)}">
+                ${parseFloat(expense.amount).toFixed(2)} €
             </td>
-            <td data-sort-value="${expense.flag ? expense.flag.name.toLowerCase() : 'zzzz'}">
+            <td data-sort-value="${expense.flag ? expense.flag.name.toLowerCase() : 'zzz'}">
                 ${expense.flag_html || '<span class="badge bg-secondary">Non défini</span>'}
             </td>
             <td data-sort-value="${expense.is_declared ? '1' : '0'}">
-                ${declaredSwitchHTML}
+                <div class="form-check form-switch">
+                    <input class="form-check-input status-switch declared-switch" 
+                           type="checkbox" 
+                           data-expense-id="${expense.id}" 
+                           data-status="declared" 
+                           ${expense.is_declared ? 'checked' : ''}
+                           ${isNotReimbursable ? 'disabled' : ''}>
+                    <label class="form-check-label">Déclarée</label>
+                    ${isNotReimbursable ? 
+                      `<i class="fas fa-info-circle text-muted ms-1" 
+                          data-bs-toggle="tooltip" 
+                          title="Cette dépense n'est pas remboursable">
+                       </i>` : ''}
+                </div>
             </td>
             <td data-sort-value="${expense.is_reimbursed ? '1' : '0'}">
-                ${reimbursedSwitchHTML}
+                <div class="form-check form-switch">
+                    <input class="form-check-input status-switch reimbursed-switch" 
+                           type="checkbox" 
+                           data-expense-id="${expense.id}" 
+                           data-status="reimbursed" 
+                           ${expense.is_reimbursed ? 'checked' : ''}
+                           ${isNotReimbursable ? 'disabled' : ''}>
+                    <label class="form-check-label">Remboursée</label>
+                    ${isNotReimbursable ? 
+                      `<i class="fas fa-info-circle text-muted ms-1" 
+                          data-bs-toggle="tooltip" 
+                          title="Cette dépense n'est pas remboursable">
+                       </i>` : ''}
+                </div>
             </td>
             <td class="text-center">
                 <button type="button" class="btn btn-sm btn-outline-primary edit-expense-btn" 
@@ -166,14 +153,9 @@ export function updateTableContent(expenses) {
     initTooltips();
     initExpenseManagement();
     
-    // Réinitialiser le tri des tableaux
-    if (window.TableSorter) {
-        window.TableSorter.init();
-    }
-    
-    // Utiliser aussi le nouveau TableManager si disponible
-    if (window.TableManager) {
-        window.TableManager.init('#expenses-table');
+    // Réinitialiser le tri des tableaux (simplifier pour éviter les problèmes)
+    if (window.TableSorter && typeof window.TableSorter.init === 'function') {
+        setTimeout(() => window.TableSorter.init(), 0);
     }
 }
 
