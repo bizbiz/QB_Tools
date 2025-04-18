@@ -27,7 +27,7 @@
             {{ display_expense_description(expense, show_original=false, max_length=70) }}
         </div>
     </td>
-    <td data-sort-value="{{ expense.amount }}">
+    <td data-sort-value="{{ -expense.amount if expense.is_debit else expense.amount }}">
         {% if expense.is_debit %}-{% endif %}{{ "%.2f"|format(expense.amount) }} €
     </td>
     <td>

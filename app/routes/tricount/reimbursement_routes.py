@@ -109,11 +109,11 @@ def build_reimbursement_query(
             else:
                 query = query.order_by(Expense.date.desc())
         elif sort_by == 'amount':
-            # Tri par montant
+            # Tri par montant signé
             if order == 'asc':
-                query = query.order_by(Expense.amount.asc())
+                query = query.order_by(Expense.signed_amount.asc())
             else:
-                query = query.order_by(Expense.amount.desc())
+                query = query.order_by(Expense.signed_amount.desc())
         elif sort_by in ('merchant', 'description'):
             # Tri par nom de marchand
             from sqlalchemy import func
