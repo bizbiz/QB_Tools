@@ -1,0 +1,42 @@
+# app/services.qbsum - Services métier
+
+Ce dossier contient les services métier de l'application, organisés par fonctionnalité.
+
+## Structure du dossier
+- **__init__.py**: Point d'entrée pour les services (fichier vide)
+- **html_extractor.py**: Extraction de données HTML générique
+- **planning_parser.py**: Analyse et stockage des plannings
+
+## Sous-dossiers
+- **teamplanning/**: Services d'extraction de données de Netplanning (voir `teamplanning.qbsum`)
+- **tricount/**: Services de gestion des dépenses et import bancaire (voir `tricount.qbsum`)
+
+## Services principaux
+
+### NetplanningExtractor (html_extractor.py)
+- **Description**: Classe utilitaire pour extraire des informations du HTML de Netplanning
+- **Méthodes principales**:
+  - `extract_planning_events(html_content, limit_to_first_user=True, extract_first_line_only=True)`: 
+    - **Paramètres**:
+      - `html_content` (str): Contenu HTML brut
+      - `limit_to_first_user` (bool): Si True, extrait seulement pour le premier utilisateur
+      - `extract_first_line_only` (bool): Si True, extrait seulement les événements du matin
+    - **Retourne**: dict avec utilisateurs, événements et métadonnées
+  - `extract_users(html_content)`: Extrait les noms des utilisateurs
+    - **Retourne**: Liste triée des noms d'utilisateurs
+  - `extract_planning_dates(html_content)`: Extrait les dates du planning
+    - **Retourne**: dict avec mois, année, jours et vérification de cohérence
+- **Particularités**: Code ancien maintenu pour compatibilité mais remplacé par le module teamplanning
+
+### PlanningParser (planning_parser.py)
+- **Description**: Service pour analyser et stocker les plannings dans la base de données
+- **Classes**: 
+  - `PlanningParser`: Analyse et gestion des plannings
+- **Modèles utilisés**: `RawPlanning`, `ParsedPlanning`, `PlanningEntry`
+- **Méthodes principales**:
+  - `compute_content_hash(content)`: Calcule un hash SHA256 du contenu HTML
+  - `save_raw_content(content)`: Sauvegarde le contenu brut s'il n'existe pas déjà
+    - Retourne: (raw_planning, is_new)
+  - `parse_planning(raw_planning_id)`: Analyse le contenu brut pour extraire les données
+    - Crée des entrées dans les tables ParsedPlanning et PlanningEntry
+- **Fonctionnalités**: Persistance des données brutes et analysées, extraction des événements et dates

@@ -1,0 +1,92 @@
+# app/services/teamplanning.qbsum - Services d'extraction Netplanning
+
+Module spécialisé pour l'extraction et le traitement des données des plannings d'équipe Netplanning.
+
+## Fichiers dans ce dossier
+
+### __init__.py
+- **Description**: Façade unifiée pour toutes les fonctionnalités d'extraction Netplanning
+- **Classe principale**: `NetplanningExtractor` - Délègue aux classes spécialisées
+- **Méthodes exposées**:
+  - `extract_metadata(html_content)`: Extrait les métadonnées du planning
+    - **Retourne**: dict avec `users` (liste de noms), `dates` (infos de dates) et `success` (bool)
+  - `extract_specific_days(html_content, days_to_extract=None, user_index=0)`: Extrait des jours spécifiques
+    - `days_to_extract`: Liste des jours à extraire (None = tous)
+    - `user_index`: Indice de l'utilisateur à extraire (0 = premier)
+  - `extract_users(html_content)`: Liste des noms d'utilisateurs trouvés
+  - `extract_planning_dates(html_content)`: Informations sur les dates (mois, année, jours)
+  - `extract_planning_events(html_content, limit_to_first_user=True, extract_first_line_only=True)`: 
+    - `limit_to_first_user`: Si True, extrait seulement pour le premier utilisateur
+    - `extract_first_line_only`: Si True, extrait seulement les événements du matin
+  - `debug_day(html_content, day_to_debug, user_index=0)`: Analyse détaillée d'un jour spécifique
+  - `debug_cell(cell, day_index=None)`: Analyse détaillée d'une cellule HTML
+
+### extractor_base.py
+- **Description**: Classe de base et utilitaires communs pour l'extraction
+- **Classe**: `ExtractorBase` - Fonctions utilitaires partagées
+- **Méthodes**: 
+  - `create_soup()`: Crée un objet BeautifulSoup
+  - `find_table_and_sections()`: Trouve le tableau principal et ses sections
+- **Dépendances**: BeautifulSoup
+
+### user_extractor.py
+- **Description**: Extraction des utilisateurs du planning
+- **Classe**: `UserExtractor` (hérite de `ExtractorBase`)
+- **Méthodes principales**:
+  - `extract_users(html_content)`: Extrait les noms des utilisateurs
+    - **Paramètre**: `html_content` (str) - Contenu HTML brut
+    - **Retourne**: Liste triée des noms d'utilisateurs
+  - `_extract_user_name(user_td)`: Extrait le nom d'utilisateur d'une cellule
+    - **Paramètre**: `user_td` (Tag) - Balise td contenant le nom
+    - **Retourne**: Nom complet de l'utilisateur (str)
+- **Particularités**: 
+  - Gère plusieurs formats de HTML pour l'extraction des noms
+  - Logique de priorité avec 3 méthodes différentes d'extraction
+  - Capable de séparer nom/prénom selon différentes structures HTML
+
+### date_extractor.py
+- **Description**: Extraction des informations de date du planning
+- **Classe**: `DateExtractor` (hérite de `ExtractorBase`)
+- **Méthodes principales**:
+  - `extract_planning_dates(html_content)`: Extrait les dates du planning
+    - **Paramètre**: `html_content` (str) - Contenu HTML brut
+    - **Retourne**: dict avec:
+      - `month`: Nom du mois en français
+      - `year`: Année
+      - `days`: Liste des numéros de jours
+      - `weekdays`: Liste des jours de la semaine avec leurs numéros
+      - `verification`: Résultat de la vérification de cohérence
+  - `_verify_date_consistency(year, month, weekdays)`: Vérifie cohérence des dates
+    - **Paramètres**:
+      - `year`: Année extraite
+      - `month`: Mois extrait
+      - `weekdays`: Liste des jours de la semaine extraits
+    - **Retourne**: dict avec `is_consistent` (bool) et `message` (str)
+- **Dépendances**: datetime, re
+
+### event_extractor.py
+- **Description**: Extraction des événements du planning
+- **Classe**: `EventExtractor` (hérite de `ExtractorBase`)
+- **Méthodes principales**:
+  - `extract_specific_days(html_content, days_to_extract=None, user_index=0)`: 
+    - **Paramètres**:
+      - `html_content` (str): Contenu HTML brut
+      - `days_to_extract` (list): Liste des jours à extraire, None = tous
+      - `user_index` (int): Indice de l'utilisateur à extraire
+    - **Retourne**: dict avec événements par jour/créneau et statistiques
+  - `extract_planning_events(html_content, limit_to_first_user=True, extract_first_line_only=True)`:
+    - **Paramètres**: Identiques à la méthode de la façade (voir __init__.py)
+    - **Retourne**: dict complet avec tous les événements et métadonnées
+  - `debug_day(html_content, day_to_debug, user_index=0)`: Débogage avancé d'un jour
+    - **Retourne**: Analyse détaillée des cellules pour ce jour
+  - `debug_cell(cell, day_index=None)`: Analyse une cellule HTML en détail
+    - **Retourne**: Information complète sur la cellule (classes, contenus, événements)
+  - `_extract_event_info(cell)`: Analyse une cellule d'événement
+    - **Retourne**: dict avec type, contenu, couleur, commentaire, etc.
+  - `_calculate_events_summary(users_data)`: Calcule statistiques
+    - **Retourne**: dict avec compteurs par type d'événement et utilisateur
+- **Particularités**: 
+  - Détection avancée des types d'événements (congés, télétravail, etc.)
+  - Extraction des commentaires et informations de modification
+  - Gestion des week-ends et jours fériés
+  - Mapping complet des codes couleurs vers les types d'événements

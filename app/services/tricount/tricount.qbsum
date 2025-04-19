@@ -1,0 +1,59 @@
+# app/services/tricount.qbsum - Services de gestion des dépenses
+
+Module de services pour l'importation, la catégorisation et la gestion des dépenses Tricount.
+
+## Fichiers dans ce dossier
+
+### __init__.py
+- **Description**: Point d'entrée pour les services Tricount
+- **Imports**: `SocieteGeneraleParser`, `N26Parser`, `AutoCategorizationService`
+- **Fonction**: Expose les classes principales pour l'importation et la catégorisation
+
+### bank_statement_parser.py
+- **Description**: Parsers pour les relevés bancaires
+- **Classes**:
+  - `SocieteGeneraleParser`: Extraction des transactions depuis relevés Société Générale
+    - `parse_statement(text)`: Parse le texte brut du relevé Société Générale
+      - **Paramètre**: `text` (str) - Texte copié-collé depuis le relevé bancaire
+      - **Retourne**: Liste de transactions (dicts avec date, description, montant, etc.)
+  - `N26Parser`: Extraction des transactions depuis CSV N26
+    - `parse_csv(csv_content)`: Parse le contenu CSV de N26
+      - **Paramètre**: `csv_content` (str) - Contenu du fichier CSV
+      - **Retourne**: Liste de transactions au même format que SocieteGeneraleParser
+- **Particularités**: 
+  - Identification des types de transactions (carte, virement, prélèvement)
+  - Extraction intelligente des noms de commerçants
+  - Gestion des devises et formats de date différents
+- **Dépendances**: re, datetime, utils.money_helpers
+
+### auto_categorization.py
+- **Description**: Service pour la catégorisation automatique des dépenses
+- **Classe**: `AutoCategorizationService`
+- **Méthodes principales**:
+  - `find_similar_expenses(expense, filters=None)`: Trouve des dépenses similaires
+    - **Paramètres**: 
+      - `expense` (Expense): Dépense de référence
+      - `filters` (dict): Filtres optionnels avec clés possibles:
+        - `merchant_contains`: Texte à rechercher dans le nom du marchand
+        - `description_contains`: Texte à rechercher dans la description
+        - `min_amount`/`max_amount`: Limites de montant
+    - **Retourne**: Liste d'objets Expense similaires
+  - `apply_rules_to_expense(expense, respect_manual=True)`: Applique règles d'auto-catégorisation
+    - **Paramètres**:
+      - `expense` (Expense): Dépense à catégoriser
+      - `respect_manual` (bool): Si True, ne modifie pas les champs modifiés manuellement
+    - **Retourne**: dict `{'applied': bool, 'pending': bool}`
+  - `find_expense_conflicts(expense_id, rule_filters)`: Trouve conflits potentiels
+    - **Paramètres**:
+      - `expense_id`: ID de la dépense de référence
+      - `rule_filters`: Filtres de règle (merchant_contains, etc.)
+    - **Retourne**: Liste de conflits par règle existante
+  - `process_new_expenses()`: Traite les dépenses non catégorisées
+    - **Retourne**: Nombre de dépenses catégorisées
+  - `find_conflicting_rules(rule_data, expense_id=None)`: Trouve règles en conflit
+    - **Paramètres**:
+      - `rule_data` (dict): Données de la nouvelle règle
+      - `expense_id` (int, optional): ID de la dépense de référence
+    - **Retourne**: Liste des règles en conflit
+- **Modèles utilisés**: `Expense`, `AutoCategorizationRule`, `PendingRuleApplication`
+- **Dépendances**: app.models.tricount, app.utils.rename_helpers
