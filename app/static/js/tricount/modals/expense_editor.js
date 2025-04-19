@@ -1,5 +1,4 @@
-// app/static/js/tricount/expense_editor.js
-
+// app/static/js/tricount/modals/expense_editor.js
 /**
  * Module pour l'édition des dépenses via un modal
  * Fournit les fonctionnalités nécessaires pour charger, éditer et sauvegarder des dépenses
@@ -162,14 +161,6 @@ class ExpenseEditor {
                     window.location.href = url;
                 }
             });
-        }
-        
-        // Imprimer les URLs pour débogage
-        if (createRuleBtn) {
-            console.log('URL de création de règle:', createRuleBtn.getAttribute('href'));
-        }
-        if (editRuleBtn) {
-            console.log('URL d\'édition de règle:', editRuleBtn.getAttribute('href'));
         }
     }
     
@@ -620,6 +611,9 @@ class ExpenseEditor {
     }
 }
 
+// Export par défaut pour les imports ES modules
+export default ExpenseEditor;
+
 // Création d'une instance globale pour permettre son utilisation
 document.addEventListener('DOMContentLoaded', function() {
     // Initialiser l'éditeur s'il y a un modal d'édition de dépense
@@ -659,13 +653,5 @@ function initEditButtons() {
     });
 }
 
-// Fonction d'initialisation explicite qui peut être appelée
-// pour créer une instance avec des options personnalisées
-function initExpenseEditor(options = {}) {
-    return new ExpenseEditor(options);
-}
-
-// Exposer la classe et la fonction d'initialisation
-window.ExpenseEditor = ExpenseEditor;
-window.initExpenseEditor = initExpenseEditor;
+// Exposer la fonction d'initialisation explicite
 window.initEditButtons = initEditButtons;

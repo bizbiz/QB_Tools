@@ -230,9 +230,6 @@ def apply_sort_to_query(query, sort_by='date', order='desc'):
         from sqlalchemy import func, case
         from sqlalchemy.orm import aliased
         
-        # IMPORTANT: Gestion des jointures selon le mode de tri
-        # (les jointures sont maintenant gérées dans build_reimbursement_query)
-        
         # Déterminer la colonne à utiliser pour le tri
         if sort_by == 'date':
             column = Expense.date
@@ -243,6 +240,7 @@ def apply_sort_to_query(query, sort_by='date', order='desc'):
                 column = Expense.signed_amount
             else:
                 # Créer manuellement l'expression de montant signé
+                # Utilisation correcte de case selon la syntaxe SQLAlchemy
                 column = case(
                     (Expense.is_debit == True, -Expense.amount),
                     else_=Expense.amount
@@ -257,7 +255,7 @@ def apply_sort_to_query(query, sort_by='date', order='desc'):
         
         elif sort_by == 'status':
             # Créer une expression numérique pour ordonner par importance des statuts
-            # not_declared = 1, declared = 2, reimbursed = 3
+            # Utilisation correcte de case selon la syntaxe SQLAlchemy
             column = case(
                 (Expense.declaration_status == DeclarationStatus.NOT_DECLARED.value, 1),
                 (Expense.declaration_status == DeclarationStatus.DECLARED.value, 2),
@@ -267,7 +265,7 @@ def apply_sort_to_query(query, sort_by='date', order='desc'):
         
         elif sort_by == 'declared':
             # Tri spécifique pour la colonne "Déclarée"
-            # not_declared = 0, declared/reimbursed = 1
+            # Utilisation correcte de case selon la syntaxe SQLAlchemy
             column = case(
                 (Expense.declaration_status == DeclarationStatus.NOT_DECLARED.value, 0),
                 else_=1
@@ -275,7 +273,7 @@ def apply_sort_to_query(query, sort_by='date', order='desc'):
         
         elif sort_by == 'reimbursed':
             # Tri spécifique pour la colonne "Remboursée"
-            # not_reimbursed = 0, reimbursed = 1
+            # Utilisation correcte de case selon la syntaxe SQLAlchemy
             column = case(
                 (Expense.declaration_status == DeclarationStatus.REIMBURSED.value, 1),
                 else_=0
@@ -286,6 +284,7 @@ def apply_sort_to_query(query, sort_by='date', order='desc'):
             query = query.outerjoin(Flag_alias, Expense.flag_id == Flag_alias.id)
             
             # Tri par flag avec NULL à la fin ou au début selon l'ordre
+            # Utilisation correcte de case selon la syntaxe SQLAlchemy
             if order == 'asc':
                 column = case(
                     (Flag_alias.name == None, 'zzzzz'),
@@ -302,6 +301,7 @@ def apply_sort_to_query(query, sort_by='date', order='desc'):
             query = query.outerjoin(Category_alias, Expense.category_id == Category_alias.id)
             
             # Tri par catégorie avec NULL à la fin ou au début selon l'ordre
+            # Utilisation correcte de case selon la syntaxe SQLAlchemy
             if order == 'asc':
                 column = case(
                     (Category_alias.name == None, 'zzzzz'),
@@ -326,6 +326,7 @@ def apply_sort_to_query(query, sort_by='date', order='desc'):
         
     except Exception as e:
         # En cas d'erreur, revenir au tri par défaut
+        print(f"Erreur lors du tri: {str(e)}")
         return query.order_by(Expense.date.desc())
 
 # ===== Utilitaires pour les données =====

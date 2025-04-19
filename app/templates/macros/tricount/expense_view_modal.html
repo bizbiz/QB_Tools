@@ -1,0 +1,148 @@
+{# app/templates/macros/tricount/expense_view_modal.html #}
+
+{% macro expense_view_modal(
+    modal_id='viewExpenseModal',
+    edit_button=true,
+    edit_callback='openExpenseEditorFromView'
+) %}
+<div class="modal fade" id="{{ modal_id }}" tabindex="-1" aria-labelledby="{{ modal_id }}Label" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="{{ modal_id }}Label">Détails de la dépense</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h4 id="view-merchant" class="mb-3"></h4>
+                        <p id="view-description" class="text-muted"></p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <h3 id="view-amount" class="text-danger mb-0"></h3>
+                        <p id="view-date" class="text-muted"></p>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Catégorie</label>
+                            <div id="view-category"></div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Type de dépense</label>
+                            <div id="view-flag"></div>
+                            <div id="view-reimbursable-status" class="mt-2"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Statut de remboursement</label>
+                            <div id="view-status"></div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Référence de déclaration</label>
+                            <p id="view-reference" class="mb-0"></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <label class="form-label fw-bold">Notes personnelles</label>
+                        <p id="view-notes" class="mb-3"></p>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-2">
+                            <label class="form-label fw-bold">Date de déclaration</label>
+                            <p id="view-declaration-date" class="mb-0"></p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-2">
+                            <label class="form-label fw-bold">Date de remboursement</label>
+                            <p id="view-reimbursement-date" class="mb-0"></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="original-text-container" class="mt-3">
+                    <label class="form-label fw-bold">Texte original</label>
+                    <pre id="view-original-text" class="p-3 bg-light rounded border"></pre>
+                </div>
+                
+                <!-- Hidden input to store expense ID -->
+                <input type="hidden" id="view-expense-id" value="">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                {% if edit_button %}
+                <button type="button" class="btn btn-primary edit-from-view-btn" onclick="{{ edit_callback }}()">Modifier</button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
+{% macro expense_view_scripts(modal_id='viewExpenseModal', endpoint='/tricount/reimbursements/expense') %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize the expense viewer if not already done
+    if (window.ExpenseViewer === undefined) {
+        window.ExpenseViewer = new ExpenseViewerClass('{{ modal_id }}', '{{ endpoint }}');
+    }
+    
+    // Initialize view buttons if not using the main module
+    initViewButtons();
+});
+
+function initViewButtons() {
+    const viewButtons = document.querySelectorAll('.view-expense-btn');
+    
+    viewButtons.forEach(button => {
+        // Remove existing handlers
+        const newButton = button.cloneNode(true);
+        
+        // Add click handler that uses ExpenseViewer
+        newButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            const expenseId = this.dataset.expenseId;
+            
+            if (window.ExpenseViewer) {
+                window.ExpenseViewer.showExpense(expenseId);
+            }
+        });
+        
+        // Replace the button
+        if (button.parentNode) {
+            button.parentNode.replaceChild(newButton, button);
+        }
+    });
+}
+
+// Function to open the editor from view modal
+function openExpenseEditorFromView() {
+    // Close the view modal
+    const viewModal = document.getElementById('{{ modal_id }}');
+    const bsModal = bootstrap.Modal.getInstance(viewModal);
+    if (bsModal) bsModal.hide();
+    
+    // Get the expense ID
+    const expenseId = document.getElementById('view-expense-id').value;
+    
+    // Open the editor if available
+    if (window.expenseEditor && typeof window.expenseEditor.loadExpense === 'function') {
+        window.expenseEditor.loadExpense(expenseId);
+    }
+}
+</script>
+{% endmacro %}
