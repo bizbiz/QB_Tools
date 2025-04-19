@@ -180,7 +180,7 @@ export function submitFiltersAjax() {
         return;
     }
     
-    console.log('Starting AJAX request for table data...');
+    console.log('🔍 Starting AJAX request for table data...');
     isRequestPending = true;
     
     const filterForm = document.getElementById('filter-form');
@@ -192,6 +192,15 @@ export function submitFiltersAjax() {
         return;
     }
     
+    // LOGS DE DÉBOGAGE: Inspecter les paramètres de tri
+    const sortInput = filterForm.querySelector('input[name="sort"]');
+    const orderInput = filterForm.querySelector('input[name="order"]');
+    
+    console.log('🔍 Paramètres de tri envoyés:', {
+        'sort': sortInput ? sortInput.value : 'non défini',
+        'order': orderInput ? orderInput.value : 'non défini'
+    });
+    
     // Afficher l'indicateur de chargement
     if (loadingSpinner) {
         loadingSpinner.style.display = 'block';
@@ -202,6 +211,12 @@ export function submitFiltersAjax() {
     try {
         formData = new FormData(filterForm);
         formData.append('ajax', 'true');
+        
+        // LOGS DE DÉBOGAGE: Vérifier tous les champs du formulaire
+        console.log('🔍 Contenu du formulaire:');
+        for (let pair of formData.entries()) {
+            console.log(pair[0] + ': ' + pair[1]);
+        }
     } catch (error) {
         console.error('Error creating FormData:', error);
         isRequestPending = false;
@@ -222,7 +237,13 @@ export function submitFiltersAjax() {
         return response.json();
     })
     .then(data => {
-        console.log('Data processed successfully');
+        console.log('🔍 Data received:', {
+            success: data.success,
+            has_html: !!data.html,
+            summary: !!data.summary,
+            pagination: !!data.pagination
+        });
+        
         if (data && data.success) {
             // Mettre à jour le tableau avec le HTML généré côté serveur
             if (data.html) {

@@ -90,19 +90,24 @@ function initAjaxSortHeaders(table) {
     });
 }
 
-/**
- * Gère le clic sur un en-tête pour le tri AJAX
- * @param {Event} e - Événement de clic
- * @param {HTMLElement} table - Tableau parent
- */
+// Modifier la fonction handleAjaxSortClick dans app/static/js/common/table/ajax.js
+
 function handleAjaxSortClick(e, table) {
     e.preventDefault();
     
     const th = this;
     
+    // LOGS DE DÉBOGAGE: Vérifier si le clic est bien détecté
+    console.log('🔍 Clic détecté sur en-tête:', th.textContent.trim());
+    console.log('🔍 Attributs:', {
+        'data-sort-column': th.dataset.sortColumn,
+        'data-sort-dir': th.dataset.sortDir,
+        'class': th.className
+    });
+    
     // Vérifier que nous avons une colonne spécifiée
     if (!th.dataset.sortColumn) {
-        console.error('Aucune colonne spécifiée dans data-sort-column');
+        console.error('⚠️ Erreur: Aucune colonne spécifiée dans data-sort-column');
         return;
     }
     
@@ -119,29 +124,33 @@ function handleAjaxSortClick(e, table) {
         direction = 'asc';
     }
     
+    console.log(`🔍 Déclenchement du tri: colonne="${sortColumn}", direction="${direction}"`);
+    
     // Déclencher le tri AJAX
     triggerAjaxSort(table, sortColumn, direction);
 }
 
-/**
- * Déclenche une requête AJAX pour trier le tableau
- * @param {HTMLElement} table - Tableau
- * @param {string} column - Nom de la colonne
- * @param {string} direction - Direction du tri ('asc' ou 'desc')
- */
+// Modifier la fonction triggerAjaxSort dans le même fichier
 function triggerAjaxSort(table, column, direction) {
     const config = table.ajaxConfig;
     
+    // LOGS DE DÉBOGAGE
+    console.log('🔍 triggerAjaxSort appelé avec:', {
+        'column': column,
+        'direction': direction,
+        'table-id': table.id
+    });
+    
     // Vérifier que nous avons une configuration valide
     if (!config) {
-        console.error('Configuration AJAX manquante');
+        console.error('⚠️ Configuration AJAX manquante');
         return;
     }
     
     // Récupérer le formulaire
     const form = document.querySelector(config.formSelector);
     if (!form) {
-        console.error('Formulaire non trouvé:', config.formSelector);
+        console.error('⚠️ Formulaire non trouvé:', config.formSelector);
         return;
     }
     
@@ -166,6 +175,12 @@ function triggerAjaxSort(table, column, direction) {
     sortInput.value = column;
     orderInput.value = direction;
     
+    console.log('🔍 Paramètres de tri mis à jour:', {
+        'sort': sortInput.value,
+        'order': orderInput.value,
+        'form-action': form.action || 'no-action'
+    });
+    
     // Mettre à jour l'état interne
     table.sortState = {
         column,
@@ -178,10 +193,10 @@ function triggerAjaxSort(table, column, direction) {
     // Soumettre le formulaire via la fonction spécifiée
     if (config.submitFunction) {
         if (typeof window[config.submitFunction] === 'function') {
-            console.log(`Soumission AJAX via ${config.submitFunction}()`);
+            console.log(`🔍 Soumission AJAX via ${config.submitFunction}()`);
             window[config.submitFunction]();
         } else {
-            console.error(`Fonction ${config.submitFunction} non trouvée`);
+            console.error(`⚠️ Fonction ${config.submitFunction} non trouvée`);
             form.submit(); // Fallback
         }
     } else {

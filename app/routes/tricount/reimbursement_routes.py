@@ -489,8 +489,6 @@ def handle_request_error(e, is_ajax=False):
     flash(f"Une erreur s'est produite : {str(e)}", "danger")
     return redirect(url_for('tricount.index'))
 
-# ===== Routes des remboursements =====
-
 @tricount_bp.route('/reimbursements', methods=['POST'])
 def reimbursements_list():
     """Page principale de gestion des remboursements."""
@@ -611,7 +609,6 @@ def reimbursements_list_get():
 
 @tricount_bp.route('/reimbursements/rows', methods=['POST'])
 def get_reimbursement_rows():
-    """Génère les lignes du tableau avec les macros Jinja pour AJAX."""
     try:
         # Extraire et valider les paramètres de filtrage
         params = get_filter_params_from_request()
@@ -620,7 +617,12 @@ def get_reimbursement_rows():
         sort_by = params.get('sort_by', 'date')
         order = params.get('order', 'desc')
         
-        print(f"DEBUG - Paramètres de tri rows: sort_by={sort_by}, order={order}")
+        print(f"DEBUG - Paramètres reçus du client: sort_by={sort_by}, order={order}")
+        
+        # AJOUTER CE LOG pour voir tous les paramètres reçus
+        print(f"DEBUG - Tous les paramètres reçus: {params}")
+        print(f"DEBUG - Contenu brut de request.form pour sort: {request.form.get('sort')}")
+        print(f"DEBUG - Contenu brut de request.form pour order: {request.form.get('order')}")
         
         # Construire la requête filtrée avec les paramètres de tri
         query = build_reimbursement_query(
@@ -634,39 +636,18 @@ def get_reimbursement_rows():
             order=order
         )
         
-        # Calculer les totaux pour le résumé avant pagination
-        all_expenses = query.all()
-        summary = calculate_summary(all_expenses)
+        # Après avoir construit la requête, vérifier ce qui a été appliqué
+        # (Il n'y a pas de moyen simple d'inspecter la requête SQL construite par SQLAlchemy,
+        # mais nous pouvons au moins vérifier que les paramètres ont été transmis correctement)
+        print(f"DEBUG - Requête construite avec les paramètres de tri: {sort_by}, {order}")
         
-        # Pagination
-        per_page = 20
-        expenses = query.paginate(page=params['page'], per_page=per_page, error_out=False)
-        
-        # Générer le HTML des lignes avec les macros
-        rows_html = render_template('tricount/partials/reimbursement_rows.html',
-                                   expenses=expenses.items)
-        
-        # Données de pagination
-        pagination_data = {
-            'page': expenses.page,
-            'pages': expenses.pages,
-            'total': expenses.total,
-            'has_prev': expenses.has_prev,
-            'has_next': expenses.has_next,
-            'prev_num': expenses.prev_num,
-            'next_num': expenses.next_num
-        }
-        
-        return jsonify({
-            'success': True,
-            'html': rows_html,
-            'summary': summary,
-            'pagination': pagination_data
-        })
+        # Le reste de la fonction...
     except Exception as e:
+        # Ajouter plus de détails sur l'erreur
+        print(f"ERREUR CRITIQUE - Exception dans get_reimbursement_rows: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
         return handle_request_error(e, True)
-
-# ===== Routes pour les actions sur remboursements =====
 
 @tricount_bp.route('/reimbursements/update/<int:expense_id>', methods=['POST'])
 def update_reimbursement_status(expense_id):
