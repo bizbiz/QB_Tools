@@ -11,16 +11,7 @@ import csv
 from io import StringIO
 
 
-def build_reimbursement_query(
-    flag_id=None, 
-    status_values=None, 
-    start_date=None, 
-    end_date=None, 
-    search_query="", 
-    show_all=False,
-    sort_by='date',  # Ajouter sort_by à la fonction
-    order='desc'     # Ajouter order à la fonction
-    ):
+def build_reimbursement_query(flag_id=None, status_values=None, start_date=None, end_date=None, search_query="", show_all=False,sort_by='date', order='desc'):
     
     """
     Construit une requête pour les dépenses en fonction des critères de filtrage.
@@ -109,11 +100,21 @@ def build_reimbursement_query(
             else:
                 query = query.order_by(Expense.date.desc())
         elif sort_by == 'amount':
-            # Tri par montant signé
-            if order == 'asc':
-                query = query.order_by(Expense.signed_amount.asc())
-            else:
-                query = query.order_by(Expense.signed_amount.desc())
+            try:
+                signed_amount_expr = case(
+                    (Expense.is_debit == True, -Expense.amount),
+                    else_=Expense.amount
+                )
+                
+                if order == 'asc':
+                    query = query.order_by(signed_amount_expr.asc())
+                else:
+                    query = query.order_by(signed_amount_expr.desc())
+            except Exception as e:
+                if order == 'asc':
+                    query = query.order_by(Expense.date.asc())
+                else:
+                    query = query.order_by(Expense.date.desc())
         elif sort_by in ('merchant', 'description'):
             # Tri par nom de marchand
             from sqlalchemy import func
@@ -609,6 +610,7 @@ def reimbursements_list_get():
 
 @tricount_bp.route('/reimbursements/rows', methods=['POST'])
 def get_reimbursement_rows():
+    """Génère les lignes du tableau avec les macros Jinja pour AJAX."""
     try:
         # Extraire et valider les paramètres de filtrage
         params = get_filter_params_from_request()
@@ -617,12 +619,7 @@ def get_reimbursement_rows():
         sort_by = params.get('sort_by', 'date')
         order = params.get('order', 'desc')
         
-        print(f"DEBUG - Paramètres reçus du client: sort_by={sort_by}, order={order}")
-        
-        # AJOUTER CE LOG pour voir tous les paramètres reçus
-        print(f"DEBUG - Tous les paramètres reçus: {params}")
-        print(f"DEBUG - Contenu brut de request.form pour sort: {request.form.get('sort')}")
-        print(f"DEBUG - Contenu brut de request.form pour order: {request.form.get('order')}")
+        print(f"DEBUG - Paramètres de tri dans get_reimbursement_rows: sort_by={sort_by}, order={order}")
         
         # Construire la requête filtrée avec les paramètres de tri
         query = build_reimbursement_query(
@@ -632,19 +629,69 @@ def get_reimbursement_rows():
             end_date=params['end_date'],
             search_query=params['search_query'],
             show_all=params['show_all'],
-            sort_by=sort_by,  # Passer explicitement les paramètres de tri
+            sort_by=sort_by,
             order=order
         )
         
-        # Après avoir construit la requête, vérifier ce qui a été appliqué
-        # (Il n'y a pas de moyen simple d'inspecter la requête SQL construite par SQLAlchemy,
-        # mais nous pouvons au moins vérifier que les paramètres ont été transmis correctement)
-        print(f"DEBUG - Requête construite avec les paramètres de tri: {sort_by}, {order}")
+        # Calculer les totaux pour le résumé avant pagination
+        all_expenses = query.all()
+        summary = calculate_summary(all_expenses)
         
-        # Le reste de la fonction...
+        # Pagination
+        per_page = 20
+        expenses = query.paginate(page=params['page'], per_page=per_page, error_out=False)
+        
+        # Génération du HTML pour la réponse
+        rows_html = render_template('tricount/partials/reimbursement_rows.html',
+                                   expenses=expenses.items)
+        
+        # Données de pagination
+        pagination_data = {
+            'page': expenses.page,
+            'pages': expenses.pages,
+            'total': expenses.total,
+            'has_prev': expenses.has_prev,
+            'has_next': expenses.has_next,
+            'prev_num': expenses.prev_num,
+            'next_num': expenses.next_num
+        }
+        
+        # AJOUT: Inclure les infos de débogage dans la réponse
+        # Créer un exemple d'échantillon de données pour vérifier le tri
+        sample_data = []
+        for idx, expense in enumerate(expenses.items[:5]):  # Limiter à 5 exemples max
+            sample_data.append({
+                'id': expense.id,
+                'date': expense.date.strftime('%Y-%m-%d'),
+                'merchant': expense.merchant,
+                'amount': float(expense.amount),
+                'is_debit': expense.is_debit,
+                'signed_amount': float(-expense.amount if expense.is_debit else expense.amount),  # Montant signé calculé manuellement
+                'display': f"{'-' if expense.is_debit else ''}{expense.amount} €"
+            })
+        
+        # Renvoyer une réponse plus détaillée
+        response_data = {
+            'success': True,
+            'html': rows_html,
+            'summary': summary,
+            'pagination': pagination_data,
+            'debug_info': {
+                'applied_sort': sort_by,
+                'applied_order': order,
+                'sample_data': sample_data,
+                'form_params': {
+                    'sort': request.form.get('sort'),
+                    'order': request.form.get('order')
+                }
+            }
+        }
+        
+        print("Réponse AJAX envoyée avec succès")
+        return jsonify(response_data)
+        
     except Exception as e:
-        # Ajouter plus de détails sur l'erreur
-        print(f"ERREUR CRITIQUE - Exception dans get_reimbursement_rows: {str(e)}")
+        print(f"ERREUR CRITIQUE dans get_reimbursement_rows: {str(e)}")
         import traceback
         print(traceback.format_exc())
         return handle_request_error(e, True)

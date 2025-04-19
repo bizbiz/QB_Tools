@@ -4,6 +4,7 @@
 {% from "macros/tricount/flag_macros.html" import flag_badge %}
 {% from "macros/tricount/category_select.html" import category_badge %}
 {% from "macros/tricount/expense_macros.html" import display_expense_name, display_expense_description %}
+{% from "macros/tricount/money_display.html" import display_amount, display_amount_cell %}
 
 {% for expense in expenses %}
 <tr data-expense-id="{{ expense.id }}" 
@@ -27,9 +28,8 @@
             {{ display_expense_description(expense, show_original=false, max_length=70) }}
         </div>
     </td>
-    <td data-sort-value="{{ (-expense.amount) if expense.is_debit else expense.amount }}">
-        {% if expense.is_debit %}-{% endif %}{{ "%.2f"|format(expense.amount) }} €
-    </td>
+    {# Utiliser la macro pour la cellule du montant #}
+    {{ display_amount_cell(expense.amount, expense.is_debit, sortable=true) }}
     <td>
         {% if expense.category %}
             {{ category_badge(expense.category) }}

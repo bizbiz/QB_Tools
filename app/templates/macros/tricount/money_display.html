@@ -1,0 +1,24 @@
+{# app/templates/tricount/macros/money_display.html #}
+
+{% macro display_amount(amount, is_debit=true, currency='€', extra_classes='', sortable=false) %}
+    {# Si sortable=true, on retourne juste la valeur pour le tri #}
+    {% if sortable %}
+        {{ (-amount) if is_debit else amount }}
+    {% else %}
+        <span class="amount-display {% if is_debit %}text-danger{% else %}text-success{% endif %} {{ extra_classes }}">
+            {% if is_debit %}-{% endif %}{{ "%.2f"|format(amount) }} {{ currency }}
+        </span>
+    {% endif %}
+{% endmacro %}
+
+{% macro display_amount_cell(amount, is_debit=true, currency='€', extra_classes='', sortable=false) %}
+    <td {% if sortable %}data-sort-value="{{ (-amount) if is_debit else amount }}"{% endif %} class="{{ extra_classes }}">
+        <span class="amount-display {% if is_debit %}text-danger{% else %}text-success{% endif %}">
+            {% if is_debit %}-{% endif %}{{ "%.2f"|format(amount) }} {{ currency }}
+        </span>
+    </td>
+{% endmacro %}
+
+{% macro format_amount(amount, is_debit=true, currency='€', with_sign=true) %}
+    {% if with_sign and is_debit %}-{% endif %}{{ "%.2f"|format(amount) }} {{ currency }}
+{% endmacro %}
