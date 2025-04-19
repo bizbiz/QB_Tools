@@ -3,17 +3,17 @@
 - Intégration avec Netplanning
 
 ## Fichiers principaux:
-- __init__.py: Blueprint avec vérification des permissions
-- index_routes.py: Route principale
-- teamplanning.py: Fonctionnalités principales d'extraction
+- **__init__.py**: Blueprint avec vérification des permissions
+- **index_routes.py**: Route principale
+- **teamplanning.py**: Fonctionnalités principales d'extraction
 
 ## Routes principales:
-- /teamplanning/: Dashboard principal
-- /teamplanning/fetch-netplanning: Récupération des données Netplanning
-- /teamplanning/extract-users: Extraction des utilisateurs
-- /teamplanning/extract-dates: Extraction des dates du planning
-- /teamplanning/extract-events: Extraction des événements
-- /teamplanning/monthly-view: Vue mensuelle du planning
+- `/teamplanning/`: Dashboard principal
+- `/teamplanning/fetch-netplanning`: Récupération des données Netplanning
+- `/teamplanning/extract-users`: Extraction des utilisateurs
+- `/teamplanning/extract-dates`: Extraction des dates du planning
+- `/teamplanning/extract-events`: Extraction des événements
+- `/teamplanning/monthly-view`: Vue mensuelle du planning
 
 ## Fonctionnalités:
 - Extraction de données via cookie de session Netplanning

@@ -1,17 +1,30 @@
-# routes.qbsum - Contrôleurs de l'application
-- Routes HTTP organisées en blueprints par module
-- Protection d'accès par authentification et permissions
+# app/routes.qbsum - Contrôleurs de l'application
+- Application Flask multi-modules organisée en blueprints
+- Structure modulaire avec séparation des responsabilités
+- Gestion des permissions et authentification
+
+## Structure principale:
+- **main.py**: Point d'entrée et page d'accueil
+- **errors.py**: Gestionnaires d'erreurs (404, 403, 500)
+- **__init__.py**: Configuration et imports circulaires dans chaque dossier
 
 ## Sous-dossiers:
-- auth/: Authentification et gestion des utilisateurs
-- main.py: Route principale de l'application
-- teamplanning/: Gestion des plannings d'équipe
-- tricount/: Gestion des dépenses et remboursements
-- errors.py: Gestionnaires d'erreurs HTTP
+- **auth/**: Authentification et gestion des utilisateurs/groupes
+- **teamplanning/**: Gestion des plannings d'équipe (Netplanning)
+- **tricount/**: Gestion des dépenses et remboursements
+- **admin/**: Administration système et monitoring des erreurs
 
-## Blueprints:
-- main_bp: Racine (/) - redirection vers login si non authentifié
-- auth_bp: Authentification (/auth)
-- teamplanning_bp: Module teamplanning (/teamplanning)
-- tricount_bp: Module tricount (/tricount)
-- errors_bp: Gestionnaires d'erreurs (404, 403, 500)
+## Blueprints principaux:
+- **main_bp**: Routes principales (/)
+- **auth_bp**: Authentification (/auth)
+- **teamplanning_bp**: Module teamplanning (/teamplanning)
+- **tricount_bp**: Module tricount (/tricount)
+- **admin_bp**: Administration (/admin)
+- **errors_bp**: Gestion des erreurs HTTP
+
+## Caractéristiques communes:
+- Protection des routes par authentification via `@login_required`
+- Vérification des permissions via middleware ou décorateurs
+- Journalisation des erreurs via `ErrorFollowing`
+- Séparation nette entre les modules fonctionnels
+- Réponses en JSON pour les requêtes AJAX

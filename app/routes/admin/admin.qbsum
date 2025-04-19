@@ -1,0 +1,23 @@
+# routes/admin.qbsum - Module administration
+- Gestion des fonctions administratives système
+- Monitoring et résolution des erreurs
+
+## Fichiers principaux:
+- **__init__.py**: Définition du blueprint admin_bp et registration des sous-blueprints
+- **errors_routes.py**: Gestion et visualisation des erreurs système (errors_admin_bp)
+
+## Routes principales:
+- `/admin/errors/`: Liste des erreurs enregistrées avec filtres
+- `/admin/errors/<int:error_id>`: Détails d'une erreur spécifique
+- `/admin/errors/<int:error_id>/resolve`: Marquage d'une erreur comme résolue
+- `/admin/errors/<int:error_id>/delete`: Suppression d'une erreur
+- `/admin/errors/stats`: Statistiques sur les erreurs
+- `/admin/errors/bulk-resolve`: Actions en masse sur plusieurs erreurs
+
+## Fonctionnalités:
+- Visualisation et gestion du suivi des erreurs système
+- Statistiques et analyse des erreurs récurrentes
+- Filtrage des erreurs par type, date et statut
+- Résolution et suivi des problèmes système
+- Actions en masse (résolution, suppression)
+- Protection par authentification admin
