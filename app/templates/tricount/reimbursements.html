@@ -504,6 +504,8 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Inclure l'éditeur de dépenses avant les scripts modules -->
+<script src="{{ url_for('static', filename='js/tricount/expense_editor.js') }}"></script>
 <script src="{{ url_for('static', filename='js/common/table/index.js') }}" type="module"></script>
 <script src="{{ url_for('static', filename='js/tricount/reimbursements/index.js') }}" type="module"></script>
 <script>

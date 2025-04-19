@@ -107,77 +107,71 @@ def expenses_list():
 
 @tricount_bp.route('/update_expense', methods=['POST'])
 def update_expense():
-    """Met à jour une dépense à partir du formulaire d'édition"""
-    expense_id = request.form.get('expense_id', type=int)
-    if not expense_id:
-        return jsonify({'success': False, 'error': 'ID de dépense non fourni'}), 400
-    
-    expense = Expense.query.get_or_404(expense_id)
-    
-    # Récupérer les données du formulaire
-    category_id = request.form.get('category_id')
-    flag_id = request.form.get('flag_id')
-    renamed_merchant = request.form.get('renamed_merchant', '')
-    notes = request.form.get('notes', '')
-    declaration_reference = request.form.get('declaration_reference', '')
-    is_declared = request.form.get('is_declared') == 'true'
-    is_reimbursed = request.form.get('is_reimbursed') == 'true'
-    
-    # Mettre à jour les champs
-    if category_id:
-        expense.category_id = int(category_id)
-        expense.category_modified_by = ModificationSource.MANUAL.value
-    else:
-        expense.category_id = None
-    
-    if flag_id:
-        expense.flag_id = int(flag_id)
-        expense.flag_modified_by = ModificationSource.MANUAL.value
-    
-    # Gérer le renommage du marchand (si fourni)
-    if renamed_merchant and renamed_merchant.strip() != expense.merchant:
-        expense.renamed_merchant = renamed_merchant.strip()
-        expense.merchant_modified_by = ModificationSource.MANUAL.value
-    elif renamed_merchant.strip() == '':
-        # Si le champ est vide, réinitialiser le renommage
-        expense.renamed_merchant = None
-        expense.merchant_modified_by = ModificationSource.MANUAL.value
-    
-    # Gérer les notes sur la description
-    if notes != expense.notes:
-        expense.notes = notes
-        expense.notes_modified_by = ModificationSource.MANUAL.value
-    
-    # Mettre à jour la référence de déclaration
-    expense.declaration_reference = declaration_reference
-    
-    # Déterminer le statut de déclaration
-    if is_reimbursed:
-        status = DeclarationStatus.REIMBURSED.value
-    elif is_declared:
-        status = DeclarationStatus.DECLARED.value
-    else:
-        status = DeclarationStatus.NOT_DECLARED.value
-    
-    # Mettre à jour le statut
-    expense.declaration_status = status
-    
-    # Mettre à jour les dates selon le statut
-    if status == DeclarationStatus.DECLARED.value and not expense.declaration_date:
-        expense.declaration_date = datetime.utcnow()
-    elif status == DeclarationStatus.REIMBURSED.value:
-        if not expense.reimbursement_date:
-            expense.reimbursement_date = datetime.utcnow()
-        # Si la dépense est remboursée, elle est forcément déclarée
-        if not expense.declaration_date:
-            expense.declaration_date = datetime.utcnow()
-    elif status == DeclarationStatus.NOT_DECLARED.value:
-        expense.declaration_date = None
-        expense.reimbursement_date = None
-    
+    """Met à jour les informations d'une dépense"""
     try:
+        expense_id = request.form.get('expense_id')
+        expense = Expense.query.get_or_404(expense_id)
+        
+        # Récupérer les données du formulaire
+        renamed_merchant = request.form.get('renamed_merchant', '')
+        notes = request.form.get('notes', '')
+        category_id = request.form.get('category_id')
+        flag_id = request.form.get('flag_id')
+        is_declared = request.form.get('is_declared') == 'true'
+        is_reimbursed = request.form.get('is_reimbursed') == 'true'
+        declaration_reference = request.form.get('declaration_reference', '')
+        
+        # Mettre à jour uniquement si les valeurs ont changé
+        # Comparaison avec None-safe pour éviter les erreurs
+        current_renamed = expense.renamed_merchant or ''
+        if renamed_merchant != current_renamed:
+            expense.renamed_merchant = renamed_merchant or None
+            expense.merchant_modified_by = ModificationSource.MANUAL.value
+        
+        current_notes = expense.notes or ''
+        if notes != current_notes:
+            expense.notes = notes or None
+            expense.notes_modified_by = ModificationSource.MANUAL.value
+        
+        # Mise à jour de la catégorie si elle a changé
+        if category_id and str(expense.category_id) != str(category_id):
+            expense.category_id = category_id
+            expense.category_modified_by = ModificationSource.MANUAL.value
+        
+        # Mise à jour du flag si il a changé
+        if flag_id and str(expense.flag_id) != str(flag_id):
+            expense.flag_id = flag_id
+            expense.flag_modified_by = ModificationSource.MANUAL.value
+        
+        # Mise à jour du statut de déclaration
+        if is_declared and not expense.is_declared:
+            expense.declaration_status = DeclarationStatus.DECLARED.value
+            if not expense.declaration_date:
+                expense.declaration_date = datetime.utcnow()
+        elif is_reimbursed:
+            expense.declaration_status = DeclarationStatus.REIMBURSED.value
+            if not expense.declaration_date:
+                expense.declaration_date = datetime.utcnow()
+            if not expense.reimbursement_date:
+                expense.reimbursement_date = datetime.utcnow()
+        elif not is_declared and expense.is_declared:
+            expense.declaration_status = DeclarationStatus.NOT_DECLARED.value
+            expense.declaration_date = None
+            expense.reimbursement_date = None
+        
+        # Mise à jour de la référence
+        expense.declaration_reference = declaration_reference
+        
+        # Sauvegarder les modifications
         db.session.commit()
-        return jsonify({'success': True})
+        
+        return jsonify({
+            'success': True,
+            'message': 'Dépense mise à jour avec succès'
+        })
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
