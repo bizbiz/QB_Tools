@@ -1,0 +1,52 @@
+# app/commands.qbsum
+
+Ce dossier contient les commandes CLI personnalisées pour l'application Flask.
+
+## Fichiers dans ce dossier
+
+### __init__.py
+- **Description**: Point d'entrée pour les commandes CLI personnalisées
+- **Fonction principale**: `register_commands(app)` - Enregistre les commandes des différents modules
+- **Dépendances**: Importe les commandes de `tricount_commands.py`
+- **Note**: Actuellement n'importe que les commandes du module tricount, pas les commandes utilisateurs
+
+### user_commands.py
+- **Description**: Commandes pour la gestion des utilisateurs, groupes et permissions
+- **Commandes CLI**:
+  - `init_users` - Initialise les utilisateurs, groupes et permissions par défaut
+  - `users_init` - Alias simplifié pour `init_users`
+- **Modèles utilisés**: `User`, `Group`, `Permission`
+- **Fonctions**: 
+  - `init_users()` - Crée les permissions, groupes et utilisateurs par défaut
+  - `users_init()` - Alias simplifié
+  - `register_commands(app)` - Enregistre les commandes dans l'application
+- **Permissions créées**: Permissions de lecture/écriture/admin pour les modules teamplanning et tricount
+- **Groupes créés**: admin, user, teamplanning_user, tricount_user
+- **Utilisateur par défaut**: admin (admin@example.com / admin123)
+
+### tricount_commands.py
+- **Description**: Commandes pour le module Tricount
+- **Commandes CLI**:
+  - `init_tricount_categories` - Initialise les catégories par défaut pour Tricount
+  - `tricount_init` - Alias simplifié pour l'initialisation des catégories
+  - `migrate_merchant_names` - Migre les noms de marchands modifiés vers la structure renamed_merchant
+- **Modèles utilisés**: `Category`, `Expense`
+- **Services utilisés**: `SocieteGeneraleParser` (pour l'analyse des relevés bancaires)
+- **Catégories créées**: 17 catégories par défaut (Alimentation, Logement, Transport, etc.)
+- **Particularités**: 
+  - `migrate_merchant_names` contient une logique complexe pour extraire les noms de marchands des textes originaux
+  - Gestion des erreurs avec rollback de session en cas de problème
+
+## Fonctionnalités communes
+
+- Utilisation du décorateur `@with_appcontext` pour exécuter les commandes dans le contexte de l'application
+- Gestion des erreurs avec rollback de session en cas d'exception
+- Sortie d'information avec `click.echo()` pour suivre la progression
+- Structure commune : commande principale + alias simplifié sans tiret
+- Toutes les commandes retournent un booléen indiquant le succès ou l'échec
+
+## Dépendances
+- Flask CLI (`flask.cli`)
+- Click (`click`)
+- SQLAlchemy (via `app.extensions.db`)
+- Modèles de l'application (`app.models`)
