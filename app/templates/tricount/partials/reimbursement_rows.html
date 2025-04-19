@@ -1,8 +1,9 @@
 {# app/templates/tricount/partials/reimbursement_rows.html #}
-{# Modification du template pour inclure la colonne Catégorie et corriger les attributs de tri #}
 
 {% from "macros/tricount/flag_macros.html" import flag_badge %}
+{% from "macros/tricount/flag_badge_sortable.html" import flag_badge_sortable, flag_none_badge %}
 {% from "macros/tricount/category_select.html" import category_badge %}
+{% from "macros/tricount/category_badge_sortable.html" import category_badge_sortable, category_none_badge %}
 {% from "macros/tricount/expense_macros.html" import display_expense_name, display_expense_description %}
 {% from "macros/tricount/money_display.html" import display_amount, display_amount_cell %}
 
@@ -30,21 +31,21 @@
     </td>
     {# Utiliser la macro pour la cellule du montant #}
     {{ display_amount_cell(expense.amount, expense.is_debit, sortable=true) }}
-    <td>
+    <td data-sort-value="{{ expense.category.name|default('zzzz')|lower if expense.category else 'zzzz' }}">
         {% if expense.category %}
-            {{ category_badge(expense.category) }}
+            {{ category_badge_sortable(expense.category, sortable=true) }}
         {% else %}
-            <span class="badge bg-secondary">Non catégorisée</span>
+            {{ category_none_badge(sortable=true) }}
         {% endif %}
     </td>
-    <td class="text-center">
+    <td class="text-center" data-sort-value="{{ expense.flag.name|default('zzzz')|lower if expense.flag else 'zzzz' }}">
         {% if expense.flag %}
-            {{ flag_badge(expense.flag, text_hidden=true, extra_classes='flag-btn-lg') }}
+            {{ flag_badge_sortable(expense.flag, text_hidden=true, extra_classes='flag-btn-lg', sortable=true) }}
         {% else %}
-            <span class="badge bg-secondary">N/A</span>
+            {{ flag_none_badge(sortable=true) }}
         {% endif %}
     </td>
-    <td class="text-center">
+    <td class="text-center" data-sort-value="{{ '1' if expense.declaration_status in ['declared', 'reimbursed'] else '0' }}">
         <div class="form-check form-switch d-flex justify-content-center">
             <input class="form-check-input status-switch declared-switch" type="checkbox" 
                    {% if expense.declaration_status in ['declared', 'reimbursed'] %}checked{% endif %}
@@ -52,7 +53,7 @@
                    data-expense-id="{{ expense.id }}" data-status="declared">
         </div>
     </td>
-    <td class="text-center">
+    <td class="text-center" data-sort-value="{{ '1' if expense.declaration_status == 'reimbursed' else '0' }}">
         <div class="form-check form-switch d-flex justify-content-center">
             <input class="form-check-input status-switch reimbursed-switch" type="checkbox"
                    {% if expense.declaration_status == 'reimbursed' %}checked{% endif %}

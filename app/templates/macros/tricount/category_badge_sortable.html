@@ -1,0 +1,22 @@
+{# app/templates/macros/tricount/category_badge_sortable.html #}
+
+{# Macro pour générer un badge de catégorie avec support de tri #}
+{% macro category_badge_sortable(category, extra_classes='', sortable=false) %}
+<span class="category-badge {{ extra_classes }}" 
+      style="border-color: {{ category.color }};" 
+      {% if sortable %}data-sort-value="{{ category.name|lower }}"{% endif %}>
+    {% if category.iconify_id %}
+    <span class="iconify me-2" data-icon="{{ category.iconify_id }}"></span>
+    {% elif category.icon %}
+    <span class="me-2">{{ category.get_icon_emoji }}</span>
+    {% elif category.legacy_icon %}
+    <i class="fas {{ category.legacy_icon }} me-2"></i>
+    {% endif %}
+    {{ category.name }}
+</span>
+{% endmacro %}
+
+{# Version simplifiée pour le cas où la catégorie est null #}
+{% macro category_none_badge(text="Non catégorisée", sortable=false) %}
+<span class="badge bg-secondary" {% if sortable %}data-sort-value="zzzz"{% endif %}>{{ text }}</span>
+{% endmacro %}

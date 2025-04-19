@@ -1,0 +1,23 @@
+{# app/templates/macros/tricount/flag_badge_sortable.html #}
+
+{% macro flag_badge_sortable(flag, extra_classes='', text_hidden=False, sortable=false) %}
+<span class="flag-badge {{ extra_classes }}" 
+      style="background-color: {{ flag.color }}" 
+      {% if text_hidden %}title="{{ flag.name }}"{% endif %}
+      {% if sortable %}data-sort-value="{{ flag.name|lower }}"{% endif %}>
+    {% if flag.iconify_id %}
+    <span class="iconify me-1" data-icon="{{ flag.iconify_id }}"></span>
+    {% elif flag.icon %}
+    <span class="me-1">{{ flag.get_icon_emoji }}</span>
+    {% elif flag.legacy_icon %}
+    <i class="fas {{ flag.legacy_icon }} me-1"></i>
+    {% endif %}
+    {% if not text_hidden %}
+    {{ flag.name }}
+    {% endif %}
+</span>
+{% endmacro %}
+
+{% macro flag_none_badge(text="N/A", extra_classes='', sortable=false) %}
+<span class="badge bg-secondary {{ extra_classes }}" {% if sortable %}data-sort-value="zzzz"{% endif %}>{{ text }}</span>
+{% endmacro %}

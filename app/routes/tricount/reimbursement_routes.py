@@ -5,14 +5,15 @@ from app.extensions import db
 from app.models.tricount import Expense, Flag, Category, DeclarationStatus, ReimbursementType, AutoCategorizationRule
 from datetime import datetime
 from sqlalchemy import or_, case, func
+from sqlalchemy.orm import aliased
 import json
 import traceback
 import csv
 from io import StringIO
 
+# app/routes/tricount/reimbursement_routes.py (extrait modifié)
 
-def build_reimbursement_query(flag_id=None, status_values=None, start_date=None, end_date=None, search_query="", show_all=False,sort_by='date', order='desc'):
-    
+def build_reimbursement_query(flag_id=None, status_values=None, start_date=None, end_date=None, search_query="", show_all=False, sort_by='date', order='desc'):
     """
     Construit une requête pour les dépenses en fonction des critères de filtrage.
     
@@ -33,10 +34,23 @@ def build_reimbursement_query(flag_id=None, status_values=None, start_date=None,
     # Construire la requête de base
     query = Expense.query
     
-    # Joindre avec Flag (requis pour le filtrage des types remboursables)
-    if show_all:
-        # Si show_all est activé, joindre Flag sans filtrer
-        query = query.join(Flag, isouter=True)
+    # Joindre avec Flag et Category si nécessaire pour le tri ou le filtrage
+    from sqlalchemy.orm import aliased
+    
+    # Si on trie par catégorie, s'assurer que la jointure Category est déjà faite
+    if sort_by == 'category':
+        Category_alias = aliased(Category)
+        query = query.outerjoin(Category_alias, Expense.category_id == Category_alias.id)
+    
+    # Si on trie par flag, garantir que l'alias Flag est bien défini
+    if sort_by == 'flag':
+        Flag_alias = aliased(Flag)
+        # Note: On préfère utiliser l'alias Flag_alias pour le tri par flag
+        query = query.outerjoin(Flag_alias, Expense.flag_id == Flag_alias.id)
+        # Ensuite nous appliquons le filtre show_all séparément
+    elif show_all:
+        # Si show_all est activé et qu'on ne trie pas par flag, joindre Flag sans filtrer
+        query = query.outerjoin(Flag)
     else:
         # Sinon, ne montrer que les dépenses remboursables
         query = query.join(Flag).filter(
@@ -82,11 +96,11 @@ def build_reimbursement_query(flag_id=None, status_values=None, start_date=None,
             )
         )
     
-    # Appliquer le tri directement ici
+    # Appliquer le tri
     try:
         print(f"DEBUG - Tri reimbursement_query: {sort_by} {order}")
         # Validation des entrées
-        if sort_by not in ['date', 'amount', 'merchant', 'description', 'status', 'flag', 'category']:
+        if sort_by not in ['date', 'amount', 'merchant', 'description', 'category', 'flag', 'status']:
             sort_by = 'date'
         
         if order not in ['asc', 'desc']:
@@ -94,64 +108,49 @@ def build_reimbursement_query(flag_id=None, status_values=None, start_date=None,
         
         # Tri par différentes colonnes
         if sort_by == 'date':
-            # Le plus simple: tri par date
-            if order == 'asc':
-                query = query.order_by(Expense.date.asc())
-            else:
-                query = query.order_by(Expense.date.desc())
+            column = Expense.date
         elif sort_by == 'amount':
-            try:
-                signed_amount_expr = case(
-                    (Expense.is_debit == True, -Expense.amount),
-                    else_=Expense.amount
-                )
-                
-                if order == 'asc':
-                    query = query.order_by(signed_amount_expr.asc())
-                else:
-                    query = query.order_by(signed_amount_expr.desc())
-            except Exception as e:
-                if order == 'asc':
-                    query = query.order_by(Expense.date.asc())
-                else:
-                    query = query.order_by(Expense.date.desc())
-        elif sort_by in ('merchant', 'description'):
-            # Tri par nom de marchand
-            from sqlalchemy import func
+            # Utiliser directement la propriété hybride pour le montant signé
+            column = Expense.signed_amount
+        elif sort_by == 'merchant':
+            # Tri par nom de marchand (utiliser le nom renommé s'il existe)
             column = func.coalesce(func.lower(Expense.renamed_merchant), func.lower(Expense.merchant))
-            if order == 'asc':
-                query = query.order_by(column.asc())
-            else:
-                query = query.order_by(column.desc())
-        elif sort_by == 'status':
-            # Tri par statut
-            if order == 'asc':
-                query = query.order_by(Expense.declaration_status.asc())
-            else:
-                query = query.order_by(Expense.declaration_status.desc())
-        elif sort_by == 'flag':
-            # Tri par flag
-            from sqlalchemy import func, aliased
-            Flag_alias = aliased(Flag)
-            query = query.outerjoin(Flag_alias, Expense.flag_id == Flag_alias.id)
-            column = func.lower(Flag_alias.name)
-            if order == 'asc':
-                query = query.order_by(column.asc())
-            else:
-                query = query.order_by(column.desc())
+        elif sort_by == 'description':
+            # Tri par description (utiliser les notes s'il existe)
+            column = func.coalesce(func.lower(Expense.notes), func.lower(Expense.description))
         elif sort_by == 'category':
-            # Tri par catégorie
-            from sqlalchemy import func, aliased
+            # Tri par nom de catégorie
             Category_alias = aliased(Category)
             query = query.outerjoin(Category_alias, Expense.category_id == Category_alias.id)
             column = func.lower(Category_alias.name)
-            if order == 'asc':
-                query = query.order_by(column.asc())
-            else:
-                query = query.order_by(column.desc())
+        elif sort_by == 'flag':
+            # Tri par nom de flag
+            Flag_alias = aliased(Flag)
+            # Utiliser outerjoin pour inclure les dépenses sans flag
+            query = query.outerjoin(Flag_alias, Expense.flag_id == Flag_alias.id)
+            # Utiliser CASE pour placer les flags NULL à la fin du tri ascendant
+            column = case(
+                [(Flag_alias.name == None, "zzzz")],  # Valeur artificielle haute pour les NULL
+                else_=func.lower(Flag_alias.name)
+            )
+        elif sort_by == 'status':
+            # Tri par statut de déclaration
+            column = Expense.declaration_status
         else:
             # Tri par défaut
-            query = query.order_by(Expense.date.desc())
+            column = Expense.date
+        
+        # Appliquer l'ordre de tri
+        if order == 'asc':
+            query = query.order_by(column.asc())
+            # Logs de débogage pour le tri ascendant
+            if sort_by == 'category':
+                print(f"DEBUG - Tri ASC par catégorie activé - Requête SQL générée: {str(query.statement.compile(compile_kwargs={'literal_binds': True}))}")
+        else:
+            query = query.order_by(column.desc())
+            # Logs de débogage pour le tri descendant
+            if sort_by == 'category':
+                print(f"DEBUG - Tri DESC par catégorie activé - Requête SQL générée: {str(query.statement.compile(compile_kwargs={'literal_binds': True}))}")
         
         print("DEBUG - Tri appliqué avec succès")
     except Exception as e:
@@ -188,19 +187,19 @@ def apply_sort_to_query(query, sort_by='date', order='desc'):
             column = Expense.signed_amount
         elif sort_by in ('merchant', 'description'):
             # Utiliser le nom renommé s'il existe, sinon le nom original
-            from sqlalchemy import func
-            column = func.coalesce(func.lower(Expense.renamed_merchant), func.lower(Expense.merchant))
+            if sort_by == 'merchant':
+                column = func.coalesce(func.lower(Expense.renamed_merchant), func.lower(Expense.merchant))
+            else:
+                column = func.coalesce(func.lower(Expense.notes), func.lower(Expense.description))
         elif sort_by == 'status':
             column = Expense.declaration_status
         elif sort_by == 'flag':
             # Utiliser un alias pour éviter le problème de table dupliquée
-            from sqlalchemy import func, aliased
             Flag_alias = aliased(Flag)
             query = query.outerjoin(Flag_alias, Expense.flag_id == Flag_alias.id)
             column = func.lower(Flag_alias.name)
         elif sort_by == 'category':
             # Utiliser un alias pour éviter le problème de table dupliquée
-            from sqlalchemy import func, aliased
             Category_alias = aliased(Category)
             query = query.outerjoin(Category_alias, Expense.category_id == Category_alias.id)
             column = func.lower(Category_alias.name)
