@@ -8,6 +8,7 @@ import { initStatusSwitches } from './status.js';
 import { initBulkSelection } from './bulk.js';
 import { initAjaxPagination } from './filters.js';
 import { initExpenseManagement } from './expenses.js';
+import { initExpenseButtons } from './expense_buttons.js';
 
 /**
  * Initialise les fonctionnalités d'interface
@@ -33,6 +34,7 @@ export function updateTableContent(html) {
     initBulkSelection();
     initTooltips();
     initExpenseManagement();
+    reinitEditButtons();
     
     // Réinitialiser le tri des tableaux
     if (window.TableManager) {
@@ -176,7 +178,7 @@ export function updatePagination(pagination) {
         // Initialiser les liens de pagination
         initAjaxPagination();
     } catch (error) {
-        console.error('Error updating pagination:', error);
+        console.error('Erreur lors de la mise à jour de la pagination:', error);
     }
 }
 

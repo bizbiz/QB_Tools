@@ -11,36 +11,6 @@ import traceback
 import csv
 from io import StringIO
 
-def debug_reimbursement_query(query, sort_by, order):
-    """
-    Fonction de débogage qui affiche la requête SQL générée et ses résultats
-    """
-    try:
-        print(f"\n=== DÉBOGAGE TRI: {sort_by} {order} ===")
-        
-        # Afficher la requête SQL générée
-        from sqlalchemy.dialects import postgresql
-        sql = query.statement.compile(
-            dialect=postgresql.dialect(),
-            compile_kwargs={"literal_binds": True}
-        )
-        print(f"SQL: {sql}")
-        
-        # Exécuter la requête et montrer les premiers résultats avec leurs valeurs de tri
-        results = query.limit(5).all()
-        print(f"Nombre total de résultats: {query.count()}")
-        print(f"5 premiers résultats:")
-        
-        for idx, expense in enumerate(results):
-            category_name = expense.category.name if expense.category else "NULL"
-            flag_name = expense.flag.name if expense.flag else "NULL"
-            print(f"  {idx+1}. ID: {expense.id}, Date: {expense.date}, Montant: {expense.amount}, "
-                 f"Catégorie: {category_name}, Flag: {flag_name}, "
-                 f"Statut: {expense.declaration_status}")
-            
-        print("=== FIN DÉBOGAGE TRI ===\n")
-    except Exception as e:
-        print(f"Erreur de débogage: {str(e)}")
 
 def build_reimbursement_query(flag_id=None, status_values=None, start_date=None, end_date=None, search_query="", show_all=False, sort_by='date', order='desc'):
     """
@@ -59,8 +29,6 @@ def build_reimbursement_query(flag_id=None, status_values=None, start_date=None,
     Returns:
         query: Requête SQLAlchemy filtrée
     """
-    print(f"\n=== DÉBUT BUILD QUERY avec sort_by={sort_by}, order={order} ===")
-    
     # Construire la requête de base
     query = Expense.query
     
@@ -68,34 +36,28 @@ def build_reimbursement_query(flag_id=None, status_values=None, start_date=None,
     if order not in ['asc', 'desc']:
         order = 'desc'
     
-    if sort_by not in ['date', 'amount', 'merchant', 'description', 'category', 'flag', 'status']:
+    if sort_by not in ['date', 'amount', 'merchant', 'description', 'category', 'flag', 'declared', 'reimbursed']:
         sort_by = 'date'
     
-    print(f"Requête de base créée, validation des entrées complétée.")
-    
     # Appliquer les filtres selon les paramètres
-    
     # Filtre par status multiple
     if status_values:
         query = query.filter(Expense.declaration_status.in_(status_values))
-        print(f"Filtre par status appliqué: {status_values}")
     
     # Filtre par date
     if start_date:
         try:
             start_date_obj = datetime.strptime(start_date, '%Y-%m-%d')
             query = query.filter(Expense.date >= start_date_obj)
-            print(f"Filtre par date début appliqué: {start_date}")
         except ValueError:
-            print(f"Date début invalide ignorée: {start_date}")
+            pass
     
     if end_date:
         try:
             end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
             query = query.filter(Expense.date <= end_date_obj)
-            print(f"Filtre par date fin appliqué: {end_date}")
         except ValueError:
-            print(f"Date fin invalide ignorée: {end_date}")
+            pass
     
     # Filtre par recherche textuelle
     if search_query:
@@ -109,28 +71,23 @@ def build_reimbursement_query(flag_id=None, status_values=None, start_date=None,
                 Expense.declaration_reference.ilike(search_term)
             )
         )
-        print(f"Filtre par recherche appliqué: '{search_query}'")
     
-    # IMPORTANT: Gestion des jointures selon le mode de tri
+    # JOINTURES: les faire avant le filtrage pour éviter les problèmes de référence
     from sqlalchemy import func, case
     from sqlalchemy.orm import aliased
     
-    # JOINTURES: les faire avant le filtrage pour éviter les problèmes de référence
     if sort_by == 'category':
         Category_alias = aliased(Category)
         query = query.outerjoin(Category_alias, Expense.category_id == Category_alias.id)
-        print(f"Jointure avec Category pour tri par catégorie")
     
     if sort_by == 'flag' or flag_id is not None or not show_all:
         # S'il y a tri par flag, ou un filtrage par flag, ou qu'on montre uniquement les remboursables
         Flag_alias = aliased(Flag)
         query = query.outerjoin(Flag_alias, Expense.flag_id == Flag_alias.id)
-        print(f"Jointure avec Flag pour tri/filtre")
         
         # Filtre par flag spécifique
         if flag_id is not None and flag_id > 0:
             query = query.filter(Expense.flag_id == flag_id)
-            print(f"Filtre par flag ID appliqué: {flag_id}")
         
         # Filtre pour n'afficher que les dépenses remboursables
         if not show_all:
@@ -150,448 +107,11 @@ def build_reimbursement_query(flag_id=None, status_values=None, start_date=None,
                         ReimbursementType.FULLY_REIMBURSABLE.value
                     ])
                 )
-            print(f"Filtre pour montrer uniquement les dépenses remboursables")
     
-    # APPLICATION DU TRI
-    print(f"Application du tri par {sort_by} en ordre {order}")
+    # Appliquer le tri
+    query = apply_sort_to_query(query, sort_by, order)
     
-    try:
-        # Sélection de la colonne de tri selon sort_by
-        if sort_by == 'date':
-            # Tri par date - garder simple
-            column = Expense.date
-            print(f"Column sélectionnée: Expense.date")
-        
-        elif sort_by == 'amount':
-            # Tri par montant - utiliser la fonction dédiée
-            query = apply_amount_sort(query, order)
-            # Aucun ordre à appliquer ici car déjà fait dans la fonction apply_amount_sort
-            return query
-        
-        elif sort_by == 'merchant':
-            # Tri par nom de marchand (renommé ou original)
-            column = func.coalesce(func.lower(Expense.renamed_merchant), func.lower(Expense.merchant))
-            print(f"Column sélectionnée: Merchant (coalesce renamed/original)")
-        
-        elif sort_by == 'description':
-            # Tri par description (notes ou description)
-            column = func.coalesce(func.lower(Expense.notes), func.lower(Expense.description))
-            print(f"Column sélectionnée: Description (coalesce notes/description)")
-        
-        elif sort_by == 'category':
-            # Tri par catégorie - utiliser la fonction dédiée
-            query = apply_category_sort(query, order)
-            # Aucun ordre à appliquer ici car déjà fait dans la fonction apply_category_sort
-            return query
-        
-        elif sort_by == 'flag':
-            # Tri par flag - utiliser la fonction dédiée
-            query = apply_flag_sort(query, order)
-            # Aucun ordre à appliquer ici car déjà fait dans la fonction apply_flag_sort
-            return query
-        
-        elif sort_by == 'status':
-            # Tri par statut de déclaration - utiliser la fonction dédiée
-            query = apply_status_sort(query, order)
-            # Aucun ordre à appliquer ici car déjà fait dans la fonction apply_status_sort
-            return query
-        
-        else:
-            # Tri par défaut
-            column = Expense.date
-            print(f"Column sélectionnée par défaut: Expense.date")
-        
-        # Application de l'ordre de tri
-        if order == 'asc':
-            query = query.order_by(column.asc())
-            print(f"Tri ascendant appliqué")
-        else:
-            query = query.order_by(column.desc())
-            print(f"Tri descendant appliqué")
-            
-    except Exception as e:
-        print(f"ERREUR lors de l'application du tri: {str(e)}")
-        # En cas d'erreur, tri par défaut
-        query = query.order_by(Expense.date.desc())
-    
-    # DÉBOGAGE: Afficher les infos sur la requête
-    try:
-        from sqlalchemy.dialects import postgresql
-        sql = query.statement.compile(
-            dialect=postgresql.dialect(),
-            compile_kwargs={"literal_binds": True}
-        )
-        print(f"SQL généré: {sql}")
-    except Exception as e:
-        print(f"Impossible d'afficher le SQL: {str(e)}")
-    
-    print(f"=== FIN BUILD QUERY ===\n")
     return query
-
-def apply_sort_to_query(query, sort_by='date', order='desc'):
-    """
-    Applique le tri à une requête SQLAlchemy.
-    
-    Args:
-        query: Requête SQLAlchemy
-        sort_by (str): Champ de tri (date, amount, merchant, category, etc.)
-        order (str): Direction du tri (asc/desc)
-    
-    Returns:
-        query: Requête avec tri appliqué
-    """
-    print(f"\n=== DÉBUT APPLY SORT avec sort_by={sort_by}, order={order} ===")
-    
-    try:
-        # Validation des entrées
-        if sort_by not in ['date', 'amount', 'merchant', 'description', 'status', 'flag', 'category']:
-            print(f"Sort_by invalide '{sort_by}' - retour à 'date'")
-            sort_by = 'date'
-        
-        if order not in ['asc', 'desc']:
-            print(f"Order invalide '{order}' - retour à 'desc'")
-            order = 'desc'
-        
-        from sqlalchemy import func, case
-        from sqlalchemy.orm import aliased
-        
-        # IMPORTANT: Gestion des jointures selon le mode de tri
-        # Nous devons joindre les tables avant d'appliquer le tri si nécessaire
-        
-        if sort_by == 'category':
-            Category_alias = aliased(Category)
-            query = query.outerjoin(Category_alias, Expense.category_id == Category_alias.id)
-            print(f"Jointure avec Category pour tri par catégorie")
-        
-        if sort_by == 'flag':
-            Flag_alias = aliased(Flag)
-            query = query.outerjoin(Flag_alias, Expense.flag_id == Flag_alias.id)
-            print(f"Jointure avec Flag pour tri par flag")
-        
-        # Déterminer la colonne à utiliser pour le tri
-        if sort_by == 'date':
-            column = Expense.date
-            print(f"Column sélectionnée: Expense.date")
-        
-        elif sort_by == 'amount':
-            # Utiliser la propriété hybride si elle existe, sinon créer l'expression
-            if hasattr(Expense, 'signed_amount'):
-                column = Expense.signed_amount
-                print(f"Column sélectionnée: Expense.signed_amount (propriété hybride)")
-            else:
-                # Créer manuellement l'expression de montant signé
-                column = case(
-                    [(Expense.is_debit == True, -Expense.amount)],
-                    else_=Expense.amount
-                )
-                print(f"Column sélectionnée: Montant signé (case manuel)")
-        
-        elif sort_by in ('merchant', 'description'):
-            # Utiliser le nom renommé s'il existe, sinon le nom original
-            if sort_by == 'merchant':
-                column = func.coalesce(func.lower(Expense.renamed_merchant), func.lower(Expense.merchant))
-                print(f"Column sélectionnée: Merchant (coalesce renamed/original)")
-            else:
-                column = func.coalesce(func.lower(Expense.notes), func.lower(Expense.description))
-                print(f"Column sélectionnée: Description (coalesce notes/description)")
-        
-        elif sort_by == 'status':
-            column = Expense.declaration_status
-            print(f"Column sélectionnée: Expense.declaration_status")
-        
-        elif sort_by == 'flag':
-            column = case(
-                [(Flag_alias.name == None, "zzzz")],
-                else_=func.lower(Flag_alias.name)
-            )
-            print(f"Column sélectionnée: Flag_alias.name avec NULL en dernier")
-        
-        elif sort_by == 'category':
-            column = case(
-                [(Category_alias.name == None, "zzzz")],
-                else_=func.lower(Category_alias.name)
-            )
-            print(f"Column sélectionnée: Category_alias.name avec NULL en dernier")
-        
-        else:
-            column = Expense.date
-            print(f"Column sélectionnée par défaut: Expense.date")
-        
-        # Appliquer l'ordre de tri
-        if order == 'asc':
-            query = query.order_by(column.asc())
-            print(f"Tri ascendant appliqué")
-        else:
-            query = query.order_by(column.desc())
-            print(f"Tri descendant appliqué")
-        
-        # DÉBOGAGE: Afficher les infos sur la requête
-        try:
-            from sqlalchemy.dialects import postgresql
-            sql = query.statement.compile(
-                dialect=postgresql.dialect(),
-                compile_kwargs={"literal_binds": True}
-            )
-            print(f"SQL généré: {sql}")
-        except Exception as e:
-            print(f"Impossible d'afficher le SQL: {str(e)}")
-        
-        print(f"=== FIN APPLY SORT ===\n")
-        return query
-        
-    except Exception as e:
-        # En cas d'erreur, revenir au tri par défaut
-        print(f"ERREUR lors de l'application du tri: {str(e)}")
-        print(f"=== FIN APPLY SORT (avec erreur) ===\n")
-        return query.order_by(Expense.date.desc())
-
-def apply_status_sort(query, order='desc'):
-    """
-    Fonction spécifique pour appliquer le tri par statut de déclaration.
-    
-    Args:
-        query: Requête SQLAlchemy
-        order: Direction de tri ('asc' ou 'desc')
-        
-    Returns:
-        query: Requête avec tri par statut appliqué
-    """
-    from sqlalchemy import case
-    
-    print(f"\n=== TRI SPÉCIFIQUE PAR STATUT ({order}) ===")
-    
-    try:
-        # Créer une expression numérique pour ordonner par importance des statuts
-        # not_declared = 1, declared = 2, reimbursed = 3
-        status_order = case(
-            [
-                (Expense.declaration_status == DeclarationStatus.NOT_DECLARED.value, 1),
-                (Expense.declaration_status == DeclarationStatus.DECLARED.value, 2),
-                (Expense.declaration_status == DeclarationStatus.REIMBURSED.value, 3)
-            ],
-            else_=0  # Pour tout autre statut inconnu
-        )
-        
-        # Appliquer l'ordre de tri
-        if order == 'asc':
-            query = query.order_by(status_order.asc())
-            print("Tri ascendant par statut appliqué")
-        else:
-            query = query.order_by(status_order.desc())
-            print("Tri descendant par statut appliqué")
-        
-        # Vérifier la requête générée
-        from sqlalchemy.dialects import postgresql
-        sql = query.statement.compile(
-            dialect=postgresql.dialect(),
-            compile_kwargs={"literal_binds": True}
-        )
-        print(f"SQL pour tri par statut: {sql}")
-        
-        # Afficher un exemple des premiers résultats
-        results = query.limit(5).all()
-        print("5 premiers résultats après tri par statut:")
-        for idx, expense in enumerate(results):
-            print(f"  {idx+1}. ID: {expense.id}, Statut: {expense.declaration_status}")
-        
-        print(f"=== FIN TRI SPÉCIFIQUE PAR STATUT ===\n")
-        return query
-        
-    except Exception as e:
-        print(f"ERREUR dans le tri par statut: {str(e)}")
-        print(f"=== FIN TRI SPÉCIFIQUE PAR STATUT (AVEC ERREUR) ===\n")
-        # En cas d'erreur, trier par date comme fallback
-        return query.order_by(Expense.date.desc())
-
-def apply_amount_sort(query, order='desc'):
-    """
-    Fonction spécifique pour appliquer le tri par montant.
-    Cette fonction est une solution de secours si la propriété hybride ne fonctionne pas.
-    
-    Args:
-        query: Requête SQLAlchemy
-        order: Direction de tri ('asc' ou 'desc')
-        
-    Returns:
-        query: Requête avec tri par montant appliqué
-    """
-    from sqlalchemy import case
-    
-    print(f"\n=== TRI SPÉCIFIQUE PAR MONTANT ({order}) ===")
-    
-    try:
-        # Créer une expression pour trier correctement les montants
-        # Les débits (is_debit=True) sont négatifs, les crédits positifs
-        signed_amount = case(
-            [(Expense.is_debit == True, -Expense.amount)],
-            else_=Expense.amount
-        )
-        
-        # Appliquer l'ordre de tri
-        if order == 'asc':
-            query = query.order_by(signed_amount.asc())
-            print("Tri ascendant par montant signé appliqué")
-        else:
-            query = query.order_by(signed_amount.desc())
-            print("Tri descendant par montant signé appliqué")
-        
-        # Vérifier la requête générée
-        from sqlalchemy.dialects import postgresql
-        sql = query.statement.compile(
-            dialect=postgresql.dialect(),
-            compile_kwargs={"literal_binds": True}
-        )
-        print(f"SQL pour tri par montant: {sql}")
-        
-        # Afficher un exemple des premiers résultats
-        results = query.limit(5).all()
-        print("5 premiers résultats après tri par montant:")
-        for idx, expense in enumerate(results):
-            signed = -expense.amount if expense.is_debit else expense.amount
-            print(f"  {idx+1}. ID: {expense.id}, Montant: {expense.amount}, is_debit: {expense.is_debit}, Signé: {signed}")
-        
-        print(f"=== FIN TRI SPÉCIFIQUE PAR MONTANT ===\n")
-        return query
-        
-    except Exception as e:
-        print(f"ERREUR dans le tri par montant: {str(e)}")
-        print(f"=== FIN TRI SPÉCIFIQUE PAR MONTANT (AVEC ERREUR) ===\n")
-        # En cas d'erreur, trier par date comme fallback
-        return query.order_by(Expense.date.desc())
-
-def apply_category_sort(query, order='desc'):
-    """
-    Fonction spécifique pour appliquer le tri par catégorie.
-    
-    Args:
-        query: Requête SQLAlchemy
-        order: Direction de tri ('asc' ou 'desc')
-        
-    Returns:
-        query: Requête avec tri par catégorie appliqué
-    """
-    from sqlalchemy import case, func
-    from sqlalchemy.orm import aliased
-    
-    print(f"\n=== TRI SPÉCIFIQUE PAR CATÉGORIE ({order}) ===")
-    
-    try:
-        # Créer un alias pour Category
-        Category_alias = aliased(Category)
-        
-        # S'assurer que la jointure externe est bien faite
-        query = query.outerjoin(Category_alias, Expense.category_id == Category_alias.id)
-        
-        # Créer une expression pour ordonner alphabétiquement avec NULL à la fin ou au début
-        # selon l'ordre de tri
-        if order == 'asc':
-            # Pour tri ascendant: NULL à la fin (valeur 'zzzzz')
-            category_order = case(
-                [(Category_alias.name == None, 'zzzzz')],
-                else_=func.lower(Category_alias.name)
-            )
-            query = query.order_by(category_order.asc())
-            print("Tri ascendant par catégorie appliqué (NULL à la fin)")
-        else:
-            # Pour tri descendant: NULL au début (valeur '')
-            category_order = case(
-                [(Category_alias.name == None, '')],
-                else_=func.lower(Category_alias.name)
-            )
-            query = query.order_by(category_order.desc())
-            print("Tri descendant par catégorie appliqué (NULL au début)")
-        
-        # Vérifier la requête générée
-        from sqlalchemy.dialects import postgresql
-        sql = query.statement.compile(
-            dialect=postgresql.dialect(),
-            compile_kwargs={"literal_binds": True}
-        )
-        print(f"SQL pour tri par catégorie: {sql}")
-        
-        # Afficher un exemple des premiers résultats
-        results = query.limit(5).all()
-        print("5 premiers résultats après tri par catégorie:")
-        for idx, expense in enumerate(results):
-            category_name = expense.category.name if expense.category else "NULL"
-            print(f"  {idx+1}. ID: {expense.id}, Catégorie: {category_name}")
-        
-        print(f"=== FIN TRI SPÉCIFIQUE PAR CATÉGORIE ===\n")
-        return query
-        
-    except Exception as e:
-        print(f"ERREUR dans le tri par catégorie: {str(e)}")
-        print(traceback.format_exc())
-        print(f"=== FIN TRI SPÉCIFIQUE PAR CATÉGORIE (AVEC ERREUR) ===\n")
-        # En cas d'erreur, trier par date comme fallback
-        return query.order_by(Expense.date.desc())
-
-def apply_flag_sort(query, order='desc'):
-    """
-    Fonction spécifique pour appliquer le tri par flag (type).
-    
-    Args:
-        query: Requête SQLAlchemy
-        order: Direction de tri ('asc' ou 'desc')
-        
-    Returns:
-        query: Requête avec tri par flag appliqué
-    """
-    from sqlalchemy import case, func
-    from sqlalchemy.orm import aliased
-    
-    print(f"\n=== TRI SPÉCIFIQUE PAR FLAG ({order}) ===")
-    
-    try:
-        # Créer un alias pour Flag
-        Flag_alias = aliased(Flag)
-        
-        # S'assurer que la jointure externe est bien faite
-        query = query.outerjoin(Flag_alias, Expense.flag_id == Flag_alias.id)
-        
-        # Créer une expression pour ordonner alphabétiquement avec NULL à la fin ou au début
-        # selon l'ordre de tri
-        if order == 'asc':
-            # Pour tri ascendant: NULL à la fin (valeur 'zzzzz')
-            flag_order = case(
-                [(Flag_alias.name == None, 'zzzzz')],
-                else_=func.lower(Flag_alias.name)
-            )
-            query = query.order_by(flag_order.asc())
-            print("Tri ascendant par flag appliqué (NULL à la fin)")
-        else:
-            # Pour tri descendant: NULL au début (valeur '')
-            flag_order = case(
-                [(Flag_alias.name == None, '')],
-                else_=func.lower(Flag_alias.name)
-            )
-            query = query.order_by(flag_order.desc())
-            print("Tri descendant par flag appliqué (NULL au début)")
-        
-        # Vérifier la requête générée
-        from sqlalchemy.dialects import postgresql
-        sql = query.statement.compile(
-            dialect=postgresql.dialect(),
-            compile_kwargs={"literal_binds": True}
-        )
-        print(f"SQL pour tri par flag: {sql}")
-        
-        # Afficher un exemple des premiers résultats
-        results = query.limit(5).all()
-        print("5 premiers résultats après tri par flag:")
-        for idx, expense in enumerate(results):
-            flag_name = expense.flag.name if expense.flag else "NULL"
-            print(f"  {idx+1}. ID: {expense.id}, Flag: {flag_name}")
-        
-        print(f"=== FIN TRI SPÉCIFIQUE PAR FLAG ===\n")
-        return query
-        
-    except Exception as e:
-        print(f"ERREUR dans le tri par flag: {str(e)}")
-        print(traceback.format_exc())
-        print(f"=== FIN TRI SPÉCIFIQUE PAR FLAG (AVEC ERREUR) ===\n")
-        # En cas d'erreur, trier par date comme fallback
-        return query.order_by(Expense.date.desc())
 
 def get_filter_params_from_request(is_post=True):
     """
@@ -605,9 +125,6 @@ def get_filter_params_from_request(is_post=True):
     """
     source = request.form if is_post else request.args
     
-    print(f"\n=== EXTRACTION DES PARAMÈTRES DE FILTRAGE ===")
-    print(f"Source: {'POST' if is_post else 'GET'}")
-    
     try:
         # Analyser les statuts (si présents)
         status_values = source.getlist('status')
@@ -619,9 +136,6 @@ def get_filter_params_from_request(is_post=True):
                 DeclarationStatus.DECLARED.value, 
                 DeclarationStatus.REIMBURSED.value
             ]
-            print(f"Status vide - prise de tous les statuts par défaut")
-        else:
-            print(f"Status trouvés: {status_values}")
         
         # Récupérer et valider les autres paramètres
         flag_id = source.get('flag_id', type=int)
@@ -635,17 +149,13 @@ def get_filter_params_from_request(is_post=True):
         if start_date:
             try:
                 _ = datetime.strptime(start_date, '%Y-%m-%d')  # Vérifier sans utiliser
-                print(f"Date début valide: {start_date}")
             except ValueError:
-                print(f"Date début invalide, ignorée: {start_date}")
                 start_date = None
         
         if end_date:
             try:
                 _ = datetime.strptime(end_date, '%Y-%m-%d')  # Vérifier sans utiliser
-                print(f"Date fin valide: {end_date}")
             except ValueError:
-                print(f"Date fin invalide, ignorée: {end_date}")
                 end_date = None
         
         # Paramètres de recherche
@@ -656,31 +166,14 @@ def get_filter_params_from_request(is_post=True):
         order = source.get('order', 'desc')
         
         # Validation du tri
-        if sort_by not in ['date', 'merchant', 'amount', 'status', 'description', 'flag', 'category']:
-            print(f"Sort invalide '{sort_by}' - remplacé par 'date'")
+        if sort_by not in ['date', 'merchant', 'amount', 'status', 'description', 'flag', 'category', 'declared', 'reimbursed']:
             sort_by = 'date'
-        else:
-            print(f"Sort valide: {sort_by}")
             
         if order not in ['asc', 'desc']:
-            print(f"Order invalide '{order}' - remplacé par 'desc'")
             order = 'desc'
-        else:
-            print(f"Order valide: {order}")
         
         # Pagination
         page = source.get('page', 1, type=int)
-        print(f"Page: {page}")
-        
-        # Afficher un récapitulatif
-        print(f"Paramètres finaux extraits:")
-        print(f"  flag_id: {flag_id}")
-        print(f"  status_values: {status_values}")
-        print(f"  show_all: {show_all}")
-        print(f"  search: '{search_query}'")
-        print(f"  dates: {start_date} → {end_date}")
-        print(f"  tri: {sort_by} {order}")
-        print(f"  page: {page}")
         
         params = {
             'flag_id': flag_id,
@@ -694,13 +187,9 @@ def get_filter_params_from_request(is_post=True):
             'page': page
         }
         
-        print(f"=== FIN EXTRACTION DES PARAMÈTRES ===\n")
         return params
         
     except Exception as e:
-        print(f"Erreur lors de l'extraction des paramètres: {str(e)}")
-        print(f"=== FIN EXTRACTION DES PARAMÈTRES (AVEC ERREUR) ===\n")
-        
         # Valeurs par défaut sécurisées
         return {
             'flag_id': None,
@@ -717,6 +206,127 @@ def get_filter_params_from_request(is_post=True):
             'order': 'desc',
             'page': 1
         }
+
+def apply_sort_to_query(query, sort_by='date', order='desc'):
+    """
+    Applique le tri à une requête SQLAlchemy.
+    
+    Args:
+        query: Requête SQLAlchemy
+        sort_by (str): Champ de tri (date, amount, merchant, category, etc.)
+        order (str): Direction du tri (asc/desc)
+    
+    Returns:
+        query: Requête avec tri appliqué
+    """
+    try:
+        # Validation des entrées
+        if sort_by not in ['date', 'amount', 'merchant', 'description', 'status', 'flag', 'category', 'declared', 'reimbursed']:
+            sort_by = 'date'
+        
+        if order not in ['asc', 'desc']:
+            order = 'desc'
+        
+        from sqlalchemy import func, case
+        from sqlalchemy.orm import aliased
+        
+        # IMPORTANT: Gestion des jointures selon le mode de tri
+        # (les jointures sont maintenant gérées dans build_reimbursement_query)
+        
+        # Déterminer la colonne à utiliser pour le tri
+        if sort_by == 'date':
+            column = Expense.date
+
+        elif sort_by == 'amount':
+            # Utiliser la propriété hybride si elle existe, sinon créer l'expression
+            if hasattr(Expense, 'signed_amount'):
+                column = Expense.signed_amount
+            else:
+                # Créer manuellement l'expression de montant signé
+                column = case(
+                    (Expense.is_debit == True, -Expense.amount),
+                    else_=Expense.amount
+                )
+        
+        elif sort_by in ('merchant', 'description'):
+            # Utiliser le nom renommé s'il existe, sinon le nom original
+            if sort_by == 'merchant':
+                column = func.coalesce(func.lower(Expense.renamed_merchant), func.lower(Expense.merchant))
+            else:
+                column = func.coalesce(func.lower(Expense.notes), func.lower(Expense.description))
+        
+        elif sort_by == 'status':
+            # Créer une expression numérique pour ordonner par importance des statuts
+            # not_declared = 1, declared = 2, reimbursed = 3
+            column = case(
+                (Expense.declaration_status == DeclarationStatus.NOT_DECLARED.value, 1),
+                (Expense.declaration_status == DeclarationStatus.DECLARED.value, 2),
+                (Expense.declaration_status == DeclarationStatus.REIMBURSED.value, 3),
+                else_=0
+            )
+        
+        elif sort_by == 'declared':
+            # Tri spécifique pour la colonne "Déclarée"
+            # not_declared = 0, declared/reimbursed = 1
+            column = case(
+                (Expense.declaration_status == DeclarationStatus.NOT_DECLARED.value, 0),
+                else_=1
+            )
+        
+        elif sort_by == 'reimbursed':
+            # Tri spécifique pour la colonne "Remboursée"
+            # not_reimbursed = 0, reimbursed = 1
+            column = case(
+                (Expense.declaration_status == DeclarationStatus.REIMBURSED.value, 1),
+                else_=0
+            )
+        
+        elif sort_by == 'flag':
+            Flag_alias = aliased(Flag)
+            query = query.outerjoin(Flag_alias, Expense.flag_id == Flag_alias.id)
+            
+            # Tri par flag avec NULL à la fin ou au début selon l'ordre
+            if order == 'asc':
+                column = case(
+                    (Flag_alias.name == None, 'zzzzz'),
+                    else_=func.lower(Flag_alias.name)
+                )
+            else:
+                column = case(
+                    (Flag_alias.name == None, ''),
+                    else_=func.lower(Flag_alias.name)
+                )
+        
+        elif sort_by == 'category':
+            Category_alias = aliased(Category)
+            query = query.outerjoin(Category_alias, Expense.category_id == Category_alias.id)
+            
+            # Tri par catégorie avec NULL à la fin ou au début selon l'ordre
+            if order == 'asc':
+                column = case(
+                    (Category_alias.name == None, 'zzzzz'),
+                    else_=func.lower(Category_alias.name)
+                )
+            else:
+                column = case(
+                    (Category_alias.name == None, ''),
+                    else_=func.lower(Category_alias.name)
+                )
+        
+        else:
+            column = Expense.date
+        
+        # Appliquer l'ordre de tri
+        if order == 'asc':
+            query = query.order_by(column.asc())
+        else:
+            query = query.order_by(column.desc())
+            
+        return query
+        
+    except Exception as e:
+        # En cas d'erreur, revenir au tri par défaut
+        return query.order_by(Expense.date.desc())
 
 # ===== Utilitaires pour les données =====
 
@@ -1066,12 +676,6 @@ def get_reimbursement_rows():
         # Extraire et valider les paramètres de filtrage
         params = get_filter_params_from_request()
         
-        # Récupérer explicitement les paramètres de tri
-        sort_by = params.get('sort_by', 'date')
-        order = params.get('order', 'desc')
-        
-        print(f"\n=== DÉMARRAGE ROUTE ROWS: sort_by={sort_by}, order={order} ===")
-        
         # Construire la requête filtrée avec les paramètres de tri
         query = build_reimbursement_query(
             flag_id=params['flag_id'],
@@ -1080,44 +684,9 @@ def get_reimbursement_rows():
             end_date=params['end_date'],
             search_query=params['search_query'],
             show_all=params['show_all'],
-            sort_by=sort_by,
-            order=order
+            sort_by=params['sort_by'],
+            order=params['order']
         )
-        
-        # ANALYSE SPÉCIFIQUE POUR LE TRI - ÉCHANTILLON DE 5 RÉSULTATS
-        print(f"\n=== ANALYSE DES RÉSULTATS POUR TRI ===")
-        try:
-            results = query.limit(5).all()
-            
-            if results:
-                print(f"Analyse de tri: 5 premiers résultats pour {sort_by} {order}")
-                for idx, expense in enumerate(results):
-                    # Format spécifique selon le type de tri
-                    if sort_by == 'amount':
-                        value = -expense.amount if expense.is_debit else expense.amount
-                        display = f"{value:.2f} €"
-                    elif sort_by == 'category':
-                        value = expense.category.name if expense.category else "NULL"
-                        display = value
-                    elif sort_by == 'flag':
-                        value = expense.flag.name if expense.flag else "NULL" 
-                        display = value
-                    elif sort_by == 'status':
-                        value = expense.declaration_status
-                        display = value
-                    elif sort_by == 'date':
-                        value = expense.date
-                        display = expense.date.strftime('%Y-%m-%d')
-                    else:
-                        value = "n/a"
-                        display = "n/a"
-                        
-                    print(f"  {idx+1}. ID: {expense.id}, Valeur de tri: {value}, Affichage: {display}")
-            else:
-                print("Aucun résultat trouvé")
-        except Exception as e:
-            print(f"Erreur lors de l'analyse des résultats: {str(e)}")
-        print(f"=== FIN ANALYSE DES RÉSULTATS ===\n")
         
         # Calculer les totaux pour le résumé avant pagination
         all_expenses = query.all()
@@ -1142,55 +711,21 @@ def get_reimbursement_rows():
             'next_num': expenses.next_num
         }
         
-        # AJOUT: inclure des informations sur le tri dans la réponse
-        sample_data = []
-        try:
-            for idx, expense in enumerate(expenses.items[:5]):  # Limiter à 5 exemples max
-                if sort_by == 'amount':
-                    sort_value = float(-expense.amount if expense.is_debit else expense.amount)
-                elif sort_by == 'category':
-                    sort_value = expense.category.name if expense.category else "zzzz"
-                elif sort_by == 'flag':
-                    sort_value = expense.flag.name if expense.flag else "zzzz"
-                elif sort_by == 'status':
-                    sort_value = expense.declaration_status
-                else:
-                    sort_value = str(expense.date) if sort_by == 'date' else "n/a"
-                    
-                sample_data.append({
-                    'id': expense.id,
-                    'sort_value': sort_value,
-                    'display_value': f"{sort_value}"
-                })
-        except Exception as e:
-            print(f"Erreur lors de la création de l'échantillon: {str(e)}")
-            sample_data = [{'error': str(e)}]
-        
         # Renvoyer une réponse plus détaillée
         response_data = {
             'success': True,
             'html': rows_html,
             'summary': summary,
-            'pagination': pagination_data,
-            'debug_info': {
-                'applied_sort': sort_by,
-                'applied_order': order,
-                'sample_data': sample_data,
-                'form_params': {
-                    'sort': params['sort_by'],
-                    'order': params['order']
-                }
-            }
+            'pagination': pagination_data
         }
         
-        print(f"=== FIN ROUTE ROWS: Réponse AJAX envoyée avec succès ===\n")
         return jsonify(response_data)
         
     except Exception as e:
-        print(f"ERREUR CRITIQUE dans get_reimbursement_rows: {str(e)}")
-        import traceback
-        print(traceback.format_exc())
-        return handle_request_error(e, True)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @tricount_bp.route('/reimbursements/update/<int:expense_id>', methods=['POST'])
 def update_reimbursement_status(expense_id):

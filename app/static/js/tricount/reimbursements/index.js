@@ -10,6 +10,7 @@ import { initStatusManagement } from './status.js';
 import { initBulkOperations } from './bulk.js';
 import { initExpenseManagement } from './expenses.js';
 import { initUI } from './ui.js';
+import { initExpenseButtons } from './expense_buttons.js';
 
 // Initialisation au chargement du document
 document.addEventListener('DOMContentLoaded', function() {
@@ -32,6 +33,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialiser la gestion des dépenses (édition, visualisation)
     initExpenseManagement();
+
+    // Initialiser les boutons d'édition
+    initExpenseButtons();
     
     // Initialiser les fonctionnalités d'interface
     initUI();

@@ -288,8 +288,9 @@
                                     <th data-type="number" data-sort-column="amount">Montant</th>
                                     <th data-type="text" data-sort-column="category">Catégorie</th>
                                     <th data-type="text" data-sort-column="flag">Type</th>
-                                    <th data-type="text" data-sort-column="status">Déclarée</th>
-                                    <th data-type="text" data-sort-column="status">Remboursée</th>
+                                    <!-- Séparation des colonnes de statut pour tri indépendant -->
+                                    <th data-type="boolean" data-sort-column="declared">Déclarée</th>
+                                    <th data-type="boolean" data-sort-column="reimbursed">Remboursée</th>
                                     <th data-type="text" class="text-center no-sort">Actions</th>
                                 </tr>
                             </thead>
@@ -505,7 +506,6 @@
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/common/table/index.js') }}" type="module"></script>
 <script src="{{ url_for('static', filename='js/tricount/reimbursements/index.js') }}" type="module"></script>
-
 <script>
 // Initialiser les données globales pour les catégories et les flags
 window.categoryData = {{ category_data_json|safe }};

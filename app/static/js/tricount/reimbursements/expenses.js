@@ -6,6 +6,14 @@
 import { submitFiltersAjax } from './filters.js';
 import { fetchAndUpdateSummary } from './ui.js';
 
+function reinitializeEditButtons() {
+    console.log("Réinitialisation des boutons d'édition...");
+    // Utiliser la fonction d'initialisation des boutons d'édition si disponible
+    if (typeof window.initEditButtons === 'function') {
+        window.initEditButtons();
+    }
+}
+
 /**
  * Initialise les fonctionnalités de gestion des dépenses
  */

@@ -201,7 +201,7 @@ class Expense(db.Model):
     def signed_amount(cls):
         """Expression SQL pour le montant signé"""
         from sqlalchemy import case
-        return case([(cls.is_debit == True, -cls.amount)], else_=cls.amount)
+        return case((cls.is_debit == True, -cls.amount), else_=cls.amount)
 
 class AutoCategorizationRule(db.Model):
     """Modèle pour stocker les règles d'auto-catégorisation des dépenses"""

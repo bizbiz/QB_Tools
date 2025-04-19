@@ -176,30 +176,18 @@ export function resetFilters() {
 export function submitFiltersAjax() {
     // Empêcher les requêtes simultanées
     if (isRequestPending) {
-        console.log('Request already pending, ignoring');
         return;
     }
     
-    console.log('🔍 Starting AJAX request for table data...');
     isRequestPending = true;
     
     const filterForm = document.getElementById('filter-form');
     const loadingSpinner = document.getElementById('table-loading-spinner');
     
     if (!filterForm) {
-        console.error('Filter form not found!');
         isRequestPending = false;
         return;
     }
-    
-    // LOGS DE DÉBOGAGE: Inspecter les paramètres de tri
-    const sortInput = filterForm.querySelector('input[name="sort"]');
-    const orderInput = filterForm.querySelector('input[name="order"]');
-    
-    console.log('🔍 Paramètres de tri envoyés:', {
-        'sort': sortInput ? sortInput.value : 'non défini',
-        'order': orderInput ? orderInput.value : 'non défini'
-    });
     
     // Afficher l'indicateur de chargement
     if (loadingSpinner) {
@@ -211,14 +199,7 @@ export function submitFiltersAjax() {
     try {
         formData = new FormData(filterForm);
         formData.append('ajax', 'true');
-        
-        // LOGS DE DÉBOGAGE: Vérifier tous les champs du formulaire
-        console.log('🔍 Contenu du formulaire:');
-        for (let pair of formData.entries()) {
-            console.log(pair[0] + ': ' + pair[1]);
-        }
     } catch (error) {
-        console.error('Error creating FormData:', error);
         isRequestPending = false;
         if (loadingSpinner) loadingSpinner.style.display = 'none';
         return;
@@ -233,36 +214,24 @@ export function submitFiltersAjax() {
         }
     })
     .then(response => {
-        console.log('Response received, status:', response.status);
         return response.json();
     })
     .then(data => {
-        console.log('🔍 Data received:', {
-            success: data.success,
-            has_html: !!data.html,
-            summary: !!data.summary,
-            pagination: !!data.pagination
-        });
-        
         if (data && data.success) {
             // Mettre à jour le tableau avec le HTML généré côté serveur
             if (data.html) {
                 updateTableContent(data.html);
-                console.log('Table content updated');
-            } else {
-                console.warn('No HTML content in response');
             }
             
             // Mettre à jour les statistiques et la pagination
             if (data.summary) updateSummary(data.summary);
             if (data.pagination) updatePagination(data.pagination);
         } else {
-            console.error('Response indicated failure:', data?.error || 'Unknown error');
+            showErrorMessage('Erreur lors du chargement des données: ' + (data?.error || 'Erreur inconnue'));
         }
     })
     .catch(error => {
-        console.error('AJAX error:', error);
-        showErrorMessage('Erreur de communication avec le serveur: ' + error.message);
+        showErrorMessage('Erreur de communication avec le serveur');
     })
     .finally(() => {
         // Cacher l'indicateur de chargement
@@ -271,7 +240,6 @@ export function submitFiltersAjax() {
         }
         // Réinitialiser le drapeau
         isRequestPending = false;
-        console.log('Request completed, pending flag reset');
     });
 }
 
