@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}QB Tools - Mon profil{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Mon profil</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <strong>Nom d'utilisateur:</strong>
+                        </div>
+                        <div class="col-md-9">
+                            {{ current_user.username }}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <strong>Email:</strong>
+                        </div>
+                        <div class="col-md-9">
+                            {{ current_user.email }}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <strong>Nom complet:</strong>
+                        </div>
+                        <div class="col-md-9">
+                            {{ current_user.first_name }} {{ current_user.last_name }}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <strong>Dernière connexion:</strong>
+                        </div>
+                        <div class="col-md-9">
+                            {{ current_user.last_login.strftime('%d/%m/%Y %H:%M') if current_user.last_login else 'Première connexion' }}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <strong>Groupes:</strong>
+                        </div>
+                        <div class="col-md-9">
+                            {% for group in current_user.groups %}
+                                <span class="badge bg-primary me-2">{{ group.name }}</span>
+                            {% else %}
+                                <span class="text-muted">Aucun groupe</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <strong>Permissions:</strong>
+                        </div>
+                        <div class="col-md-9">
+                            <div class="row">
+                                {% for group in current_user.groups %}
+                                    {% for permission in group.permissions %}
+                                        <div class="col-md-6 mb-2">
+                                            <span class="badge bg-info me-2">{{ permission.tool }}</span>
+                                            <span class="badge bg-secondary">{{ permission.name }}</span>
+                                        </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="col-12">
+                                        <span class="text-muted">Aucune permission</span>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer text-end">
+                    <a href="{{ url_for('main.home') }}" class="btn btn-secondary">Retour à l'accueil</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

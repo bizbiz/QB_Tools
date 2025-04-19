@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}QB Tools - Gestion des groupes{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Accueil</a></li>
+                    <li class="breadcrumb-item active">Gestion des groupes</li>
+                </ol>
+            </nav>
+            
+            <h1>Gestion des groupes</h1>
+            <p class="lead">Gérez les groupes d'utilisateurs et leurs permissions</p>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-end">
+                <a href="{{ url_for('auth.add_group') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Ajouter un groupe
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h3 class="card-title">Liste des groupes</h3>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Nom</th>
+                                    <th>Description</th>
+                                    <th>Nombre d'utilisateurs</th>
+                                    <th>Permissions</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for group in groups %}
+                                <tr>
+                                    <td>{{ group.name }}</td>
+                                    <td>{{ group.description }}</td>
+                                    <td>{{ group.users|length }}</td>
+                                    <td>
+                                        {% for permission in group.permissions %}
+                                            <span class="badge bg-info me-1">{{ permission.tool }}</span>
+                                            <span class="badge bg-secondary me-2">{{ permission.name }}</span>
+                                        {% else %}
+                                            <span class="text-muted">Aucune</span>
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a href="{{ url_for('auth.edit_group', group_id=group.id) }}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#deleteGroupModal" 
+                                                    data-group-id="{{ group.id }}"
+                                                    data-group-name="{{ group.name }}"
+                                                    {% if group.name == 'admin' %}disabled{% endif %}>
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4">
+                                        <div class="alert alert-info mb-0">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            Aucun groupe trouvé.
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmation de suppression -->
+<div class="modal fade" id="deleteGroupModal" tabindex="-1" aria-labelledby="deleteGroupModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteGroupModalLabel">Confirmer la suppression</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Êtes-vous sûr de vouloir supprimer le groupe <strong id="groupName"></strong> ?</p>
+                <p class="text-danger">Cette action est irréversible.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <form id="deleteGroupForm" method="POST" action="">
+                    <button type="submit" class="btn btn-danger">Supprimer</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Configurer le modal de suppression
+        var deleteGroupModal = document.getElementById('deleteGroupModal');
+        deleteGroupModal.addEventListener('show.bs.modal', function(event) {
+            var button = event.relatedTarget;
+            var groupId = button.getAttribute('data-group-id');
+            var groupName = button.getAttribute('data-group-name');
+            
+            document.getElementById('groupName').textContent = groupName;
+            document.getElementById('deleteGroupForm').action = "{{ url_for('auth.delete_group', group_id=0) }}".replace('0', groupId);
+        });
+    });
+</script>
+{% endblock %}

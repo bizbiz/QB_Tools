@@ -33,17 +33,72 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+                <ul class="navbar-nav me-auto">
+                    {% if current_user.is_authenticated %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('main.home') }}">Accueil</a>
                     </li>
+                    {% if current_user.has_permission('teamplanning', 'view') or current_user.is_admin() %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('teamplanning.index') }}">Teamplanning</a>
                     </li>
+                    {% endif %}
+                    {% if current_user.has_permission('tricount', 'view') or current_user.is_admin() %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('tricount.index') }}">Tricount</a>
+                    </li>
+                    {% endif %}
+                    {% if current_user.is_admin() %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Administration
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="adminDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('auth.users_list') }}">Gestion des utilisateurs</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('auth.groups_list') }}">Gestion des groupes</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                    {% endif %}
+                </ul>
+                
+                <ul class="navbar-nav">
+                    {% if current_user.is_authenticated %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-user me-2"></i>{{ current_user.username }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}">Mon profil</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Déconnexion</a></li>
+                        </ul>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('auth.login') }}">
+                            <i class="fas fa-sign-in-alt me-2"></i>Connexion
+                        </a>
+                    </li>
+                    {% endif %}
                 </ul>
             </div>
         </div>
     </nav>
+
+    <!-- Flash Messages -->
+    <div class="container mt-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show">
+                        {{ message | safe }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
 
     <!-- Main Content -->
     <main>

@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}QB Tools - Modifier un groupe{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('auth.groups_list') }}">Gestion des groupes</a></li>
+                    <li class="breadcrumb-item active">Modifier un groupe</li>
+                </ol>
+            </nav>
+            
+            <h1>Modifier le groupe {{ group.name }}</h1>
+            <p class="lead">Mettre à jour les informations et permissions du groupe</p>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Informations du groupe</h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('auth.edit_group', group_id=group.id) }}">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Nom du groupe <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" value="{{ group.name }}" {% if group.name == 'admin' %}readonly{% endif %} required>
+                            {% if group.name == 'admin' %}
+                            <small class="text-muted">Le groupe administrateur ne peut pas être renommé</small>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="3">{{ group.description or '' }}</textarea>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label">Permissions</label>
+                            
+                            <div class="accordion" id="permissionsAccordion">
+                                {% set tools = permissions|groupby('tool') %}
+                                
+                                {% for tool, perms in tools %}
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="heading{{ tool }}">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ tool }}" aria-expanded="false" aria-controls="collapse{{ tool }}">
+                                            <strong>Module {{ tool|capitalize }}</strong>
+                                            <span class="ms-auto">
+                                                {% set tool_perms = group.permissions|selectattr('tool', 'equalto', tool)|list %}
+                                                {% if tool_perms %}
+                                                <span class="badge bg-primary ms-2">{{ tool_perms|length }} permission(s)</span>
+                                                {% endif %}
+                                            </span>
+                                        </button>
+                                    </h2>
+                                    <div id="collapse{{ tool }}" class="accordion-collapse collapse" aria-labelledby="heading{{ tool }}" data-bs-parent="#permissionsAccordion">
+                                        <div class="accordion-body">
+                                            <div class="row">
+                                                {% for perm in perms %}
+                                                <div class="col-md-4 mb-2">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" id="perm_{{ perm.id }}" name="permissions" value="{{ perm.id }}" 
+                                                        {% if perm in group.permissions %}checked{% endif %}
+                                                        {% if group.name == 'admin' %}disabled checked{% endif %}>
+                                                        <label class="form-check-label" for="perm_{{ perm.id }}">
+                                                            {{ perm.name|capitalize }} - {{ perm.description }}
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                            {% if group.name == 'admin' %}
+                                            <div class="alert alert-info mt-3">
+                                                <i class="fas fa-info-circle me-2"></i>
+                                                Le groupe administrateur a toujours toutes les permissions.
+                                            </div>
+                                            
+                                            {# Ajouter des champs cachés pour conserver les permissions admin #}
+                                            {% for perm in perms %}
+                                                <input type="hidden" name="permissions" value="{{ perm.id }}">
+                                            {% endfor %}
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Aucune permission disponible
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-end">
+                            <a href="{{ url_for('auth.groups_list') }}" class="btn btn-secondary me-2">Annuler</a>
+                            <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}QB Tools - Page non trouvée{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="card shadow">
+                <div class="card-body py-5">
+                    <h1 class="display-1 text-warning mb-4">404</h1>
+                    <h2 class="mb-4">Page non trouvée</h2>
+                    <p class="lead mb-5">
+                        La page que vous recherchez n'existe pas ou a été déplacée.
+                    </p>
+                    
+                    <div class="d-grid gap-2 col-md-6 mx-auto">
+                        <a href="{{ url_for('main.home') }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-home me-2"></i>Retour à l'accueil
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

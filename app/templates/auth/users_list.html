@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}QB Tools - Gestion des utilisateurs{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Accueil</a></li>
+                    <li class="breadcrumb-item active">Gestion des utilisateurs</li>
+                </ol>
+            </nav>
+            
+            <h1>Gestion des utilisateurs</h1>
+            <p class="lead">Gérez les comptes utilisateurs de QB Tools</p>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-end">
+                <a href="{{ url_for('auth.add_user') }}" class="btn btn-primary">
+                    <i class="fas fa-user-plus me-2"></i>Ajouter un utilisateur
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h3 class="card-title">Liste des utilisateurs</h3>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Nom d'utilisateur</th>
+                                    <th>Email</th>
+                                    <th>Nom complet</th>
+                                    <th>Groupes</th>
+                                    <th>Statut</th>
+                                    <th>Dernière connexion</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                <tr>
+                                    <td>{{ user.username }}</td>
+                                    <td>{{ user.email }}</td>
+                                    <td>{{ user.first_name }} {{ user.last_name }}</td>
+                                    <td>
+                                        {% for group in user.groups %}
+                                            <span class="badge bg-primary me-1">{{ group.name }}</span>
+                                        {% else %}
+                                            <span class="text-muted">Aucun</span>
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        {% if user.is_active %}
+                                            <span class="badge bg-success">Actif</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Inactif</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if user.last_login %}
+                                            {{ user.last_login.strftime('%d/%m/%Y %H:%M') }}
+                                        {% else %}
+                                            <span class="text-muted">Jamais connecté</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a href="{{ url_for('auth.edit_user', user_id=user.id) }}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#deleteUserModal" 
+                                                    data-user-id="{{ user.id }}"
+                                                    data-user-name="{{ user.username }}"
+                                                    {% if user.id == current_user.id %}disabled{% endif %}>
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-4">
+                                        <div class="alert alert-info mb-0">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            Aucun utilisateur trouvé.
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmation de suppression -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteUserModalLabel">Confirmer la suppression</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Êtes-vous sûr de vouloir supprimer l'utilisateur <strong id="userName"></strong> ?</p>
+                <p class="text-danger">Cette action est irréversible.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <form id="deleteUserForm" method="POST" action="">
+                    <button type="submit" class="btn btn-danger">Supprimer</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Configurer le modal de suppression
+        var deleteUserModal = document.getElementById('deleteUserModal');
+        deleteUserModal.addEventListener('show.bs.modal', function(event) {
+            var button = event.relatedTarget;
+            var userId = button.getAttribute('data-user-id');
+            var userName = button.getAttribute('data-user-name');
+            
+            document.getElementById('userName').textContent = userName;
+            document.getElementById('deleteUserForm').action = "{{ url_for('auth.delete_user', user_id=0) }}".replace('0', userId);
+        });
+    });
+</script>
+{% endblock %}
