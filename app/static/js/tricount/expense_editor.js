@@ -639,3 +639,33 @@ document.addEventListener('DOMContentLoaded', function() {
         initEditButtons();
     }
 });
+
+/**
+ * Initialise les boutons d'édition de dépense
+ */
+function initEditButtons() {
+    const editButtons = document.querySelectorAll('.edit-expense-btn');
+    
+    editButtons.forEach(button => {
+        // Écouter les clics sur les boutons d'édition
+        button.addEventListener('click', function(e) {
+            const expenseId = this.dataset.expenseId;
+            
+            // Utiliser l'éditeur de dépense pour charger les données
+            if (window.expenseEditor) {
+                window.expenseEditor.loadExpense(expenseId);
+            }
+        });
+    });
+}
+
+// Fonction d'initialisation explicite qui peut être appelée
+// pour créer une instance avec des options personnalisées
+function initExpenseEditor(options = {}) {
+    return new ExpenseEditor(options);
+}
+
+// Exposer la classe et la fonction d'initialisation
+window.ExpenseEditor = ExpenseEditor;
+window.initExpenseEditor = initExpenseEditor;
+window.initEditButtons = initEditButtons;
