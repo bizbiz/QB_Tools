@@ -44,10 +44,13 @@ document.addEventListener('DOMContentLoaded', function() {
     window.resetFilters = resetFilters;
 
     setTimeout(function() {
+        console.log('🔍 DÉBOGAGE: Tentative d\'exécution de submitFiltersAjax...');
         if (typeof window.submitFiltersAjax === 'function') {
+            console.log('🔍 Fonction submitFiltersAjax trouvée, exécution...');
             window.submitFiltersAjax();
         } else {
-            console.error("submitFiltersAjax function not found!");
+            console.error('🔴 ERREUR: submitFiltersAjax function not found!');
+            console.log('🔍 Contenu de window.submitFiltersAjax:', window.submitFiltersAjax);
         }
     }, 100);
 });

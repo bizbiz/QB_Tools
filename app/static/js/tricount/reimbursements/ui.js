@@ -8,7 +8,7 @@ import { initStatusSwitches } from './status.js';
 import { initBulkSelection } from './bulk.js';
 import { initAjaxPagination } from './filters.js';
 import { initExpenseManagement } from './expenses.js';
-import { initExpenseButtons } from './expense_buttons.js';
+import { initExpenseButtons, reinitEditButtons } from './expense_buttons.js';
 
 /**
  * Initialise les fonctionnalités d'interface

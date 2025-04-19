@@ -28,6 +28,11 @@ export function initExpenseButtons() {
     });
 }
 
+export function reinitEditButtons() {
+    // Appeler simplement initExpenseButtons pour réutiliser le code
+    initExpenseButtons();
+}
+
 /**
  * Gère le clic sur un bouton d'édition
  * @param {Event} e - Événement de clic
@@ -44,12 +49,11 @@ function handleEditButtonClick(e) {
     
     console.log(`Édition de la dépense ID: ${expenseId}`);
     
-    // Utiliser l'éditeur global si disponible
+    // Utiliser l'éditeur global existant
     if (window.expenseEditor && typeof window.expenseEditor.loadExpense === 'function') {
         window.expenseEditor.loadExpense(expenseId);
     } else {
-        // Approche de secours directe
-        loadExpenseAndOpenModal(expenseId);
+        console.error("Éditeur de dépenses non disponible");
     }
     
     return false;
@@ -92,4 +96,4 @@ function loadExpenseAndOpenModal(expenseId) {
 }
 
 // Export par défaut pour une importation plus simple
-export default { init: initExpenseButtons };
+export default { init: initExpenseButtons, reinit: reinitEditButtons };

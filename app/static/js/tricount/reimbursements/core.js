@@ -97,14 +97,19 @@ export function preventFormDefaults() {
  * @param {string} message - Message d'erreur à afficher
  */
 export function showErrorMessage(message) {
+    console.error('🔴 AFFICHAGE MESSAGE D\'ERREUR:', message);
+    
     const tableBody = document.getElementById('expenses-table-body');
     
-    if (!tableBody) return;
+    if (!tableBody) {
+        console.error('🔴 tableBody non trouvé pour afficher l\'erreur!');
+        return;
+    }
     
     // Créer une alerte d'erreur
     const alertHtml = `
         <tr>
-            <td colspan="8" class="text-center py-4">
+            <td colspan="9" class="text-center py-4">
                 <div class="alert alert-danger mb-0">
                     <i class="fas fa-exclamation-circle me-2"></i>
                     ${message}

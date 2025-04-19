@@ -176,37 +176,61 @@ export function resetFilters() {
 export function submitFiltersAjax() {
     // Empêcher les requêtes simultanées
     if (isRequestPending) {
+        console.log('Request already pending, ignoring');
         return;
     }
     
+    console.log('🔍 DÉBOGAGE: Démarrage de la requête AJAX pour les données du tableau...');
     isRequestPending = true;
     
     const filterForm = document.getElementById('filter-form');
     const loadingSpinner = document.getElementById('table-loading-spinner');
     
     if (!filterForm) {
+        console.error('🔴 ERREUR: Formulaire de filtre non trouvé!');
         isRequestPending = false;
         return;
     }
+    
+    // LOGS DE DÉBOGAGE: Inspecter les paramètres de tri
+    const sortInput = filterForm.querySelector('input[name="sort"]');
+    const orderInput = filterForm.querySelector('input[name="order"]');
+    
+    console.log('🔍 Paramètres de tri envoyés:', {
+        'sort': sortInput ? sortInput.value : 'non défini',
+        'order': orderInput ? orderInput.value : 'non défini'
+    });
     
     // Afficher l'indicateur de chargement
     if (loadingSpinner) {
         loadingSpinner.style.display = 'block';
     }
     
+    // DÉBOGAGE: Afficher l'URL complète
+    let url = '/tricount/reimbursements/rows';
+    console.log('🔍 URL de la requête AJAX:', url);
+    
     // Créer directement un FormData pour capturer tous les champs
     let formData;
     try {
         formData = new FormData(filterForm);
         formData.append('ajax', 'true');
+        
+        // LOGS DE DÉBOGAGE: Vérifier tous les champs du formulaire
+        console.log('🔍 Contenu du formulaire:');
+        for (let pair of formData.entries()) {
+            console.log(pair[0] + ': ' + pair[1]);
+        }
     } catch (error) {
+        console.error('🔴 ERREUR lors de la création du FormData:', error);
         isRequestPending = false;
         if (loadingSpinner) loadingSpinner.style.display = 'none';
         return;
     }
     
-    // Envoyer la requête AJAX
-    fetch('/tricount/reimbursements/rows', {
+    // Envoyer la requête AJAX avec plus de débogage
+    console.log('🔍 Envoi de la requête AJAX...');
+    fetch(url, {
         method: 'POST',
         body: formData,
         headers: {
@@ -214,24 +238,43 @@ export function submitFiltersAjax() {
         }
     })
     .then(response => {
+        console.log('🔍 Réponse reçue, status:', response.status);
+        // DÉBOGAGE: Vérifier si la réponse est OK
+        if (!response.ok) {
+            throw new Error(`Erreur HTTP! Status: ${response.status}`);
+        }
         return response.json();
     })
     .then(data => {
+        console.log('🔍 Données reçues:', {
+            success: data.success,
+            has_html: !!data.html,
+            summary: !!data.summary,
+            pagination: !!data.pagination
+        });
+        
         if (data && data.success) {
             // Mettre à jour le tableau avec le HTML généré côté serveur
             if (data.html) {
                 updateTableContent(data.html);
+                console.log('Table content updated');
+            } else {
+                console.warn('No HTML content in response');
             }
             
             // Mettre à jour les statistiques et la pagination
             if (data.summary) updateSummary(data.summary);
             if (data.pagination) updatePagination(data.pagination);
         } else {
-            showErrorMessage('Erreur lors du chargement des données: ' + (data?.error || 'Erreur inconnue'));
+            console.error('🔴 La réponse indique un échec:', data?.error || 'Erreur inconnue');
+            showErrorMessage('Erreur serveur: ' + (data?.error || 'Erreur inconnue'));
         }
     })
     .catch(error => {
-        showErrorMessage('Erreur de communication avec le serveur');
+        console.error('🔴 ERREUR AJAX:', error);
+        console.error('🔴 Message complet:', error.message);
+        // Afficher un message d'erreur plus détaillé
+        showErrorMessage('Erreur de communication avec le serveur: ' + error.message);
     })
     .finally(() => {
         // Cacher l'indicateur de chargement
@@ -240,6 +283,7 @@ export function submitFiltersAjax() {
         }
         // Réinitialiser le drapeau
         isRequestPending = false;
+        console.log('Request completed, pending flag reset');
     });
 }
 
@@ -294,3 +338,5 @@ function handlePaginationClick(e) {
     
     return false;
 }
+
+window.submitFiltersAjax = submitFiltersAjax;
