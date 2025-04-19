@@ -2,22 +2,30 @@
 /**
  * Module de visualisation des dépenses
  * Gère l'affichage détaillé d'une dépense dans un modal
+ * Version améliorée avec support d'historique
  */
 
 class ExpenseViewer {
     /**
      * Crée une instance du visualiseur de dépenses
-     * @param {string} modalId - ID du modal HTML (défaut: 'viewExpenseModal')
-     * @param {string} endpointUrl - URL de l'API pour récupérer les détails de la dépense
+     * @param {Object} options - Options de configuration
      */
-    constructor(modalId = 'viewExpenseModal', endpointUrl = '/tricount/reimbursements/expense') {
+    constructor(options = {}) {
+        // Configuration par défaut
+        this.config = {
+            modalId: 'viewExpenseModal',
+            endpointUrl: '/tricount/reimbursements/expense',
+            historyEnabled: true,
+            historyEndpointUrl: '/tricount/reimbursements/expense-history',
+            ...options
+        };
+        
         // Éléments DOM
-        this.modal = document.getElementById(modalId);
-        this.endpointUrl = endpointUrl;
+        this.modal = document.getElementById(this.config.modalId);
         
         // Vérifier si le modal existe
         if (!this.modal) {
-            console.error(`Modal non trouvé: ${modalId}`);
+            console.error(`Modal non trouvé: ${this.config.modalId}`);
             return;
         }
         
@@ -27,7 +35,7 @@ class ExpenseViewer {
         // Initialiser les événements
         this._setupEventListeners();
         
-        console.log(`ExpenseViewer initialisé (modal: ${modalId})`);
+        console.log(`ExpenseViewer initialisé (modal: ${this.config.modalId})`);
     }
     
     /**
@@ -56,6 +64,19 @@ class ExpenseViewer {
                 button.parentNode.replaceChild(newButton, button);
             }
         });
+        
+        // Écouter les changements d'onglets pour charger l'historique à la demande
+        if (this.config.historyEnabled) {
+            const historyTab = this.modal.querySelector('#history-tab');
+            if (historyTab) {
+                historyTab.addEventListener('shown.bs.tab', (e) => {
+                    const expenseId = this.modal.querySelector('#view-expense-id').value;
+                    if (expenseId) {
+                        this._loadExpenseHistory(expenseId);
+                    }
+                });
+            }
+        }
     }
     
     /**
@@ -64,7 +85,14 @@ class ExpenseViewer {
      */
     _initTooltips() {
         const tooltipTriggerList = [].slice.call(this.modal.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        tooltipTriggerList.forEach(el => new bootstrap.Tooltip(el));
+        tooltipTriggerList.forEach(el => {
+            // Supprimer les tooltips existants
+            if (el._tooltip) {
+                el._tooltip.dispose();
+            }
+            // Créer un nouveau tooltip
+            el._tooltip = new bootstrap.Tooltip(el);
+        });
     }
     
     /**
@@ -75,7 +103,7 @@ class ExpenseViewer {
         console.log(`Chargement des détails de la dépense: ${expenseId}`);
         
         // Charger les données
-        fetch(`${this.endpointUrl}/${expenseId}`, {
+        fetch(`${this.config.endpointUrl}/${expenseId}`, {
             headers: {
                 'X-Requested-With': 'XMLHttpRequest'
             }
@@ -96,6 +124,13 @@ class ExpenseViewer {
                 
                 // Initialiser les tooltips après ouverture
                 setTimeout(() => this._initTooltips(), 300);
+                
+                // Activer l'onglet de détails par défaut
+                const detailsTab = this.modal.querySelector('#details-tab');
+                if (detailsTab) {
+                    const tabInstance = new bootstrap.Tab(detailsTab);
+                    tabInstance.show();
+                }
             } else {
                 throw new Error(data.error || 'Erreur lors du chargement des données');
             }
@@ -107,18 +142,319 @@ class ExpenseViewer {
     }
     
     /**
+     * Charge l'historique d'une dépense
+     * @param {string|number} expenseId - ID de la dépense
+     * @private
+     */
+    _loadExpenseHistory(expenseId) {
+        // Afficher un indicateur de chargement
+        const timelineContainer = this.modal.querySelector('#expense-timeline');
+        if (!timelineContainer) return;
+        
+        timelineContainer.innerHTML = `
+            <div class="text-center p-3">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Chargement...</span>
+                </div>
+                <p class="mt-2">Chargement de l'historique...</p>
+            </div>
+        `;
+        
+        // Construire l'historique à partir des informations disponibles
+        const expense = this.currentExpenseData;
+        if (!expense) {
+            timelineContainer.innerHTML = `
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Données insuffisantes pour générer l'historique.
+                </div>
+            `;
+            return;
+        }
+        
+        // Générer l'historique
+        const timelineHtml = this._generateTimelineHtml(expense);
+        timelineContainer.innerHTML = timelineHtml;
+    }
+    
+    /**
+     * Génère le HTML de la timeline basée sur les données de la dépense
+     * @param {Object} expense - Données de la dépense
+     * @returns {string} - HTML formaté de la timeline
+     * @private
+     */
+    _generateTimelineHtml(expense) {
+        let timelineHtml = '';
+        
+        // Ajouter l'événement de création
+        if (expense.created_at) {
+            timelineHtml += this._createTimelineItem({
+                date: expense.created_at,
+                title: 'Création de la dépense',
+                content: `Dépense créée à partir de ${expense.source || 'source inconnue'}`,
+                type: 'creation'
+            });
+        }
+        
+        // Ajouter les événements de modification
+        // Modification du marchand
+        if (expense.merchant_modified_by && expense.merchant_modified_by !== 'import') {
+            timelineHtml += this._createTimelineItem({
+                date: expense.updated_at,
+                title: 'Modification du nom de marchand',
+                content: this._formatModificationContent(
+                    'Nom du marchand', 
+                    expense.merchant, 
+                    expense.renamed_merchant,
+                    expense.merchant_modified_by
+                ),
+                type: this._getModificationType(expense.merchant_modified_by)
+            });
+        }
+        
+        // Modification de la description
+        if (expense.notes_modified_by && expense.notes_modified_by !== 'import') {
+            timelineHtml += this._createTimelineItem({
+                date: expense.updated_at,
+                title: 'Ajout de notes personnelles',
+                content: this._formatModificationContent(
+                    'Description', 
+                    expense.description, 
+                    expense.notes,
+                    expense.notes_modified_by
+                ),
+                type: this._getModificationType(expense.notes_modified_by)
+            });
+        }
+        
+        // Modification de la catégorie
+        if (expense.category_modified_by && expense.category_modified_by !== 'import') {
+            timelineHtml += this._createTimelineItem({
+                date: expense.updated_at,
+                title: 'Modification de la catégorie',
+                content: `
+                    <div class="change-details">
+                        <div class="change-label">Catégorie</div>
+                        <div class="change-value">
+                            ${expense.category ? expense.category.name : 'Non catégorisé'}
+                            ${this._formatModificationSource(expense.category_modified_by)}
+                        </div>
+                    </div>
+                `,
+                type: this._getModificationType(expense.category_modified_by)
+            });
+        }
+        
+        // Modification du flag
+        if (expense.flag_modified_by && expense.flag_modified_by !== 'import') {
+            timelineHtml += this._createTimelineItem({
+                date: expense.updated_at,
+                title: 'Modification du type de dépense',
+                content: `
+                    <div class="change-details">
+                        <div class="change-label">Type</div>
+                        <div class="change-value">
+                            ${expense.flag ? expense.flag.name : 'Non défini'}
+                            ${this._formatModificationSource(expense.flag_modified_by)}
+                        </div>
+                    </div>
+                `,
+                type: this._getModificationType(expense.flag_modified_by)
+            });
+        }
+        
+        // Événements de remboursement
+        if (expense.declaration_date) {
+            timelineHtml += this._createTimelineItem({
+                date: expense.declaration_date,
+                title: 'Déclaration pour remboursement',
+                content: `
+                    <div class="mb-2">Dépense déclarée pour remboursement.</div>
+                    ${expense.declaration_reference ? `<div class="small">Référence: ${expense.declaration_reference}</div>` : ''}
+                `,
+                type: 'declaration'
+            });
+        }
+        
+        if (expense.reimbursement_date) {
+            timelineHtml += this._createTimelineItem({
+                date: expense.reimbursement_date,
+                title: 'Remboursement effectué',
+                content: `
+                    <div class="mb-2">Dépense remboursée.</div>
+                    <div class="badge bg-success">
+                        <i class="fas fa-check-circle me-1"></i>Terminé
+                    </div>
+                `,
+                type: 'reimbursement'
+            });
+        }
+        
+        // Aucun événement
+        if (timelineHtml === '') {
+            timelineHtml = `
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Aucun événement à afficher dans l'historique.
+                </div>
+            `;
+        }
+        
+        return timelineHtml;
+    }
+    
+    /**
+     * Crée un élément HTML pour la timeline
+     * @param {Object} item - Données de l'élément
+     * @param {string} item.date - Date au format string
+     * @param {string} item.title - Titre de l'élément
+     * @param {string} item.content - Contenu HTML de l'élément
+     * @param {string} item.type - Type d'élément (manual, auto, creation, etc.)
+     * @returns {string} - HTML formaté
+     * @private
+     */
+    _createTimelineItem({ date, title, content, type }) {
+        return `
+            <div class="timeline-item ${type}">
+                <div class="timeline-content">
+                    <span class="timeline-date">
+                        <i class="fas fa-clock me-1"></i>${this._formatDate(date)}
+                    </span>
+                    <h5 class="timeline-title">${title}</h5>
+                    <div class="timeline-body">
+                        ${content}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    /**
+     * Formate une date pour l'affichage
+     * @param {string} dateStr - Date au format string
+     * @returns {string} - Date formatée
+     * @private
+     */
+    _formatDate(dateStr) {
+        try {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('fr-FR', { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (e) {
+            return dateStr || 'Date inconnue';
+        }
+    }
+    
+    /**
+     * Détermine le type de modification
+     * @param {string} source - Source de la modification
+     * @returns {string} - Type de modification
+     * @private
+     */
+    _getModificationType(source) {
+        switch (source) {
+            case 'manual':
+                return 'manual';
+            case 'auto_rule':
+                return 'auto';
+            case 'auto_rule_confirmed':
+                return 'auto-confirmed';
+            default:
+                return '';
+        }
+    }
+    
+    /**
+     * Formate le contenu d'une modification
+     * @param {string} label - Libellé du champ modifié
+     * @param {string} oldValue - Ancienne valeur
+     * @param {string} newValue - Nouvelle valeur
+     * @param {string} source - Source de la modification
+     * @returns {string} - HTML formaté
+     * @private
+     */
+    _formatModificationContent(label, oldValue, newValue, source) {
+        return `
+            <div class="change-details">
+                <div class="change-label">${label}</div>
+                <div class="change-arrow">
+                    <i class="fas fa-long-arrow-alt-right"></i>
+                </div>
+                <div class="change-value">
+                    <div class="mb-1">${newValue || 'Non défini'}</div>
+                    <div class="small text-muted">
+                        ${oldValue ? `Valeur précédente: ${oldValue}` : ''}
+                        ${this._formatModificationSource(source)}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    /**
+     * Formate la source de modification
+     * @param {string} source - Source de modification
+     * @returns {string} - HTML formaté
+     * @private
+     */
+    _formatModificationSource(source) {
+        if (!source || source === 'import') return '';
+        
+        const sources = {
+            'manual': {
+                icon: 'fas fa-user',
+                text: 'Modifié manuellement',
+                className: 'bg-primary'
+            },
+            'auto_rule': {
+                icon: 'fas fa-magic',
+                text: 'Appliqué par règle automatique',
+                className: 'bg-info'
+            },
+            'auto_rule_confirmed': {
+                icon: 'fas fa-check-circle',
+                text: 'Appliqué par règle confirmée',
+                className: 'bg-success'
+            }
+        };
+        
+        const sourceInfo = sources[source] || {
+            icon: 'fas fa-question-circle',
+            text: `Source: ${source}`,
+            className: 'bg-secondary'
+        };
+        
+        return `
+            <span class="badge ${sourceInfo.className} ms-1" data-bs-toggle="tooltip" title="${sourceInfo.text}">
+                <i class="${sourceInfo.icon}"></i>
+            </span>
+        `;
+    }
+    
+    /**
      * Remplit le modal avec les données de la dépense
      * @param {Object} expense - Données de la dépense
      * @private
      */
     _populateModal(expense) {
+        // Stocker les données pour utilisation ultérieure
+        this.currentExpenseData = expense;
+        
         // Stocker l'ID de la dépense dans le champ caché
         const idField = this.modal.querySelector('#view-expense-id');
         if (idField) idField.value = expense.id;
         
         // Informations principales
         this._setElementContent('#view-merchant', this._formatMerchant(expense));
+        this._setElementContent('#view-merchant-source', this._formatModificationInfo(expense.merchant_modified_by));
+        
         this._setElementContent('#view-description', this._formatDescription(expense));
+        this._setElementContent('#view-description-source', this._formatModificationInfo(expense.notes_modified_by));
         
         // Montant et date
         this._setElementContent('#view-amount', this._formatAmount(expense));
@@ -126,26 +462,28 @@ class ExpenseViewer {
         
         // Catégorie et flag
         this._setElementContent('#view-category', this._formatCategory(expense));
+        this._setElementContent('#view-category-source', this._formatModificationInfo(expense.category_modified_by));
+        
         this._setElementContent('#view-flag', this._formatFlag(expense));
-        this._setElementContent('#view-reimbursable-status', this._formatReimbursableStatus(expense));
+        this._setElementContent('#view-flag-source', this._formatModificationInfo(expense.flag_modified_by));
+        
+        // Dupliquer le statut de remboursement pour les deux onglets
+        const reimbStatus = this._formatReimbursableStatus(expense);
+        this._setElementContent('#view-reimbursable-status', reimbStatus);
+        this._setElementContent('#view-reimbursable-status-tab', reimbStatus);
         
         // Statut, références et dates
         this._setElementContent('#view-status', this._formatStatus(expense));
         this._setElementContent('#view-reference', expense.declaration_reference || 'Aucune référence');
         this._setElementContent('#view-notes', expense.notes || 'Aucune note');
+        this._setElementContent('#view-declaration-notes', expense.declaration_notes || 'Aucune note spécifique');
         this._setElementContent('#view-declaration-date', expense.declaration_date || 'Non déclarée');
         this._setElementContent('#view-reimbursement-date', expense.reimbursement_date || 'Non remboursée');
         
-        // Texte original
-        const originalTextContainer = this.modal.querySelector('#original-text-container');
-        if (originalTextContainer) {
-            if (expense.original_text) {
-                this._setElementContent('#view-original-text', expense.original_text);
-                originalTextContainer.style.display = 'block';
-            } else {
-                originalTextContainer.style.display = 'none';
-            }
-        }
+        // Source et texte original
+        this._setElementContent('#view-source', expense.source || 'Source inconnue');
+        const originalTextContent = expense.original_text || 'Aucun texte original disponible';
+        this._setElementContent('#view-original-text', originalTextContent);
     }
     
     /**
@@ -179,18 +517,33 @@ class ExpenseViewer {
      * @private
      */
     _formatMerchant(expense) {
-        let html = expense.renamed_merchant || expense.merchant;
-        
-        // Ajouter une indication si le nom a été renommé
         if (expense.renamed_merchant) {
-            html += `
+            return `
+                ${expense.renamed_merchant}
                 <small class="text-muted d-block">
                     <i class="fas fa-tag me-1"></i>Nom original: ${expense.merchant}
                 </small>
             `;
         }
+        return expense.merchant;
+    }
+    
+    /**
+     * Formate les informations de modification
+     * @param {string} source - Source de modification
+     * @returns {string} - Texte formaté
+     * @private
+     */
+    _formatModificationInfo(source) {
+        if (!source || source === 'import') return '';
         
-        return html;
+        const sources = {
+            'manual': 'Modifié manuellement',
+            'auto_rule': 'Modifié par règle automatique',
+            'auto_rule_confirmed': 'Modifié par règle confirmée'
+        };
+        
+        return sources[source] || `Source: ${source}`;
     }
     
     /**
@@ -200,18 +553,16 @@ class ExpenseViewer {
      * @private
      */
     _formatDescription(expense) {
-        let html = expense.notes || expense.description || 'Aucune description';
-        
-        // Ajouter une indication si des notes ont été ajoutées
-        if (expense.notes && expense.description) {
-            html += `
+        if (expense.notes) {
+            return `
+                ${expense.notes}
+                ${expense.description ? `
                 <small class="text-muted d-block mt-2">
                     <i class="fas fa-align-left me-1"></i>Description originale: ${expense.description}
-                </small>
+                </small>` : ''}
             `;
         }
-        
-        return html;
+        return expense.description || 'Aucune description';
     }
     
     /**
@@ -224,11 +575,7 @@ class ExpenseViewer {
         const amount = parseFloat(expense.amount).toFixed(2);
         const className = expense.is_debit ? 'text-danger mb-0' : 'text-success mb-0';
         
-        const span = document.createElement('span');
-        span.className = className;
-        span.textContent = `${amount} €`;
-        
-        return span;
+        return `<span class="${className}">${expense.is_debit ? '-' : ''}${amount} €</span>`;
     }
     
     /**
@@ -258,7 +605,7 @@ class ExpenseViewer {
     _formatFlag(expense) {
         if (expense.flag) {
             return expense.flag_html || 
-                `<span class="badge" style="background-color: ${expense.flag.color}">${expense.flag.name}</span>`;
+                `<span class="flag-badge" style="background-color: ${expense.flag.color}">${expense.flag.name}</span>`;
         } else {
             return '<span class="badge bg-secondary">Non défini</span>';
         }
@@ -271,7 +618,7 @@ class ExpenseViewer {
      * @private
      */
     _formatReimbursableStatus(expense) {
-        if (expense.flag) {
+        if (expense.flag && expense.flag.reimbursement_type) {
             if (expense.flag.reimbursement_type === 'not_reimbursable') {
                 return '<span class="badge bg-secondary"><i class="fas fa-ban me-1"></i>Non remboursable</span>';
             } else if (expense.flag.reimbursement_type === 'partially_reimbursable') {
@@ -280,7 +627,7 @@ class ExpenseViewer {
                 return '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Entièrement remboursable</span>';
             }
         }
-        return '';
+        return '<span class="badge bg-secondary">Type non défini</span>';
     }
     
     /**
@@ -299,14 +646,6 @@ class ExpenseViewer {
         }
     }
 }
-
-// Créer une instance globale lorsque le DOM est chargé
-document.addEventListener('DOMContentLoaded', function() {
-    // Ne pas écraser une instance existante
-    if (window.ExpenseViewer === undefined) {
-        window.ExpenseViewer = new ExpenseViewer();
-    }
-});
 
 // Exporter la classe pour une utilisation avec import
 export default ExpenseViewer;

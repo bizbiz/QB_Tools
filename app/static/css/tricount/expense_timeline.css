@@ -1,0 +1,139 @@
+/* app/static/css/tricount/expense_timeline.css */
+/* Styles pour l'affichage de l'historique des dépenses sous forme de timeline */
+
+.timeline {
+    position: relative;
+    padding: 20px 0;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 20px;
+    width: 2px;
+    background-color: #e9ecef;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 25px;
+    margin-left: 40px;
+}
+
+.timeline-item:last-child {
+    margin-bottom: 0;
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -36px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background-color: #ffffff;
+    border: 2px solid #0d6efd;
+    z-index: 1;
+}
+
+.timeline-item.creation::before {
+    background-color: #198754;
+    border-color: #198754;
+}
+
+.timeline-item.manual::before {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.timeline-item.auto::before {
+    background-color: #17a2b8;
+    border-color: #17a2b8;
+}
+
+.timeline-item.auto-confirmed::before {
+    background-color: #198754;
+    border-color: #198754;
+}
+
+.timeline-item.declaration::before {
+    background-color: #6610f2;
+    border-color: #6610f2;
+}
+
+.timeline-item.reimbursement::before {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.timeline-content {
+    padding: 12px 15px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.timeline-date {
+    display: block;
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-bottom: 8px;
+}
+
+.timeline-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+}
+
+.timeline-body {
+    font-size: 0.9rem;
+}
+
+.timeline-body .badge {
+    font-size: 0.75rem;
+}
+
+.change-details {
+    display: flex;
+    align-items: center;
+    padding: 5px 0;
+}
+
+.change-label {
+    font-weight: 600;
+    min-width: 100px;
+}
+
+.change-arrow {
+    margin: 0 8px;
+    color: #6c757d;
+}
+
+.change-value {
+    flex-grow: 1;
+}
+
+/* Responsive styles */
+@media (max-width: 767.98px) {
+    .timeline::before {
+        left: 10px;
+    }
+    
+    .timeline-item {
+        margin-left: 25px;
+    }
+    
+    .timeline-item::before {
+        left: -21px;
+        width: 12px;
+        height: 12px;
+    }
+    
+    .timeline-content {
+        padding: 10px;
+    }
+}

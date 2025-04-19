@@ -1,4 +1,10 @@
 {# app/templates/macros/tricount/expense_view_modal.html #}
+{# Macro pour afficher le modal de visualisation de dépense amélioré #}
+
+{% from "macros/tricount/flag_macros.html" import flag_badge %}
+{% from "macros/tricount/category_select.html" import category_badge %}
+{% from "macros/tricount/expense_macros.html" import display_modification_source %}
+{% from "macros/tricount/reimbursement_macros.html" import declaration_status_badge, reimbursement_type_badge %}
 
 {% macro expense_view_modal(
     modal_id='viewExpenseModal',
@@ -13,70 +19,153 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div class="row">
-                    <div class="col-md-8">
-                        <h4 id="view-merchant" class="mb-3"></h4>
-                        <p id="view-description" class="text-muted"></p>
-                    </div>
-                    <div class="col-md-4 text-end">
-                        <h3 id="view-amount" class="text-danger mb-0"></h3>
-                        <p id="view-date" class="text-muted"></p>
-                    </div>
-                </div>
+                <!-- Onglets pour organiser l'information -->
+                <ul class="nav nav-tabs" id="expenseViewTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="details-tab" data-bs-toggle="tab" data-bs-target="#details-content" type="button" role="tab" aria-controls="details-content" aria-selected="true">
+                            <i class="fas fa-info-circle me-1"></i> Détails
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="reimbursement-tab" data-bs-toggle="tab" data-bs-target="#reimbursement-content" type="button" role="tab" aria-controls="reimbursement-content" aria-selected="false">
+                            <i class="fas fa-receipt me-1"></i> Remboursement
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history-content" type="button" role="tab" aria-controls="history-content" aria-selected="false">
+                            <i class="fas fa-history me-1"></i> Historique
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="original-tab" data-bs-toggle="tab" data-bs-target="#original-content" type="button" role="tab" aria-controls="original-content" aria-selected="false">
+                            <i class="fas fa-file-alt me-1"></i> Données brutes
+                        </button>
+                    </li>
+                </ul>
                 
-                <hr>
-                
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Catégorie</label>
-                            <div id="view-category"></div>
+                <!-- Contenu des onglets -->
+                <div class="tab-content pt-3" id="expenseViewTabsContent">
+                    <!-- ONGLET DÉTAILS -->
+                    <div class="tab-pane fade show active" id="details-content" role="tabpanel" aria-labelledby="details-tab">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <h4 id="view-merchant" class="mb-2"></h4>
+                                    <div id="view-merchant-source" class="text-muted small"></div>
+                                </div>
+                                <div class="mb-3">
+                                    <h6 class="text-muted mb-2">Description</h6>
+                                    <div id="view-description"></div>
+                                    <div id="view-description-source" class="text-muted small mt-1"></div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <h3 id="view-amount" class="text-danger mb-0"></h3>
+                                <p id="view-date" class="text-muted"></p>
+                            </div>
                         </div>
                         
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Type de dépense</label>
-                            <div id="view-flag"></div>
-                            <div id="view-reimbursable-status" class="mt-2"></div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Statut de remboursement</label>
-                            <div id="view-status"></div>
+                        <hr>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <h6 class="text-muted mb-2">Catégorie</h6>
+                                    <div id="view-category"></div>
+                                    <div id="view-category-source" class="text-muted small mt-1"></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <h6 class="text-muted mb-2">Type de dépense</h6>
+                                    <div id="view-flag"></div>
+                                    <div id="view-flag-source" class="text-muted small mt-1"></div>
+                                    <div id="view-reimbursable-status" class="mt-2"></div>
+                                </div>
+                            </div>
                         </div>
                         
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Référence de déclaration</label>
-                            <p id="view-reference" class="mb-0"></p>
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <div class="alert alert-light border p-3">
+                                    <h6 class="text-muted mb-2">Notes personnelles</h6>
+                                    <div id="view-notes" class="mb-0"></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-                
-                <div class="row mb-3">
-                    <div class="col-md-12">
-                        <label class="form-label fw-bold">Notes personnelles</label>
-                        <p id="view-notes" class="mb-3"></p>
-                    </div>
-                </div>
-                
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-2">
-                            <label class="form-label fw-bold">Date de déclaration</label>
-                            <p id="view-declaration-date" class="mb-0"></p>
+                    
+                    <!-- ONGLET REMBOURSEMENT -->
+                    <div class="tab-pane fade" id="reimbursement-content" role="tabpanel" aria-labelledby="reimbursement-tab">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="card border-0 bg-light mb-3">
+                                    <div class="card-body">
+                                        <h6 class="text-muted mb-2">Statut de remboursement</h6>
+                                        <div id="view-status" class="mb-3"></div>
+                                        
+                                        <h6 class="text-muted mb-2">Éligibilité au remboursement</h6>
+                                        <div id="view-reimbursable-status-tab"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card border-0 bg-light">
+                                    <div class="card-body">
+                                        <h6 class="text-muted mb-2">Référence de déclaration</h6>
+                                        <p id="view-reference" class="mb-3"></p>
+                                        
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <h6 class="text-muted mb-2">Date de déclaration</h6>
+                                                <p id="view-declaration-date" class="mb-0"></p>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <h6 class="text-muted mb-2">Date de remboursement</h6>
+                                                <p id="view-reimbursement-date" class="mb-0"></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="card border-0 bg-light">
+                                    <div class="card-body">
+                                        <h6 class="text-muted mb-2">Notes de déclaration</h6>
+                                        <p id="view-declaration-notes" class="mb-0">Aucune note spécifique</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="mb-2">
-                            <label class="form-label fw-bold">Date de remboursement</label>
-                            <p id="view-reimbursement-date" class="mb-0"></p>
+                    
+                    <!-- ONGLET HISTORIQUE -->
+                    <div class="tab-pane fade" id="history-content" role="tabpanel" aria-labelledby="history-tab">
+                        <div class="timeline mb-3" id="expense-timeline">
+                            <div class="text-center p-3">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Chargement...</span>
+                                </div>
+                                <p class="mt-2">Chargement de l'historique...</p>
+                            </div>
                         </div>
                     </div>
-                </div>
-                
-                <div id="original-text-container" class="mt-3">
-                    <label class="form-label fw-bold">Texte original</label>
-                    <pre id="view-original-text" class="p-3 bg-light rounded border"></pre>
+                    
+                    <!-- ONGLET DONNÉES BRUTES -->
+                    <div class="tab-pane fade" id="original-content" role="tabpanel" aria-labelledby="original-tab">
+                        <div class="original-data mb-3">
+                            <div class="alert alert-light border mb-3">
+                                <h6 class="text-muted mb-2">Source de données</h6>
+                                <p id="view-source" class="mb-0">Inconnu</p>
+                            </div>
+                            
+                            <h6 class="text-muted mb-2">Texte original</h6>
+                            <pre id="view-original-text" class="p-3 bg-light rounded border"></pre>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- Hidden input to store expense ID -->
@@ -85,7 +174,9 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
                 {% if edit_button %}
-                <button type="button" class="btn btn-primary edit-from-view-btn" onclick="{{ edit_callback }}()">Modifier</button>
+                <button type="button" class="btn btn-primary edit-from-view-btn" onclick="{{ edit_callback }}()">
+                    <i class="fas fa-edit me-1"></i> Modifier
+                </button>
                 {% endif %}
             </div>
         </div>
@@ -98,12 +189,36 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize the expense viewer if not already done
     if (window.ExpenseViewer === undefined) {
-        window.ExpenseViewer = new ExpenseViewerClass('{{ modal_id }}', '{{ endpoint }}');
+        loadExpenseViewerScripts('{{ endpoint }}');
     }
     
     // Initialize view buttons if not using the main module
     initViewButtons();
 });
+
+/**
+ * Charge le script du visualiseur de dépenses de manière dynamique
+ */
+function loadExpenseViewerScripts(endpoint) {
+    // Créer l'élément script pour charger le module
+    const script = document.createElement('script');
+    script.type = 'module';
+    
+    // Utiliser une fonction auto-exécutée
+    script.textContent = `
+        import ExpenseViewer from '${window.location.origin}/static/js/tricount/modals/expense_viewer.js';
+        
+        // Créer l'instance et la rendre accessible globalement
+        window.ExpenseViewer = new ExpenseViewer({
+            modalId: '{{ modal_id }}',
+            endpointUrl: '${endpoint}',
+            historyEnabled: true
+        });
+    `;
+    
+    // Ajouter le script au document
+    document.head.appendChild(script);
+}
 
 function initViewButtons() {
     const viewButtons = document.querySelectorAll('.view-expense-btn');
@@ -119,6 +234,10 @@ function initViewButtons() {
             
             if (window.ExpenseViewer) {
                 window.ExpenseViewer.showExpense(expenseId);
+            } else if (typeof showExpenseDetails === 'function') {
+                showExpenseDetails(expenseId);
+            } else {
+                console.error('ExpenseViewer non disponible');
             }
         });
         
@@ -142,6 +261,8 @@ function openExpenseEditorFromView() {
     // Open the editor if available
     if (window.expenseEditor && typeof window.expenseEditor.loadExpense === 'function') {
         window.expenseEditor.loadExpense(expenseId);
+    } else if (typeof editExpense === 'function') {
+        editExpense(expenseId);
     }
 }
 </script>

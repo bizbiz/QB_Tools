@@ -1,0 +1,82 @@
+/* app/static/css/tricount/expense_view.css */
+/* Styles spécifiques pour le modal de visualisation des dépenses */
+
+/* Styles des onglets */
+#expenseViewTabs {
+    border-bottom: 1px solid #dee2e6;
+    margin-bottom: 1rem;
+}
+
+#expenseViewTabs .nav-link {
+    color: #6c757d;
+    font-weight: 500;
+    padding: 0.75rem 1rem;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+}
+
+#expenseViewTabs .nav-link:hover {
+    color: #495057;
+    border-color: #e9ecef;
+}
+
+#expenseViewTabs .nav-link.active {
+    color: #0d6efd;
+    border-color: #0d6efd;
+    background-color: transparent;
+}
+
+/* Espacements et sections */
+.tab-content {
+    padding: 1rem 0;
+}
+
+.tab-pane h6.text-muted {
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+}
+
+/* Styles pour les cartes */
+.view-section-card {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid #e9ecef;
+}
+
+/* Style pour le montant */
+#view-amount {
+    font-size: 1.75rem;
+    font-weight: 600;
+}
+
+#view-date {
+    font-size: 0.95rem;
+}
+
+/* Style pour les conteneurs d'information */
+.info-container {
+    margin-bottom: 1.5rem;
+}
+
+.info-container .info-label {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: #495057;
+}
+
+.info-container .info-value {
+    color: #212529;
+}
+
+/* Style pour les sources de modification */
+.modification-source {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+    display: flex;
