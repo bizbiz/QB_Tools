@@ -1,0 +1,58 @@
+# app/static/css/common/common.qbsum - Styles CSS communs
+
+Ce dossier contient les styles CSS réutilisables dans plusieurs modules de l'application.
+
+## Fichiers dans ce dossier
+
+### icon_selector.css
+- **Description**: Composant de sélection d'icônes réutilisable
+- **Fonctionnalités principales**:
+  - Conteneur de recherche d'icônes avec zone de résultats dynamique
+  - Grille responsive d'affichage des icônes (5 colonnes par défaut, 3 sur mobile)
+  - Styles pour la sélection et le survol des icônes
+  - Affichage de prévisualisation des icônes sélectionnées
+  - Gestion des états de chargement et messages vides
+- **Classes clés**:
+  - `.icon-input-container`: Conteneur principal du sélecteur
+  - `.icon-search-results`: Zone de résultats de recherche
+  - `.icon-grid`: Grille d'affichage des icônes
+  - `.icon-item`: Élément individuel d'icône
+  - `.icon-preview`: Zone d'aperçu de l'icône sélectionnée
+- **Particularités**:
+  - Transitions et animations pour améliorer l'UX
+  - Positionnement absolu pour les résultats de recherche
+  - Adaptations responsives pour les écrans mobiles
+
+### table_sorter.css
+- **Description**: Styles pour les tableaux triables dans l'application
+- **Fonctionnalités principales**:
+  - En-têtes de tableau cliquables pour le tri
+  - Indicateurs visuels de direction de tri (asc/desc)
+  - États de survol pour les en-têtes triables
+- **Classes clés**:
+  - `.sortable`: En-tête de colonne triable
+  - `.sort-icon`: Conteneur pour les icônes de tri
+  - `.sort-icon.asc`, `.sort-icon.desc`: Icônes de tri ascendant et descendant
+- **Particularités**:
+  - Désactivation des animations indésirables sur les cellules du tableau
+  - Positionnement précis des icônes de tri
+  - Utilisation de pseudo-éléments pour les flèches de tri
+
+### badges.css
+- **Description**: Styles communs pour tous les types de badges dans l'application
+- **Fonctionnalités principales**:
+  - Styles pour les badges de catégorie avec icônes
+  - Styles pour les badges de type (flags) avec variation de couleurs
+  - Versions compactes des badges pour les espaces restreints
+  - Conteneur de prévisualisation pour les badges
+- **Classes clés**:
+  - `.category-badge`: Badge de catégorie avec bordure colorée
+  - `.flag-badge`: Badge de type avec fond coloré
+  - `.btn-sm`: Modificateur pour version compacte des badges
+  - `.preview-container`: Conteneur de prévisualisation
+  - `.preview-badge`: Badge en mode prévisualisation
+- **Particularités**:
+  - Styles cohérents entre les différents types de badges
+  - Support des icônes et émojis dans les badges
+  - Variation d'état actif pour les badges
+  - Ombres légères pour effet de profondeur

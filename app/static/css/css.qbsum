@@ -1,0 +1,60 @@
+# app/static/css/css.qbsum - Feuilles de style de l'application
+
+Ce dossier contient toutes les feuilles de style CSS de l'application, organisées par module fonctionnel.
+
+## Structure générale
+- Styles de base à la racine
+- Sous-dossiers par module ou fonctionnalité
+- Architecture modulaire pour éviter les conflits et faciliter la maintenance
+
+## Fichiers à la racine
+- **style.css**: Styles globaux de l'application
+  - Typographie, couleurs et mise en page de base
+  - Styles responsifs communs
+  - Thème général des formulaires et composants
+- **teamplanning.css**: Styles spécifiques au module de planification d'équipe
+  - Affichage des tableaux de planning
+  - Styles des événements et légendes
+  - Vues quotidiennes et mensuelles
+  - Adaptations pour l'impression
+
+## Sous-dossiers
+
+### /common
+Styles partagés entre plusieurs modules:
+- **icon_selector.css**: Sélecteur d'icônes réutilisable
+- **table_sorter.css**: Styles pour les tableaux triables
+- **badges.css**: Styles communs pour badges de catégorie et type
+
+### /tricount
+Styles pour le module de gestion des dépenses:
+- **main.css**: Styles principaux du module tricount
+- **category_badge.css**: Styles des badges de catégories
+- **category_select.css**: Styles des sélecteurs de catégories
+- **categories.css**: Styles pour la gestion des catégories
+- **flags.css**: Styles des badges de types de dépenses
+- **emoji_picker.css**: Sélecteur d'émojis pour catégories
+- **select_styles.css**: Améliorations pour les sélecteurs
+- **expense_name.css**: Affichage des noms de dépenses
+- **search_highlight.css**: Surlignage des résultats de recherche
+- **modification_source.css**: Badges de source de modification
+- **categorize.css**: Page de catégorisation des dépenses
+- **rename_utils.css**: Sections de renommage
+- **toast.css**: Notifications toast personnalisées
+- **auto_categorize.css**: Styles pour l'auto-catégorisation
+- **reimbursements.css**: Page de gestion des remboursements
+- **expense_view.css**: Modal de visualisation des dépenses
+- **expense_timeline.css**: Historique des modifications
+
+## Caractéristiques principales
+- Utilisation cohérente des variables Bootstrap
+- Responsive design pour tous les modules
+- Préfixes cohérents par module (ex: `category-`, `expense-`)
+- Animation et transitions pour une meilleure UX
+- Adaptations pour l'impression des tableaux
+- Support des thèmes clair/sombre via variables CSS
+
+## Dépendances
+- Bootstrap 5 comme framework de base
+- Iconify pour les icônes
+- Gestion des polices via variables CSS

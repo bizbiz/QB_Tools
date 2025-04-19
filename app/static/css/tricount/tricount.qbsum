@@ -1,0 +1,220 @@
+# app/static/css/tricount/tricount.qbsum - Styles CSS du module Tricount
+
+Ce dossier contient les styles CSS spécifiques au module de gestion des dépenses et remboursements (Tricount).
+
+## Fichiers dans ce dossier
+
+### main.css
+- **Description**: Styles principaux du module Tricount
+- **Composants stylés**:
+  - Cartes de dépenses avec transitions et animations
+  - Affichage des montants, dates et participants
+  - Styles des balances positives/négatives
+  - Table de dépenses avec colonnes personnalisées
+  - Styles pour les descriptions tronquées avec tooltips
+- **Particularités**:
+  - Zone de glisser-déposer pour l'import de fichiers
+  - Styles responsifs pour mobiles
+  - Gestion des indicateurs de type de dépense
+  - Désactivation des transformations hover sur certains éléments
+
+### category_badge.css
+- **Description**: Badges de catégories visuels avec support d'icônes
+- **Composants stylés**:
+  - Badges de catégories avec bordures colorées
+  - Support des icônes et emojis
+  - États actifs et inactifs
+  - Container de prévisualisation
+- **Classes clés**:
+  - `.category-badge`: Badge principal de catégorie
+  - `.category-badge.active`: État sélectionné
+  - `.preview-container`: Zone de prévisualisation
+  - `.preview-badge`: Badge en prévisualisation
+
+### category_select.css
+- **Description**: Sélecteurs améliorés pour les catégories
+- **Fonctionnalités**:
+  - Support des icônes dans les options de select
+  - Styles pour les catégories avec icônes en dehors des selects
+  - Badges de catégories dans différents contextes
+  - États actifs et désactivés
+- **Classes clés**:
+  - `.category-select-container`: Conteneur principal
+  - `.category-badge`: Badge de catégorie
+  - `.category-with-icon`: Affichage avec icône
+  - `.category-filter-active`: État de filtre actif
+
+### categories.css
+- **Description**: Styles pour la page de gestion des catégories
+- **Composants stylés**:
+  - Icônes de tri pour les tableaux de catégories
+  - Indicateurs de type de catégorie
+  - Styles de tableaux avec hover
+  - Switches améliorés pour les options
+- **Particularités**:
+  - Indicateurs colorés pour différents types de catégories
+  - Styles d'en-têtes de tableau améliorés
+  - Ajustements de largeur pour les colonnes de tableau
+
+### flags.css
+- **Description**: Badges et styles pour les types de dépenses (flags)
+- **Composants stylés**:
+  - Badges de flags avec fond coloré
+  - Prévisualisations de couleur
+  - Container de prévisualisation
+  - Tooltips pour icônes
+- **Classes clés**:
+  - `.flag-badge`: Badge principal de type
+  - `.color-preview`: Aperçu de couleur
+  - `.preview-container`: Zone de prévisualisation
+  - `.icon-tooltip`: Tooltip pour les icônes
+
+### emoji_picker.css
+- **Description**: Sélecteur d'émojis et icônes pour les catégories
+- **Composants stylés**:
+  - Grille d'émojis dans une modal
+  - Onglets de catégories d'émojis
+  - Boutons d'émojis avec hover et focus
+  - Zone de recherche d'émojis
+- **Particularités**:
+  - Animations de survol et de clic
+  - Styles pour le sélecteur Iconify
+  - Conteneur de prévisualisation des icônes
+  - Support de bibliothèques d'icônes externes
+
+### select_styles.css
+- **Description**: Styles améliorés pour les sélecteurs Select2
+- **Composants stylés**:
+  - Conteneurs Select2 adaptés au thème Bootstrap
+  - Options dans les menus déroulants
+  - États de focus et sélection
+- **Particularités**:
+  - Harmonisation avec le design système
+  - Ombres et bordures cohérentes
+  - Espacement optimisé des options
+
+### expense_name.css
+- **Description**: Styles pour l'affichage des noms de dépenses
+- **Composants stylés**:
+  - Noms de dépenses avec icônes d'édition
+  - Styles pour noms originaux vs renommés
+  - Variations selon le contexte (liste, tableau)
+- **Particularités**:
+  - Animation au survol des icônes d'édition
+  - Support des tooltips explicatifs
+  - Styles différents pour les noms originaux/modifiés
+
+### search_highlight.css
+- **Description**: Styles pour le surlignage des résultats de recherche
+- **Composants stylés**:
+  - Surlignage des termes recherchés
+  - Champ de recherche avec bouton de suppression
+  - Compteur de résultats
+  - Indicateurs de filtres actifs
+- **Particularités**:
+  - Animations lors du filtrage des résultats
+  - Raccourcis clavier affichés
+  - Indicateurs de chargement
+  - Badges pour nombre de filtres actifs
+
+### modification_source.css
+- **Description**: Badges indiquant l'origine des modifications
+- **Composants stylés**:
+  - Badges circulaires pour les sources de modification
+  - Variantes pour modifications manuelles, automatiques, confirmées
+  - Styles dans les tableaux et détails
+- **Classes clés**:
+  - `.source-badge`: Badge générique de source
+  - `.source-badge-manual`: Modifications manuelles
+  - `.source-badge-auto`: Règles automatiques
+  - `.source-badge-confirmed`: Règles confirmées
+- **Particularités**:
+  - Animation au survol des badges
+  - Indication visuelle pour modifications protégées
+  - Tailles adaptées selon le contexte
+
+### categorize.css
+- **Description**: Styles pour la page de catégorisation des dépenses
+- **Composants stylés**:
+  - Pagination des dépenses à catégoriser
+  - Contrôles de tri et filtrage
+  - Cartes de dépenses avec indicateurs
+  - Accordéons de renommage
+- **Particularités**:
+  - Animations pour les mises à jour
+  - Indicateurs de complétion
+  - Mise en évidence des champs modifiés
+  - Optimisations pour écrans mobiles
+
+### rename_utils.css
+- **Description**: Styles pour les sections de renommage
+- **Composants stylés**:
+  - Accordéons pour les options de renommage
+  - Champs de renommage avec indicateurs
+  - Indications visuelles pour champs modifiés
+- **Particularités**:
+  - Animations lors de la modification
+  - Styles d'accordéon personnalisés
+  - Adaptations pour mobiles
+
+### toast.css
+- **Description**: Notifications toast personnalisées
+- **Composants stylés**:
+  - Conteneur de notifications
+  - Variantes par type (succès, erreur, avertissement)
+  - Animations d'apparition/disparition
+- **Particularités**:
+  - Positionnement fixe en haut à droite
+  - Transitions fluides
+  - Adaptations responsives pour mobile
+
+### auto_categorize.css
+- **Description**: Styles pour l'interface d'auto-catégorisation
+- **Composants stylés**:
+  - Sections d'action avec en-têtes
+  - Prévisualisations de flags et catégories
+  - Liste des dépenses similaires
+  - Champs de critères de règles
+- **Particularités**:
+  - États désactivés pour sections conditionnelles
+  - Animations pour les mises à jour
+  - Styles pour différencier texte original/renommé
+  - Validation visuelle des champs
+
+### reimbursements.css
+- **Description**: Styles pour la gestion des remboursements
+- **Composants stylés**:
+  - Badges de statut de déclaration
+  - Cercles de progression
+  - Tableaux avec lignes colorées par statut
+  - Switches de statut
+- **Particularités**:
+  - Animations pour changements de statut
+  - Styles pour actions en masse
+  - Indicateurs visuels pour différents types
+  - Optimisations pour impression
+
+### expense_view.css
+- **Description**: Styles pour le modal de visualisation des dépenses
+- **Composants stylés**:
+  - Onglets de navigation
+  - Sections d'information
+  - Affichage du montant et de la date
+  - Conteneurs d'information
+- **Particularités**:
+  - Onglets avec styles personnalisés
+  - Cartes d'information avec fond subtil
+  - Mise en évidence des informations importantes
+
+### expense_timeline.css
+- **Description**: Styles pour l'historique des modifications
+- **Composants stylés**:
+  - Timeline verticale avec points d'événements
+  - Items de timeline par type de modification
+  - Contenu des événements avec détails
+  - Mise en page des changements
+- **Particularités**:
+  - Couleurs différentes par type d'événement
+  - Ligne verticale reliant les événements
+  - Styles responsifs pour mobile
+  - Mise en page flexible pour les détails des changements
