@@ -5,7 +5,7 @@ from app.routes.auth import auth_bp
 from app.extensions import db
 from app.models.user import User
 from datetime import datetime
-from werkzeug.urls import url_parse
+from urllib.parse import urlparse
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -36,7 +36,7 @@ def login():
         
         # Rediriger vers la page demandée si elle existe
         next_page = request.args.get('next')
-        if not next_page or url_parse(next_page).netloc != '':
+        if not next_page or urlparse(next_page).netloc != '':
             next_page = url_for('main.home')
             
         return redirect(next_page)

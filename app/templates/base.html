@@ -81,6 +81,19 @@
                         </a>
                     </li>
                     {% endif %}
+                    {% if current_user.is_admin() %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Administration
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="adminDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('auth.users_list') }}">Gestion des utilisateurs</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('auth.groups_list') }}">Gestion des groupes</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('errors_admin.errors_list') }}">Suivi des erreurs</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
                 </ul>
             </div>
         </div>

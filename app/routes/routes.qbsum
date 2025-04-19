@@ -1,0 +1,17 @@
+# routes.qbsum - Contrôleurs de l'application
+- Routes HTTP organisées en blueprints par module
+- Protection d'accès par authentification et permissions
+
+## Sous-dossiers:
+- auth/: Authentification et gestion des utilisateurs
+- main.py: Route principale de l'application
+- teamplanning/: Gestion des plannings d'équipe
+- tricount/: Gestion des dépenses et remboursements
+- errors.py: Gestionnaires d'erreurs HTTP
+
+## Blueprints:
+- main_bp: Racine (/) - redirection vers login si non authentifié
+- auth_bp: Authentification (/auth)
+- teamplanning_bp: Module teamplanning (/teamplanning)
+- tricount_bp: Module tricount (/tricount)
+- errors_bp: Gestionnaires d'erreurs (404, 403, 500)

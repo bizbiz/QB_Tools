@@ -1,0 +1,23 @@
+# routes/auth.qbsum - Module d'authentification
+- Gestion des utilisateurs, connexions et permissions
+- Basé sur Flask-Login
+
+## Fichiers principaux:
+- __init__.py: Création du blueprint auth_bp
+- login_routes.py: Connexion/déconnexion
+- user_routes.py: Gestion des utilisateurs
+- group_routes.py: Gestion des groupes et permissions
+- user_commands.py: Commandes CLI pour initialiser les utilisateurs
+
+## Routes principales:
+- /auth/login: Authentification
+- /auth/logout: Déconnexion
+- /auth/profile: Profil utilisateur
+- /auth/users: Administration des utilisateurs (réservé admin)
+- /auth/groups: Administration des groupes (réservé admin)
+
+## Fonctionnalités:
+- Authentification par identifiant/mot de passe
+- Gestion CRUD des utilisateurs et groupes
+- Système de permissions par module
+- Protection des routes administratives

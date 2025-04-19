@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block title %}QB Tools - Détails de l'erreur #{{ error.id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    pre.stacktrace {
+        max-height: 500px;
+        overflow-y: auto;
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 0.25rem;
+        border: 1px solid #dee2e6;
+        font-size: 0.875rem;
+    }
+    
+    .json-pretty {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 0.25rem;
+        border: 1px solid #dee2e6;
+        font-size: 0.875rem;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .json-key {
+        color: #d63384;
+    }
+    
+    .json-string {
+        color: #20c997;
+    }
+    
+    .json-number {
+        color: #0d6efd;
+    }
+    
+    .json-boolean {
+        color: #0dcaf0;
+    }
+    
+    .json-null {
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('errors_admin.errors_list') }}">Suivi des erreurs</a></li>
+                    <li class="breadcrumb-item active">Détails de l'erreur #{{ error.id }}</li>
+                </ol>
+            </nav>
+            
+            <div class="d-flex justify-content-between align-items-center">
+                <h1>Erreur #{{ error.id }}</h1>
+                
+                <div class="btn-group">
+                    <form method="POST" action="{{ url_for('errors_admin.resolve_error', error_id=error.id, next=url_for('errors_admin.error_details', error_id=error.id)) }}">
+                        <button type="submit" class="btn {% if error.resolved %}btn-warning{% else %}btn-success{% endif %}">
+                            <i class="fas {% if error.resolved %}fa-times me-2{% else %}fa-check me-2{% endif %}"></i>
+                            {% if error.resolved %}Marquer comme non résolu{% else %}Marquer comme résolu{% endif %}
+                        </button>
+                    </form>
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                        <i class="fas fa-trash me-2"></i>Supprimer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Informations générales -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Détails de l'erreur</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-3 fw-bold">Type d'erreur:</div>
+                        <div class="col-md-9">
+                            <span class="badge 
+                            {% if error.error_type == '500' %}bg-danger
+                            {% elif error.error_type == '404' %}bg-warning
+                            {% elif error.error_type == '403' %}bg-warning
+                            {% elif error.error_type == 'exception' %}bg-danger
+                            {% elif error.error_type == 'redirection' %}bg-info
+                            {% else %}bg-secondary{% endif %}">
+                                {{ error.error_type }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-3 fw-bold">Source:</div>
+                        <div class="col-md-9">{{ error.source }}</div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-3 fw-bold">Message:</div>
+                        <div class="col-md-9">{{ error.message }}</div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-3 fw-bold">Date de création:</div>
+                        <div class="col-md-9">{{ error.created_at.strftime('%d/%m/%Y %H:%M:%S') }}</div>
+                    </div>
+                    
+                    {% if error.resolved %}
+                    <div class="row mb-3">
+                        <div class="col-md-3 fw-bold">Date de résolution:</div>
+                        <div class="col-md-9">{{ error.resolved_at.strftime('%d/%m/%Y %H:%M:%S') }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-3 fw-bold">Statut:</div>
+                        <div class="col-md-9">
+                            {% if error.resolved %}
+                            <span class="badge bg-success">Résolu</span>
+                            {% else %}
+                            <span class="badge bg-danger">Non résolu</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Stack trace -->
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Traceback</h5>
+                </div>
+                <div class="card-body">
+                    {% if error.stack_trace %}
+                        {% if error.stack_trace.startswith('{') %}
+                            <!-- Affichage JSON (informations additionnelles) -->
+                            <h6 class="mb-3">Informations additionnelles</h6>
+                            <div class="json-pretty" id="jsonData">{{ error.stack_trace }}</div>
+                        {% else %}
+                            <!-- Stack trace normal -->
+                            <pre class="stacktrace">{{ error.stack_trace }}</pre>
+                        {% endif %}
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Aucun traceback disponible pour cette erreur.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Actions -->
+            <div class="card shadow mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('errors_admin.errors_list') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Retour à la liste
+                        </a>
+                        
+                        {% if error.error_type == '404' %}
+                        <button type="button" class="btn btn-outline-primary" onclick="window.open('{{ error.source }}', '_blank')">
+                            <i class="fas fa-external-link-alt me-2"></i>Tester l'URL
+                        </button>
+                        {% endif %}
+                        
+                        {% if error.error_type == 'redirection' %}
+                        <button type="button" class="btn btn-outline-primary" onclick="window.open('{{ error.source }}', '_blank')">
+                            <i class="fas fa-external-link-alt me-2"></i>Ouvrir la route originale
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Erreurs similaires -->
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Erreurs similaires</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for related_error in similar_errors %}
+                        <a href="{{ url_for('errors_admin.error_details', error_id=related_error.id) }}" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">#{{ related_error.id }} - {{ related_error.error_type }}</h6>
+                                <small>{{ related_error.created_at.strftime('%d/%m/%Y') }}</small>
+                            </div>
+                            <p class="mb-1">{{ related_error.message|truncate(50) }}</p>
+                            <small class="text-muted">{{ related_error.source|truncate(30) }}</small>
+                        </a>
+                        {% else %}
+                        <div class="list-group-item">
+                            <div class="alert alert-info mb-0">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Aucune erreur similaire trouvée.
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmation de suppression -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirmer la suppression</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Êtes-vous sûr de vouloir supprimer cette erreur?</p>
+                <p class="text-danger">Cette action est irréversible.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <form method="POST" action="{{ url_for('errors_admin.delete_error', error_id=error.id) }}">
+                    <button type="submit" class="btn btn-danger">Supprimer</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Formater le JSON pour l'affichage
+        const jsonData = document.getElementById('jsonData');
+        if (jsonData) {
+            try {
+                const data = JSON.parse(jsonData.textContent);
+                const formattedJson = syntaxHighlight(JSON.stringify(data, null, 4));
+                jsonData.innerHTML = formattedJson;
+            } catch (e) {
+                console.error('Erreur lors du parsing JSON:', e);
+            }
+        }
+    });
+    
+    // Fonction pour mettre en valeur la syntaxe JSON
+    function syntaxHighlight(json) {
+        json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+            let cls = 'json-number';
+            if (/^"/.test(match)) {
+                if (/:$/.test(match)) {
+                    cls = 'json-key';
+                } else {
+                    cls = 'json-string';
+                }
+            } else if (/true|false/.test(match)) {
+                cls = 'json-boolean';
+            } else if (/null/.test(match)) {
+                cls = 'json-null';
+            }
+            return '<span class="' + cls + '">' + match + '</span>';
+        });
+    }
+</script>
+{% endblock %}

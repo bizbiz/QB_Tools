@@ -1,0 +1,44 @@
+# app/models/models.qbsum
+
+Ce fichier résume tous les modèles dans le dossier `app/models` et ses sous-dossiers.
+
+## Fichiers dans ce dossier
+
+### __init__.py
+- **Description**: Point d'entrée pour tous les modèles, importe et réexporte les modèles principaux
+- **Contenu**: Importe et réexpose tous les modèles du module tricount et ErrorFollowing
+- **Note**: Crée une classe ErrorFollowing factice si le module n'existe pas
+
+### error_following.py
+- **Modèle**: `ErrorFollowing` - Suivi des erreurs de l'application
+- **Table**: `error_following`
+- **Champs principaux**: `id`, `error_type`, `source`, `message`, `stack_trace`, `created_at`, `resolved`, `resolved_at`
+- **Usage**: Remplace les logs serveur pour un meilleur suivi des erreurs
+
+### planning.py
+- **Modèles**: 
+  - `RawPlanning` - Stockage du contenu brut des plannings
+  - `ParsedPlanning` - Stockage des données analysées
+  - `PlanningEntry` - Entrées individuelles du planning
+- **Relations**: RawPlanning (1) -> (1) ParsedPlanning (1) -> (n) PlanningEntry
+- **Dépendances**: `datetime`, `json`
+
+### user.py
+- **Modèles**: 
+  - `User` - Utilisateurs de l'application
+  - `Group` - Groupes d'utilisateurs
+  - `Permission` - Permissions assignables aux groupes
+- **Tables d'association**: `user_groups`, `group_permissions`
+- **Dépendances**: `werkzeug.security`, `flask_login.UserMixin`
+- **Méthodes clés**: `set_password`, `check_password`, `has_permission`, `is_admin`
+
+## Sous-dossier tricount
+
+Voir le fichier `app/models/tricount/tricount.qbsum` pour les détails des modèles:
+
+- `Category` - Catégories de dépenses
+- `Flag` - Types de dépenses
+- `Expense` - Dépenses importées
+- `AutoCategorizationRule` - Règles d'auto-catégorisation
+- `PendingRuleApplication` - Applications de règles en attente
+- Énumérations: `ReimbursementType`, `ModificationSource`, `DeclarationStatus`

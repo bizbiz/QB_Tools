@@ -1,12 +1,11 @@
-# app/commands.py
+# app/commands/tricount_commands.py
 """
-Commandes personnalisées pour l'application Flask
+Commandes personnalisées pour le module tricount
 """
 import click
 from flask.cli import with_appcontext
 from app.extensions import db
 from app.models.tricount import Category
-from sqlalchemy.exc import IntegrityError
 
 @click.command('init_tricount_categories')
 @with_appcontext
@@ -106,7 +105,7 @@ def init_tricount_categories():
     try:
         db.session.commit()
         click.echo(f"Initialisation des catégories terminée : {created} catégories créées, {existing} déjà existantes.")
-    except IntegrityError as e:
+    except Exception as e:
         db.session.rollback()
         click.echo(f"Erreur lors de l'initialisation des catégories : {e}", err=True)
         return False
@@ -121,12 +120,10 @@ def tricount_init():
     return init_tricount_categories()
 
 
-
 @click.command('migrate_merchant_names')
 @with_appcontext
 def migrate_merchant_names():
     """Migre les noms de marchands modifiés vers la structure renamed_merchant"""
-    from app.extensions import db
     from app.models.tricount import Expense
     from app.services.tricount.bank_statement_parser import SocieteGeneraleParser
     
@@ -219,13 +216,3 @@ def migrate_merchant_names():
         click.echo(f"Erreur lors de l'enregistrement des modifications: {str(e)}")
     
     return True
-
-# Ajouter la nouvelle commande au registre des commandes
-def register_commands(app):
-    """Enregistre toutes les commandes personnalisées"""
-    # Commandes existantes...
-    app.cli.add_command(init_tricount_categories)
-    app.cli.add_command(tricount_init)
-    
-    # Nouvelle commande
-    app.cli.add_command(migrate_merchant_names)

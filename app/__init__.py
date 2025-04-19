@@ -1,7 +1,7 @@
 # app/__init__.py
 from flask import Flask, session
 from flask_migrate import Migrate
-from flask_login import LoginManager
+from flask_login import LoginManager, AnonymousUserMixin
 from app.extensions import db
 from app.config import config
 from datetime import datetime, timedelta
@@ -15,6 +15,9 @@ login_manager = LoginManager()
 login_manager.login_view = 'auth.login'
 login_manager.login_message = 'Veuillez vous connecter pour accéder à cette page.'
 login_manager.login_message_category = 'warning'
+
+from app.models.anonymous_user import AnonymousUser
+login_manager.anonymous_user = AnonymousUser
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -60,20 +63,30 @@ def register_blueprints(app):
     from app.routes.tricount import tricount_bp
     from app.routes.auth import auth_bp
     from app.routes.errors import errors_bp
+    from app.routes.admin import admin_bp
     
     app.register_blueprint(main_bp)
     app.register_blueprint(teamplanning_bp)
     app.register_blueprint(tricount_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(errors_bp)
+    app.register_blueprint(admin_bp)
 
 def register_commands(app):
     # Importer et enregistrer les commandes
     from app.commands import register_commands as register_tricount_commands
     from app.commands.user_commands import register_commands as register_user_commands
     
-    register_tricount_commands(app)
-    register_user_commands(app)
+    # Enregistrer les commandes
+    try:
+        register_tricount_commands(app)
+    except Exception as e:
+        print(f"Erreur lors de l'enregistrement des commandes tricount: {str(e)}")
+    
+    try:
+        register_user_commands(app)
+    except Exception as e:
+        print(f"Erreur lors de l'enregistrement des commandes utilisateur: {str(e)}")
 
 def register_error_handlers(app):
     from app.routes.errors import page_not_found, forbidden, internal_server_error

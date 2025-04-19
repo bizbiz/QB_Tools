@@ -15,5 +15,5 @@ __pycache__/
 .env
 
 # Ignore notes 
-.txt
+*.txt
 netplanning.html

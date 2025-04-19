@@ -1,0 +1,23 @@
+# app.qbsum - Application QB Tools
+- Application Flask multi-modules pour la gestion d'outils internes
+- Modules principaux: authentification, teamplanning, tricount
+- Base de données PostgreSQL
+
+## Structure principale:
+- __init__.py: Configuration Flask, enregistrement des blueprints, initialisation des extensions
+- config.py: Configuration DB, sécurité et environnements (Dev/Prod)
+- extensions.py: Extensions Flask (SQLAlchemy)
+- commands.py: Commandes CLI personnalisées (initialisation des données)
+- models/: Modèles de données
+- routes/: Contrôleurs organisés par module
+- services/: Services métier (mentionnés mais non accessibles)
+- utils/: Fonctions utilitaires
+
+## Dépendances principales:
+- Flask 3.1.0
+- SQLAlchemy
+- PostgreSQL (psycopg2-binary)
+- Flask-Login (authentification)
+
+## Point d'entrée:
+- main.py: Démarrage de l'application

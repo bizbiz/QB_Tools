@@ -1,0 +1,158 @@
+# routes/tricount.qbsum - Module Tricount (Détaillé)
+- Gestion des dépenses, catégories et remboursements
+- Système d'importation et catégorisation automatique
+
+## __init__.py
+- Crée le blueprint tricount_bp (/tricount)
+- Vérifie les permissions d'accès avant chaque requête
+
+## index_routes.py
+- GET /tricount/ : Dashboard principal avec statistiques et récentes dépenses
+  * Affiche nombre total de dépenses, dépenses non-catégorisées, par flag
+  * Liste les 5 dernières dépenses
+  * Compteurs pour règles en attente et dépenses remboursables
+
+## expense_routes.py
+- GET /tricount/expenses : Liste des dépenses avec filtres et pagination
+  * Params: category_id, flag_id, start_date, end_date, search, sort, order, page
+  * Retourne: Liste paginée des dépenses avec filtres appliqués
+
+## expense_details_routes.py
+- GET /tricount/expense/<int:expense_id>/details : Récupère les détails d'une dépense
+  * Params: expense_id (URL)
+  * Retourne: Informations complètes sur la dépense en JSON
+- POST /tricount/expense/<int:expense_id>/update : Met à jour les détails d'une dépense
+  * Params: expense_id (URL), renamed_merchant, notes, category_id, flag_id, is_declared, is_reimbursed, declaration_reference
+  * Action: Met à jour la dépense avec les nouvelles valeurs
+
+## expense_status_routes.py
+- POST /tricount/expense/update-status/<int:expense_id> : Met à jour le statut de déclaration/remboursement
+  * Params: expense_id (URL), status, reference, notes
+  * Action: Change le statut (non déclaré, déclaré, remboursé)
+- POST /tricount/expense/bulk-update-status : Met à jour en masse le statut de plusieurs dépenses
+  * Params: expense_ids (array), status
+  * Action: Applique le même statut à toutes les dépenses sélectionnées
+
+## expense_history_routes.py
+- GET /tricount/reimbursements/expense-history/<int:expense_id> : Récupère l'historique des modifications
+  * Params: expense_id (URL)
+  * Retourne: Historique chronologique des modifications de la dépense
+
+## category_routes.py
+- GET /tricount/categories : Liste des catégories de dépenses
+  * Affiche toutes les catégories avec leur configuration
+- POST /tricount/categories/add : Ajoute une nouvelle catégorie
+  * Params: name, description, iconify_id, color, flags (multiselect)
+- POST /tricount/categories/update/<int:category_id> : Met à jour une catégorie
+  * Params: category_id (URL), name, description, iconify_id, color, flags (multiselect)
+- GET /tricount/categories/<int:category_id>/info : API pour récupérer les infos d'une catégorie
+  * Params: category_id (URL)
+  * Retourne: Détails de la catégorie en JSON
+- POST /tricount/categories/delete/<int:category_id> : Supprime une catégorie
+  * Params: category_id (URL)
+
+## flag_routes.py
+- GET /tricount/flags : Liste des flags (types) de dépenses
+  * Affiche tous les flags avec leur configuration
+- POST /tricount/flags/add : Ajoute un nouveau flag
+  * Params: name, description, color, iconify_id, is_default, reimbursement_type
+- POST /tricount/flags/update/<int:flag_id> : Met à jour un flag
+  * Params: flag_id (URL), name, description, color, iconify_id, is_default, reimbursement_type
+- POST /tricount/flags/delete/<int:flag_id> : Supprime un flag
+  * Params: flag_id (URL)
+- GET /tricount/flags/get-all : API pour récupérer tous les flags
+  * Retourne: Liste complète des flags en JSON avec statistiques
+
+## import_routes.py
+- GET /tricount/import : Page principale d'importation
+  * Affiche les options d'importation disponibles
+- GET /tricount/import/societe-generale : Page d'importation Société Générale
+  * POST: Importe les transactions depuis texte relevé
+    * Params: statement_text (texte du relevé)
+- GET /tricount/import/n26 : Page d'importation N26
+  * POST: Importe les transactions depuis CSV
+    * Params: csv_file (fichier CSV)
+
+## export_routes.py
+- GET /tricount/export/options : Page d'options d'exportation
+  * Affiche les options d'export avec statistiques par flag
+- POST /tricount/export/tricount : Exporte les dépenses pour Emily (Tricount)
+  * Params: participants, default_payer, equal_split, flag_id
+  * Retourne: Fichier CSV formaté pour Tricount
+- POST /tricount/export/n2f : Exporte les dépenses professionnelles pour N2F
+  * Params: employee_name, employee_id, project
+  * Retourne: Fichier CSV formaté pour Note2Be
+
+## categorize_routes.py
+- GET /tricount/categorize : Page de catégorisation des dépenses
+  * Affiche les dépenses sans catégorie ou flag
+  * Params: sort_by, sort_order
+- GET /tricount/categorize/get-expenses : API pour récupérer les dépenses à catégoriser
+  * Params: page, per_page, sort_by, sort_order
+  * Retourne: Liste paginée des dépenses incomplètes en JSON
+
+## reimbursement_routes.py
+- POST /tricount/reimbursements : Liste des dépenses remboursables avec filtres
+  * Params: flag_id, status (multiselect), start_date, end_date, search, show_all, sort, order, page
+  * Retourne: Liste paginée des dépenses remboursables
+- POST /tricount/reimbursements/rows : Génère les lignes du tableau pour AJAX
+  * Params: (identiques à /reimbursements)
+  * Retourne: HTML partiel des lignes de tableau
+- GET, POST /tricount/reimbursements/summary : Récupère les statistiques
+  * Params: (identiques à /reimbursements)
+  * Retourne: Totaux et statistiques en JSON
+- GET, POST /tricount/reimbursements/export : Exporte les dépenses filtrées en CSV
+  * Params: (identiques à /reimbursements)
+  * Retourne: Fichier CSV des dépenses filtrées
+
+## auto_rules_management.py
+- GET /tricount/auto-rules : Liste des règles d'auto-catégorisation
+- POST /tricount/auto-rules/delete/<int:rule_id> : Supprime une règle
+  * Params: rule_id (URL)
+- GET, POST /tricount/auto-rules/edit/<int:rule_id> : Édite une règle existante
+  * Params: rule_id (URL), rule_name, merchant_contains, description_contains, [options d'action]
+- GET /tricount/rule-details/<int:rule_id> : API pour récupérer les détails d'une règle
+  * Params: rule_id (URL), expense_id (optionnel)
+  * Retourne: Détails de la règle et impact sur la dépense
+- GET /tricount/expense-rule-conflict/<int:expense_id> : Vérifie les conflits de règles
+  * Params: expense_id (URL)
+- POST /tricount/check-rule-conflicts : API pour vérifier les conflits de règles
+  * Params: merchant_contains, description_contains, min_amount, max_amount, expense_id, current_rule_id
+  * Retourne: Liste des conflits potentiels
+
+## auto_rules_application.py
+- GET /tricount/auto-categorize/<int:expense_id> : Page pour créer une règle basée sur dépense
+  * Params: expense_id (URL)
+- POST /tricount/auto-rules/apply/<int:rule_id> : Applique manuellement une règle
+  * Params: rule_id (URL)
+- POST /tricount/create-auto-rule : Crée une nouvelle règle d'auto-catégorisation
+  * Params: expense_id, rule_name, merchant_contains, description_contains, [options de règle]
+- POST /tricount/find-similar-expenses : API pour trouver dépenses similaires
+  * Params: expense_id, merchant_contains, description_contains, min_amount, max_amount
+  * Retourne: Liste des dépenses correspondant aux critères
+
+## pending_rules_routes.py
+- GET /tricount/pending-rules : Liste des règles en attente de confirmation
+- POST /tricount/pending-rules/confirm/<int:rule_id> : Confirme l'application d'une règle
+  * Params: rule_id (URL)
+- POST /tricount/pending-rules/reject/<int:rule_id> : Rejette l'application d'une règle
+  * Params: rule_id (URL)
+- POST /tricount/pending-rules/confirm-expense/<int:pending_id> : Confirme pour une dépense spécifique
+  * Params: pending_id (URL)
+- POST /tricount/pending-rules/reject-expense/<int:pending_id> : Rejette pour une dépense spécifique
+  * Params: pending_id (URL)
+- POST /tricount/pending-rules/edit/<int:pending_id> : Édite avant confirmation
+  * Params: pending_id (URL), category_id, flag_id, notes, apply_rule
+- GET /tricount/pending-rules/details/<int:pending_id> : API pour détails d'application en attente
+  * Params: pending_id (URL)
+  * Retourne: Détails complets en JSON
+
+## admin_routes.py
+- GET /tricount/admin/fix-renamed-merchants : Corriger les noms de marchands
+  * Params: action=execute (optionnel pour exécution)
+  * Action: Extrait les noms originaux des marchands depuis texte brut
+
+## compatibility_routes.py
+- Multiple routes de redirection pour maintenir la compatibilité API
+  * Redirige les anciens points d'entrée vers les nouveaux
+  * Journalise les appels pour faciliter la migration

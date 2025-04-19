@@ -1,0 +1,55 @@
+# app/models/tricount/tricount.qbsum
+
+Ce fichier résume tous les modèles dans le dossier `app/models/tricount`.
+
+## Fichiers dans ce dossier
+
+### __init__.py
+- **Description**: Point d'entrée pour les modèles tricount
+- **Contenu**: Réexporte tous les modèles et énumérations du module
+- **Exports**: `ReimbursementType`, `ModificationSource`, `DeclarationStatus`, `Flag`, `Category`, `Expense`, `AutoCategorizationRule`, `PendingRuleApplication`, `category_flags`, `rule_expense_links`
+
+### common.py
+- **Description**: Définit les énumérations utilisées dans le module tricount
+- **Énumérations**:
+  - `ReimbursementType`: Types de remboursement (NOT_REIMBURSABLE, PARTIALLY_REIMBURSABLE, FULLY_REIMBURSABLE)
+  - `ModificationSource`: Sources de modification (MANUAL, AUTO_RULE, AUTO_RULE_CONFIRMED, IMPORT)
+  - `DeclarationStatus`: Statuts de déclaration (NOT_DECLARED, DECLARED, REIMBURSED)
+- **Méthodes**: `__str__` pour chaque énumération
+
+### category.py
+- **Modèle**: `Category` - Catégories de dépenses
+- **Table**: `expense_categories`
+- **Champs principaux**: `id`, `name`, `description`, `color`, `iconify_id`, `created_at`
+- **Relations**: Many-to-many avec Flag via `category_flags`
+- **Table d'association**: `category_flags`
+- **Propriétés**: `get_icon_html`
+
+### flag.py
+- **Modèle**: `Flag` - Types/étiquettes de dépenses
+- **Table**: `expense_flags`
+- **Champs principaux**: `id`, `name`, `description`, `color`, `iconify_id`, `legacy_icon`, `is_default`, `reimbursement_type`, `created_at`
+- **Relations**: Many-to-many avec Category via `category_flags`
+- **Propriétés**: `is_reimbursable`
+
+### expense.py
+- **Modèle**: `Expense` - Dépenses importées
+- **Table**: `expenses`
+- **Champs principaux**: `id`, `date`, `description`, `amount`, `is_debit`, `notes`, `merchant`, `renamed_merchant`, `payment_method`, `reference`, `original_text`, `source`, `category_id`, `flag_id`, `unique_identifier`
+- **Champs de suivi**: `*_modified_by` pour suivre l'origine des modifications
+- **Champs de remboursement**: `declaration_status`, `declaration_reference`, `declaration_date`, `reimbursement_date`, `declaration_notes`
+- **Relations**: Many-to-one avec Category et Flag, Many-to-many avec AutoCategorizationRule
+- **Propriétés hybrides**: `signed_amount`
+- **Propriétés**: `display_name`, `is_reimbursable`, `is_declared`, `is_reimbursed`
+- **Méthodes statiques**: `generate_unique_identifier`
+
+### rule.py
+- **Modèles**: 
+  - `AutoCategorizationRule` - Règles d'auto-catégorisation
+  - `PendingRuleApplication` - Applications de règles en attente
+- **Tables**: `auto_categorization_rules`, `pending_rule_applications`
+- **Table d'association**: `rule_expense_links`
+- **Champs règle**: Filtres (`merchant_contains`, `description_contains`, etc.), actions (`apply_category`, `apply_flag`, etc.), configurations de renommage
+- **Relations**: Many-to-one avec Category et Flag, Many-to-many avec Expense
+- **Méthodes clés**: `matches_expense`, `apply_to_expense`
+- **Dépendances**: `re` pour les expressions régulières

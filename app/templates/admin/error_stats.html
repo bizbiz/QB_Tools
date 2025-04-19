@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+
+{% block title %}QB Tools - Statistiques des erreurs{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-card {
+        transition: all 0.3s ease;
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 1rem 3rem rgba(0,0,0,.175)!important;
+    }
+    .chart-container {
+        height: 400px;
+        position: relative;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('errors_admin.errors_list') }}">Suivi des erreurs</a></li>
+                    <li class="breadcrumb-item active">Statistiques</li>
+                </ol>
+            </nav>
+            
+            <div class="d-flex justify-content-between align-items-center">
+                <h1>Statistiques des erreurs</h1>
+                
+                <a href="{{ url_for('errors_admin.errors_list') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left me-2"></i>Retour à la liste
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Statistiques globales -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card shadow stats-card h-100 bg-primary text-white">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Total des erreurs</h5>
+                    <h2 class="display-4">{{ total_errors }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow stats-card h-100 bg-danger text-white">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Erreurs non résolues</h5>
+                    <h2 class="display-4">{{ unresolved_errors }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow stats-card h-100 bg-success text-white">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Erreurs résolues</h5>
+                    <h2 class="display-4">{{ total_errors - unresolved_errors }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Distribution par type d'erreur -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Distribution par type d'erreur</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="errorTypeChart"></canvas>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Nombre</th>
+                                    <th>Pourcentage</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for error_type, count in error_type_counts %}
+                                <tr>
+                                    <td>
+                                        <span class="badge 
+                                        {% if error_type == '500' %}bg-danger
+                                        {% elif error_type == '404' %}bg-warning
+                                        {% elif error_type == '403' %}bg-warning
+                                        {% elif error_type == 'exception' %}bg-danger
+                                        {% elif error_type == 'redirection' %}bg-info
+                                        {% else %}bg-secondary{% endif %}">
+                                            {{ error_type }}
+                                        </span>
+                                    </td>
+                                    <td>{{ count }}</td>
+                                    <td>{{ (count / total_errors * 100)|round(1) }}%</td>
+                                    <td>
+                                        <a href="{{ url_for('errors_admin.errors_list', type=error_type) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-search me-1"></i>Voir
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Évolution des erreurs par jour -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Évolution des erreurs</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="errorTrendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sources d'erreurs les plus fréquentes -->
+        <div class="col-md-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Sources d'erreurs les plus fréquentes</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Source</th>
+                                    <th>Nombre d'erreurs</th>
+                                    <th>Pourcentage</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for source, count in top_sources %}
+                                <tr>
+                                    <td>{{ source }}</td>
+                                    <td>{{ count }}</td>
+                                    <td>{{ (count / total_errors * 100)|round(1) }}%</td>
+                                    <td>
+                                        <a href="{{ url_for('errors_admin.errors_list', search=source) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-search me-1"></i>Voir les erreurs
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center">
+                                        <div class="alert alert-info mb-0">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            Aucune source d'erreur trouvée.
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Données pour le graphique de distribution par type
+        const errorTypeData = {
+            labels: [
+                {% for error_type, count in error_type_counts %}
+                '{{ error_type }}',
+                {% endfor %}
+            ],
+            datasets: [{
+                label: 'Erreurs par type',
+                data: [
+                    {% for error_type, count in error_type_counts %}
+                    {{ count }},
+                    {% endfor %}
+                ],
+                backgroundColor: [
+                    {% for error_type, count in error_type_counts %}
+                    '{{ get_color_for_type(error_type) }}',
+                    {% endfor %}
+                ],
+                borderWidth: 1
+            }]
+        };
+        
+        // Données pour le graphique d'évolution des erreurs
+        const errorTrendData = {
+            labels: [
+                {% for date, count in errors_by_day %}
+                '{{ date }}',
+                {% endfor %}
+            ],
+            datasets: [{
+                label: 'Nombre d\'erreurs',
+                data: [
+                    {% for date, count in errors_by_day %}
+                    {{ count }},
+                    {% endfor %}
+                ],
+                fill: false,
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+            }]
+        };
+        
+        // Configuration du graphique de distribution par type
+        const errorTypeCtx = document.getElementById('errorTypeChart').getContext('2d');
+        const errorTypeChart = new Chart(errorTypeCtx, {
+            type: 'pie',
+            data: errorTypeData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const percentage = (value / {{ total_errors }} * 100).toFixed(1);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Configuration du graphique d'évolution des erreurs
+        const errorTrendCtx = document.getElementById('errorTrendChart').getContext('2d');
+        const errorTrendChart = new Chart(errorTrendCtx, {
+            type: 'line',
+            data: errorTrendData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    legend: {
+                        position: 'top',
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        });
+    });
+    
+    // Fonction pour obtenir la couleur en fonction du type d'erreur
+    function get_color_for_type(type) {
+        switch(type) {
+            case '500':
+                return 'rgb(220, 53, 69)'; // danger
+            case '404':
+                return 'rgb(255, 193, 7)'; // warning
+            case '403':
+                return 'rgb(255, 153, 0)'; // warning-darker
+            case 'exception':
+                return 'rgb(214, 51, 132)'; // purple
+            case 'redirection':
+                return 'rgb(13, 202, 240)'; // info
+            default:
+                return 'rgb(108, 117, 125)'; // secondary
+        }
+    }
+</script>
+{% endblock %}

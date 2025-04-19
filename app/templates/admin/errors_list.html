@@ -1,0 +1,331 @@
+{% extends "base.html" %}
+
+{% block title %}QB Tools - Suivi des erreurs{% endblock %}
+
+{% block extra_css %}
+<style>
+    .error-row {
+        cursor: pointer;
+    }
+    .error-row:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+    .filter-card {
+        position: sticky;
+        top: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-5">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Accueil</a></li>
+                    <li class="breadcrumb-item active">Suivi des erreurs</li>
+                </ol>
+            </nav>
+            
+            <h1>Suivi des erreurs</h1>
+            <p class="lead">Consultez et gérez les erreurs enregistrées dans l'application</p>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Filtres et statistiques -->
+        <div class="col-md-3">
+            <div class="card shadow filter-card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Filtres</h5>
+                </div>
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('errors_admin.errors_list') }}">
+                        <div class="mb-3">
+                            <label for="type" class="form-label">Type d'erreur</label>
+                            <select class="form-select" id="type" name="type">
+                                <option value="">Tous les types</option>
+                                {% for type in error_types %}
+                                <option value="{{ type }}" {% if selected_type == type %}selected{% endif %}>{{ type }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="resolved" class="form-label">Statut</label>
+                            <select class="form-select" id="resolved" name="resolved">
+                                <option value="">Tous les statuts</option>
+                                <option value="0" {% if selected_resolved == '0' %}selected{% endif %}>Non résolu</option>
+                                <option value="1" {% if selected_resolved == '1' %}selected{% endif %}>Résolu</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="start_date" class="form-label">Date de début</label>
+                            <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date }}">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="end_date" class="form-label">Date de fin</label>
+                            <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date }}">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="search" class="form-label">Recherche</label>
+                            <input type="text" class="form-control" id="search" name="search" value="{{ search }}" placeholder="Recherche dans source/message">
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-filter me-2"></i>Filtrer
+                            </button>
+                            <a href="{{ url_for('errors_admin.errors_list') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>Réinitialiser
+                            </a>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-footer">
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('errors_admin.error_stats') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-chart-line me-2"></i>Statistiques
+                        </a>
+                        <button id="bulkActionBtn" class="btn btn-outline-danger" disabled>
+                            <i class="fas fa-cogs me-2"></i>Actions
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Liste des erreurs -->
+        <div class="col-md-9">
+            <div class="card shadow">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="card-title mb-0">Erreurs enregistrées</h3>
+                        <span class="badge bg-primary">{{ errors.total }} erreur(s)</span>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <form id="bulkForm" method="POST" action="{{ url_for('errors_admin.bulk_resolve') }}">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped mb-0">
+                                <thead>
+                                    <tr>
+                                        <th width="40">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="selectAll">
+                                            </div>
+                                        </th>
+                                        <th width="50">ID</th>
+                                        <th width="100">Type</th>
+                                        <th width="180">Date</th>
+                                        <th>Source</th>
+                                        <th>Message</th>
+                                        <th width="100">Statut</th>
+                                        <th width="120">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for error in errors.items %}
+                                    <tr class="error-row" data-error-id="{{ error.id }}">
+                                        <td>
+                                            <div class="form-check">
+                                                <input class="form-check-input error-checkbox" type="checkbox" name="error_ids" value="{{ error.id }}">
+                                            </div>
+                                        </td>
+                                        <td>{{ error.id }}</td>
+                                        <td>
+                                            <span class="badge 
+                                            {% if error.error_type == '500' %}bg-danger
+                                            {% elif error.error_type == '404' %}bg-warning
+                                            {% elif error.error_type == '403' %}bg-warning
+                                            {% elif error.error_type == 'exception' %}bg-danger
+                                            {% elif error.error_type == 'redirection' %}bg-info
+                                            {% else %}bg-secondary{% endif %}">
+                                                {{ error.error_type }}
+                                            </span>
+                                        </td>
+                                        <td>{{ error.created_at.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                                        <td>{{ error.source|truncate(30) }}</td>
+                                        <td>{{ error.message|truncate(50) }}</td>
+                                        <td>
+                                            {% if error.resolved %}
+                                            <span class="badge bg-success">Résolu</span>
+                                            {% else %}
+                                            <span class="badge bg-danger">Non résolu</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group">
+                                                <a href="{{ url_for('errors_admin.error_details', error_id=error.id) }}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <form method="POST" action="{{ url_for('errors_admin.resolve_error', error_id=error.id, next=request.full_path) }}" class="d-inline">
+                                                    <button type="submit" class="btn btn-sm 
+                                                    {% if error.resolved %}btn-outline-warning{% else %}btn-outline-success{% endif %}">
+                                                        <i class="fas {% if error.resolved %}fa-times{% else %}fa-check{% endif %}"></i>
+                                                    </button>
+                                                </form>
+                                                <button type="button" class="btn btn-sm btn-outline-danger delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal" data-error-id="{{ error.id }}">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="8" class="text-center py-5">
+                                            <div class="alert alert-info mb-0">
+                                                <i class="fas fa-info-circle me-2"></i>
+                                                Aucune erreur trouvée.
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Actions en masse (caché jusqu'à la sélection) -->
+                        <div id="bulkActions" class="bg-light p-3 border-top" style="display: none;">
+                            <div class="d-flex justify-content-end">
+                                <div class="btn-group">
+                                    <button type="submit" name="action" value="resolve" class="btn btn-success">
+                                        <i class="fas fa-check me-2"></i>Marquer comme résolues
+                                    </button>
+                                    <button type="submit" name="action" value="unresolve" class="btn btn-warning">
+                                        <i class="fas fa-times me-2"></i>Marquer comme non résolues
+                                    </button>
+                                    <button type="submit" name="action" value="delete" class="btn btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer les erreurs sélectionnées?')">
+                                        <i class="fas fa-trash me-2"></i>Supprimer
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-footer">
+                    <!-- Pagination -->
+                    {% if errors.pages > 1 %}
+                    <nav aria-label="Navigation des pages">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% for page_num in errors.iter_pages(left_edge=2, left_current=2, right_current=3, right_edge=2) %}
+                                {% if page_num %}
+                                    {% if page_num == errors.page %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ page_num }}</span>
+                                    </li>
+                                    {% else %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('errors_admin.errors_list', page=page_num, type=selected_type, resolved=selected_resolved, start_date=start_date, end_date=end_date, search=search) }}">{{ page_num }}</a>
+                                    </li>
+                                    {% endif %}
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmation de suppression -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirmer la suppression</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Êtes-vous sûr de vouloir supprimer cette erreur?</p>
+                <p class="text-danger">Cette action est irréversible.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <form id="deleteForm" method="POST" action="">
+                    <button type="submit" class="btn btn-danger">Supprimer</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Configuration du modal de suppression
+        const deleteModal = document.getElementById('deleteModal');
+        deleteModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const errorId = button.getAttribute('data-error-id');
+            document.getElementById('deleteForm').action = "{{ url_for('errors_admin.delete_error', error_id=0) }}".replace('0', errorId);
+        });
+        
+        // Gestion des lignes cliquables
+        document.querySelectorAll('.error-row').forEach(row => {
+            row.addEventListener('click', function(e) {
+                // Ne pas déclencher le clic sur la ligne si on clique sur une case à cocher ou un bouton
+                if (!e.target.closest('input[type="checkbox"]') && !e.target.closest('button') && !e.target.closest('a')) {
+                    const errorId = this.getAttribute('data-error-id');
+                    window.location.href = "{{ url_for('errors_admin.error_details', error_id=0) }}".replace('0', errorId);
+                }
+            });
+        });
+        
+        // Gestion des cases à cocher
+        const selectAll = document.getElementById('selectAll');
+        const errorCheckboxes = document.querySelectorAll('.error-checkbox');
+        const bulkActions = document.getElementById('bulkActions');
+        const bulkActionBtn = document.getElementById('bulkActionBtn');
+        
+        // Synchroniser la case "tout sélectionner"
+        selectAll.addEventListener('change', function() {
+            errorCheckboxes.forEach(checkbox => {
+                checkbox.checked = selectAll.checked;
+            });
+            updateBulkActions();
+        });
+        
+        // Mettre à jour l'état du bouton d'actions en masse
+        errorCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                updateBulkActions();
+                
+                // Mettre à jour la case "tout sélectionner"
+                selectAll.checked = Array.from(errorCheckboxes).every(cb => cb.checked);
+                selectAll.indeterminate = !selectAll.checked && Array.from(errorCheckboxes).some(cb => cb.checked);
+            });
+        });
+        
+        // Afficher/masquer les actions en masse
+        function updateBulkActions() {
+            const checkedCount = document.querySelectorAll('.error-checkbox:checked').length;
+            bulkActionBtn.disabled = checkedCount === 0;
+            bulkActions.style.display = checkedCount > 0 ? 'block' : 'none';
+            
+            // Mettre à jour le texte du bouton
+            if (checkedCount > 0) {
+                bulkActionBtn.innerHTML = `<i class="fas fa-cogs me-2"></i>Actions (${checkedCount})`;
+            } else {
+                bulkActionBtn.innerHTML = `<i class="fas fa-cogs me-2"></i>Actions`;
+            }
+        }
+        
+        // Afficher/masquer les actions en masse via le bouton
+        bulkActionBtn.addEventListener('click', function() {
+            bulkActions.style.display = bulkActions.style.display === 'none' ? 'block' : 'none';
+        });
+    });
+</script>
+{% endblock %}
